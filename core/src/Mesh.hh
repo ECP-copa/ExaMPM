@@ -48,6 +48,15 @@ class Mesh
     virtual void getBoundaryNodes( const std::vector<int>& boundary_id,
                                    std::vector<int>& boundary_nodes ) const = 0;
 
+    // Get the number of particles in a cell for a given order.
+    virtual int particlesPerCell( const int order ) const = 0;
+
+    // Given a cardinal cell id intitalize a number of particles in that cell.
+    virtual void initializeParticles(
+        const int cell_id,
+        const int order,
+        std::vector<Particle>& particles ) const = 0;
+
     // Given a particle determine the cardinal index of the cell in which it
     // is located.
     virtual void locateParticle( const Particle& particle,

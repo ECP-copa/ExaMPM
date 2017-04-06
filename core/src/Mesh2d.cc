@@ -136,6 +136,87 @@ void Mesh2d::getBoundaryNodes( const std::vector<int>& boundary_id,
 }
 
 //---------------------------------------------------------------------------//
+// Get the number of particles in a cell for a given order.
+int Mesh2d::particlesPerCell( const int order ) const
+{
+    return order*order;
+}
+
+//---------------------------------------------------------------------------//
+// Given a cardinal cell id intitalize a number of particles in that cell.
+void Mesh2d::initializeParticles(
+    const int cell_id,
+    const int order,
+    std::vector<Particle>& particles ) const
+{
+    assert( particles.size() == order*order );
+
+    // Get the ij cell indices.
+    int cell_j = std::floor( cell_id / d_num_cells_x );
+    int cell_i = cell_id - cell_j * d_num_cells_x;
+    assert( cell_id == cell_j * d_num_cells_x + cell_i );
+
+    // Calculate particle spacing. We want to space them evenly and away from
+    // the edges of the cells.
+    //
+    // Order 1:
+    //
+    //        +----------------+
+    //        |                |
+    //        |                |
+    //        |       o        |
+    //        |                |
+    //        |                |
+    //        +----------------+
+    //
+    // Order 2:
+    //
+    //        +----------------+
+    //        |                |
+    //        |   o       o    |
+    //        |                |
+    //        |   o       o    |
+    //        |                |
+    //        +----------------+
+    //
+    // Order 3:
+    //
+    //        +----------------+
+    //        | o     o     o  |
+    //        |                |
+    //        | o     o     o  |
+    //        |                |
+    //        | o     o     o  |
+    //        +----------------+
+    //
+    // etc....
+
+
+    double dp = d_cell_width / (order + 1);
+
+    // Initialize the particle locations.
+    double x0 = cell_i*d_cell_width + dp;
+    double y0 = cell_j*d_cell_width + dp;
+    int lid = 0;
+    for ( int j = 0; j < order; ++j )
+    {
+        for ( int i = 0; i < order; ++i )
+        {
+            // Get the local particle id.
+            lid = j*order + i;
+            assert( lid < particles.size() );
+
+            // Check size.
+            assert( 2 == particles[lid].r.size() );
+
+            // Set the position.
+            particles[lid].r[0] = x0 + i*dp;
+            particles[lid].r[1] = y0 + j*dp;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
 // Given a particle determine the cardinal index of the cell in which it
 // is located.
 void Mesh2d::locateParticle( const Particle& particle,
@@ -255,5 +336,5 @@ int Mesh2d::nodeId( const int i, const int j ) const
 } // end namespace ExaMPM
 
 //---------------------------------------------------------------------------//
-// end Mesh2d.hh
+// end Mesh2d.cc
 //---------------------------------------------------------------------------//
