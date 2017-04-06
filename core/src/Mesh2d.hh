@@ -50,6 +50,15 @@ class Mesh2d : public Mesh
     void getBoundaryNodes( const std::vector<int>& boundary_id,
                            std::vector<int>& boundary_nodes ) const override;
 
+    // Get the number of particles in a cell for a given order.
+    int particlesPerCell( const int order ) const override;
+
+    // Given a cardinal cell id intitalize a number of particles in that cell.
+    void initializeParticles(
+        const int cell_id,
+        const int order,
+        std::vector<Particle>& particles ) const override;
+
     // Given a particle determine the cardinal index of the cell in which it
     // is located.
     void locateParticle( const Particle& particle,

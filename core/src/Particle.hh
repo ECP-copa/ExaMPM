@@ -27,10 +27,21 @@ class Particle
     std::vector<double> v;
 
     // Mass
-    double mass;
+    double m;
 
     // Material id
-    int mat;
+    int matid;
+
+  public:
+
+    // Default constructor.
+    Particle() = default;
+
+    // Spatial dimension constructor.
+    Particle( const int space_dim )
+        : r( space_dim )
+        , v( space_dim )
+    { /* ... */ }
 };
 
 //---------------------------------------------------------------------------//

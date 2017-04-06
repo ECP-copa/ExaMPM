@@ -8,6 +8,8 @@
 #include "Mesh2d.hh"
 #include "Particle.hh"
 
+#include <vector>
+
 #include "gtest_main.hh"
 
 //---------------------------------------------------------------------------//
@@ -97,6 +99,7 @@ TEST_F(MeshTest, mesh_test_2d)
     EXPECT_FLOAT_EQ( sgrads[3][0], -0.125 );
     EXPECT_FLOAT_EQ( sgrads[3][1], 0.125 );
 
+
     // Check the boundaries.
     std::vector<int> boundary_id( 2 );
     std::vector<int> boundary_nodes;
@@ -134,6 +137,32 @@ TEST_F(MeshTest, mesh_test_2d)
     EXPECT_EQ( num_nodes_y, boundary_nodes.size() );
     for ( int j = 0; j < num_nodes_y; ++j )
         EXPECT_EQ( boundary_nodes[j], getNodeId(num_cells_x,j) );
+
+
+    // Check initialization of particles.
+    int order = 2;
+    int cell_np = mesh->particlesPerCell( order );
+    EXPECT_EQ( 4, cell_np );
+
+    int cardinal_cell_id = cell_id[1] * num_cells_x + cell_id[0];
+    std::vector<ExaMPM::Particle> cell_particles( 4, ExaMPM::Particle(2) );
+    mesh->initializeParticles( cardinal_cell_id, order, cell_particles );
+
+    double particle_spacing = cell_width / 3.0;
+    double base_x = cell_id[0] * cell_width;
+    double base_y = cell_id[1] * cell_width;
+
+    EXPECT_FLOAT_EQ( cell_particles[0].r[0], base_x + particle_spacing );
+    EXPECT_FLOAT_EQ( cell_particles[0].r[1], base_y + particle_spacing );
+
+    EXPECT_FLOAT_EQ( cell_particles[1].r[0], base_x + 2.0*particle_spacing );
+    EXPECT_FLOAT_EQ( cell_particles[1].r[1], base_y + particle_spacing );
+
+    EXPECT_FLOAT_EQ( cell_particles[2].r[0], base_x + particle_spacing );
+    EXPECT_FLOAT_EQ( cell_particles[2].r[1], base_y + 2.0*particle_spacing );
+
+    EXPECT_FLOAT_EQ( cell_particles[3].r[0], base_x + 2.0*particle_spacing );
+    EXPECT_FLOAT_EQ( cell_particles[3].r[1], base_y + 2.0*particle_spacing );
 }
 
 //---------------------------------------------------------------------------//
