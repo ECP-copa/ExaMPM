@@ -4,11 +4,13 @@ SET(SOURCES "")
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
 APPEND_SET(HEADERS
-  Tensor.hh
+  Particle.hh
+  Mesh.hh
+  Mesh2d.hh
   )
 
 APPEND_SET(SOURCES
-  Tensor.cc
+  Mesh2d.cc
   )
 
 TRIBITS_ADD_LIBRARY(

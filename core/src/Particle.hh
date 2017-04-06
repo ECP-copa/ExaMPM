@@ -1,29 +1,44 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file   test/tstTensor.cc
+ * \file Particle.hh
  */
 //---------------------------------------------------------------------------//
 
-#include "Tensor.hh"
+#ifndef EXAMPM_PARTICLE_HH
+#define EXAMPM_PARTICLE_HH
 
-#include "gtest_main.hh"
+#include <vector>
+
+namespace ExaMPM
+{
 
 //---------------------------------------------------------------------------//
-class TensorTest : public ::testing::Test
+/*!
+ * \class Particle
+ */
+class Particle
 {
-  protected:
-    void SetUp()
-    { /* ... */ }
+  public:
+
+    // Physical location
+    std::vector<double> r;
+
+    // Velocity
+    std::vector<double> v;
+
+    // Mass
+    double mass;
+
+    // Material id
+    int mat;
 };
 
 //---------------------------------------------------------------------------//
-// TESTS
-//---------------------------------------------------------------------------//
-TEST_F(TensorTest, tensor_test)
-{
 
-}
+} // end namespace ExaMPM
+
+#endif // end EXAMPM_PARTICLE_HH
 
 //---------------------------------------------------------------------------//
-// end of test/tstTensor.cc
+// end Particle.hh
 //---------------------------------------------------------------------------//

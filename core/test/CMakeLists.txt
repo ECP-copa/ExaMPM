@@ -1,3 +1,3 @@
 INCLUDE(UtilsTest)
 
-ADD_UTILS_TEST(tstTensor.cc)
+ADD_UTILS_TEST(tstMesh.cc)
