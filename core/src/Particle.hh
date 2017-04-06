@@ -32,6 +32,9 @@ class Particle
     // Material id
     int matid;
 
+    // Specific stress.
+    std::vector<std::vector<double> > stress;
+
   public:
 
     // Default constructor.
@@ -41,6 +44,7 @@ class Particle
     Particle( const int space_dim )
         : r( space_dim )
         , v( space_dim )
+        , stress( space_dim, std::vector<double>(space_dim) )
     { /* ... */ }
 };
 
