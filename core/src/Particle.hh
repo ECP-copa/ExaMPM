@@ -20,19 +20,22 @@ class Particle
 {
   public:
 
-    // Physical location
+    // Physical location.
     std::vector<double> r;
 
-    // Velocity
+    // Velocity.
     std::vector<double> v;
 
-    // Mass
+    // Mass.
     double m;
 
-    // Material id
+    // Material id.
     int matid;
 
-    // Specific stress.
+    // Total strain (history dependent).
+    std::vector<std::vector<double> > strain;
+
+    // Total specific stress (history dependent).
     std::vector<std::vector<double> > stress;
 
   public:
@@ -44,7 +47,8 @@ class Particle
     Particle( const int space_dim )
         : r( space_dim )
         , v( space_dim )
-        , stress( space_dim, std::vector<double>(space_dim) )
+        , strain( space_dim, std::vector<double>(space_dim,0.0) )
+        , stress( space_dim, std::vector<double>(space_dim,0.0) )
     { /* ... */ }
 };
 
