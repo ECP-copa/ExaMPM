@@ -192,11 +192,11 @@ void Mesh2d::initializeParticles(
     // etc....
 
 
-    double dp = d_cell_width / (order + 1);
+    double dp = d_cell_width / order;
 
     // Initialize the particle locations.
-    double x0 = cell_i*d_cell_width + dp;
-    double y0 = cell_j*d_cell_width + dp;
+    double x0 = cell_i*d_cell_width + dp / 2.0;
+    double y0 = cell_j*d_cell_width + dp / 2.0;
     int lid = 0;
     for ( int j = 0; j < order; ++j )
     {
