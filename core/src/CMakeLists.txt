@@ -4,6 +4,7 @@ SET(SOURCES "")
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
 APPEND_SET(HEADERS
+  FileIO.hh
   Geometry.hh
   Mesh.hh
   Mesh2d.hh
@@ -12,6 +13,7 @@ APPEND_SET(HEADERS
   )
 
 APPEND_SET(SOURCES
+  FileIO.cc
   Mesh2d.cc
   Square.cc
   )
