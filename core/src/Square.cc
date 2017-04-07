@@ -16,7 +16,6 @@ Square::Square( const std::vector<double>& bounds )
     : d_bounds( bounds )
     , d_matid( -1 )
     , d_total_mass( 0.0 )
-    , d_np( 0 )
 {
     assert( 4 == d_bounds.size() );
 }
@@ -45,17 +44,20 @@ void Square::setMass( const double total_mass )
 }
 
 //---------------------------------------------------------------------------//
+// Set the initial total mass of the geometry.
+double Square::getMass() const
+{
+    return d_total_mass;
+}
+
+//---------------------------------------------------------------------------//
 // Determine if a particle is in the geometry. If it is, keep track of it so
 // we know how many total particles there are.
 bool Square::particleInGeometry( const Particle& p )
 {
-    bool in_geom =
+    return
         ( d_bounds[0] <= p.r[0] && p.r[0] <= d_bounds[1] ) &&
         ( d_bounds[2] <= p.r[1] && p.r[1] <= d_bounds[3] );
-
-    if ( in_geom ) ++d_np;
-
-    return in_geom;
 }
 
 //---------------------------------------------------------------------------//
@@ -72,10 +74,6 @@ void Square::initializeParticle( Particle& p ) const
 
     // Assign the material id.
     p.matid = d_matid;
-
-    // Assign the mass. Divide by the total number or particles in the
-    // geometry to preserve the total mass.
-    p.m = d_total_mass / d_np;
 }
 
 //---------------------------------------------------------------------------//

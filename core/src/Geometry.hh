@@ -40,6 +40,9 @@ class Geometry
     // Set the initial total mass of the geometry.
     virtual void setMass( const double total_mass ) = 0;
 
+    // Set the initial total mass of the geometry.
+    virtual double getMass() const = 0;
+
     // Determine if a particle is in the geometry. If it is, keep track of it
     // so we know how many total particles there are.
     virtual bool particleInGeometry( const Particle& p ) = 0;

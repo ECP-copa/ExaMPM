@@ -38,6 +38,9 @@ class Square : public Geometry
     // Set the initial total mass of the geometry.
     void setMass( const double total_mass ) override;
 
+    // Set the initial total mass of the geometry.
+    double getMass() const override;
+
     // Determine if a particle is in the geometry. If it is, keep track of it
     // so we know how many total particles there are.
     bool particleInGeometry( const Particle& p ) override;
@@ -60,9 +63,6 @@ class Square : public Geometry
 
     // Total geometry mass.
     double d_total_mass;
-
-    // Number of particles in the geometry.
-    int d_np;
 };
 
 //---------------------------------------------------------------------------//
