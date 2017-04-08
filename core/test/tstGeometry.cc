@@ -53,12 +53,14 @@ TEST_F(GeometryTest, square_test)
     // Assign values to the geometry.
     int matid = 3;
     double mass = 3.43;
+    double density = 1.1;
     auto vf = []( const std::vector<double>& r,
                   std::vector<double>& v)
               { std::copy( r.begin(), r.end(), v.begin() ); };
 
     geometry->setMatId( matid );
     geometry->setVelocityField( vf );
+    geometry->setDensity( density );
     geometry->setMass( mass );
     EXPECT_EQ( geometry->getMass(), mass );
 
@@ -69,11 +71,13 @@ TEST_F(GeometryTest, square_test)
     EXPECT_FLOAT_EQ( p1.v[0], p1.r[0] );
     EXPECT_FLOAT_EQ( p1.v[1], p1.r[1] );
     EXPECT_EQ( p1.matid, matid );
+    EXPECT_EQ( p1.rho, density );
 
     geometry->initializeParticle( p2 );
     EXPECT_FLOAT_EQ( p2.v[0], p2.r[0] );
     EXPECT_FLOAT_EQ( p2.v[1], p2.r[1] );
     EXPECT_EQ( p2.matid, matid );
+    EXPECT_EQ( p2.rho, density );
 }
 
 //---------------------------------------------------------------------------//

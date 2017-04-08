@@ -29,6 +29,9 @@ class Particle
     // Mass.
     double m;
 
+    // Density
+    double rho;
+
     // Material id.
     int matid;
 

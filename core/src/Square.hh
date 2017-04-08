@@ -35,6 +35,9 @@ class Square : public Geometry
     // Set the initial velocity field of the geometry.
     void setVelocityField( VelocityField&& velocity_field ) override ;
 
+    // Set the density.
+    void setDensity( const double density ) override;
+
     // Set the initial total mass of the geometry.
     void setMass( const double total_mass ) override;
 
@@ -60,6 +63,9 @@ class Square : public Geometry
 
     // Velocity field.
     VelocityField d_velocity_field;
+
+    // Density.
+    double d_density;
 
     // Total geometry mass.
     double d_total_mass;

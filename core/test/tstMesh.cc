@@ -83,6 +83,10 @@ TEST_F(MeshTest, mesh_test_2d)
     EXPECT_FLOAT_EQ( svals[2], 0.1875 );
     EXPECT_FLOAT_EQ( svals[3], 0.0625 );
 
+    double sum = 0.0;
+    for ( auto v : svals ) sum += v;
+    EXPECT_FLOAT_EQ( sum, 1.0 );
+
     // Check the shape function gradient.
     std::vector<std::vector<double> > sgrads( 4, std::vector<double>(2) );
     mesh->shapeFunctionGradient( ref_coords, sgrads );

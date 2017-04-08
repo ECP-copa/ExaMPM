@@ -36,6 +36,14 @@ void Square::setVelocityField( VelocityField&& velocity_field )
 }
 
 //---------------------------------------------------------------------------//
+// Set the density.
+void Square::setDensity( const double density )
+{
+    assert( density > 0.0 );
+    d_density = density;
+}
+
+//---------------------------------------------------------------------------//
 // Set the initial total mass of the geometry.
 void Square::setMass( const double total_mass )
 {
@@ -74,6 +82,9 @@ void Square::initializeParticle( Particle& p ) const
 
     // Assign the material id.
     p.matid = d_matid;
+
+    // Assign the density.
+    p.rho = d_density;
 }
 
 //---------------------------------------------------------------------------//

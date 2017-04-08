@@ -167,7 +167,7 @@ void calculateInternalForces( const std::shared_ptr<ExaMPM::Mesh>& mesh,
                 for ( int j = 0; j < space_dim; ++j )
                 {
                     node_f_int[node_id][d] -=
-                        particles[p].m * shape_gradients[n][d] *
+                        particles[p].m * shape_gradients[n][j] *
                         particles[p].stress[d][j];
                 }
             }
@@ -229,6 +229,15 @@ void calculateNodalMomentum(
         }
     }
 
+    // Update with forces.
+    for ( int n = 0; n < num_nodes; ++n )
+    {
+        for ( int d = 0; d < space_dim; ++d )
+        {
+            node_p[n][d] += delta_t * (node_f_int[n][d] + node_f_ext[n][d]);
+        }
+    }
+
     // Apply boundary conditions. No slip for now.
     std::vector<int> boundary_nodes;
     for ( int d = 0; d < space_dim; ++d )
@@ -248,15 +257,6 @@ void calculateNodalMomentum(
         for ( auto n : boundary_nodes )
             for ( int d = 0; d < space_dim; ++d )
                 node_p[n][d] = 0.0;
-    }
-
-    // Update with forces.
-    for ( int n = 0; n < num_nodes; ++n )
-    {
-        for ( int d = 0; d < space_dim; ++d )
-        {
-            node_p[n][d] += delta_t * (node_f_int[n][d] + node_f_ext[n][d]);
-        }
     }
 }
 
@@ -406,17 +406,18 @@ void updateParticleStressStrain(
     std::vector<std::vector<double> > shape_gradients(
         nodes_per_cell, std::vector<double>(space_dim) );
     int node_id = 0;
-    std::vector<std::vector<double> > strain_rate(
+    std::vector<std::vector<double> > strain_increment(
         space_dim, std::vector<double>(space_dim) );
-    std::vector<std::vector<double> > stress_rate(
+    std::vector<std::vector<double> > stress_increment(
         space_dim, std::vector<double>(space_dim) );
+    double strain_trace = 0.0;
 
     // Update the stress and strain.
     for ( int p = 0; p < num_p; ++p )
     {
         // Reset the strain incrememnt.
         for ( int d = 0; d < space_dim; ++d )
-            std::fill( strain_rate[d].begin(), strain_rate[d].end(), 0.0 );
+            std::fill( strain_increment[d].begin(), strain_increment[d].end(), 0.0 );
 
         // Get the particle location.
         mesh->locateParticle( particles[p], cell_id );
@@ -442,9 +443,9 @@ void updateParticleStressStrain(
             {
                 for ( int i = 0; i < space_dim; ++i )
                 {
-                    strain_rate[i][j] +=
+                    strain_increment[i][j] +=
                         (shape_gradients[n][i] * node_v[node_id][j] +
-                         shape_gradients[n][j] * node_v[node_id][i]) / 2.0;
+                         shape_gradients[n][j] * node_v[node_id][i]) * delta_t / 2.0;
                 }
             }
         }
@@ -454,21 +455,29 @@ void updateParticleStressStrain(
         {
             for ( int i = 0; i < space_dim; ++i )
             {
-                particles[p].strain[i][j] += strain_rate[i][j] * delta_t;
+                particles[p].strain[i][j] += strain_increment[i][j];
             }
         }
 
         // Compute stress increment.
-        material_model( strain_rate, stress_rate );
+        material_model( strain_increment, stress_increment );
 
         // Increment the particle stress.
         for ( int j = 0; j < space_dim; ++j )
         {
             for ( int i = 0; i < space_dim; ++i )
             {
-                particles[p].stress[i][j] += stress_rate[i][j] * delta_t;
+                particles[p].stress[i][j] += stress_increment[i][j] / particles[p].rho;
             }
         }
+
+        // Update the particle density.
+        strain_trace = 0.0;
+        for ( int d = 0; d < space_dim; ++d )
+        {
+            strain_trace += strain_increment[d][d];
+        }
+        particles[p].rho /= (1 + strain_trace);
     }
 }
 
@@ -529,21 +538,29 @@ void materialModel( const std::vector<std::vector<double> >& strain_rate,
                     std::vector<std::vector<double> >& stress_rate )
 {
     // youngs modulus
-    double E = 7.3e6;
+    double E = 0.05e9;
+
+    // bulk modulus
+    double B = 1.5e9;
 
     // poisson ratio
-    double nu = 0.4;
+    double nu = 0.48;
 
     // 2d plane strain
-    stress_rate[0][0] = E * (strain_rate[0][0] + nu*strain_rate[1][1]) /
+    stress_rate[0][0] = B * (strain_rate[0][0] + nu*strain_rate[1][1]) /
                         ( 1 - nu*nu );
 
-    stress_rate[1][1] = E * (nu*strain_rate[0][0] + strain_rate[1][1]) /
+    stress_rate[1][1] = B * (nu*strain_rate[0][0] + strain_rate[1][1]) /
                         ( 1 - nu*nu );
 
-    stress_rate[0][1] = E * strain_rate[0][1] / (1 + nu);
+    stress_rate[0][1] = B * strain_rate[0][1] / (1 + nu);
 
-    stress_rate[1][0] = E * strain_rate[1][0] / (1 + nu);
+    stress_rate[1][0] = B * strain_rate[1][0] / (1 + nu);
+
+    // stress_rate[0][0] = E*strain_rate[0][0];
+    // stress_rate[0][1] = E*strain_rate[0][1];
+    // stress_rate[1][0] = E*strain_rate[1][0];
+    // stress_rate[1][1] = E*strain_rate[1][1];
 }
 
 //---------------------------------------------------------------------------//
@@ -553,9 +570,9 @@ int main( int argc, char *argv[] )
     int space_dim = 2;
 
     // Create a mesh.
-    int num_cells_x = 10;
-    int num_cells_y = 10;
-    double cell_width = 0.01;
+    int num_cells_x = 50;
+    int num_cells_y = 30;
+    double cell_width = 0.001;
     auto mesh = std::make_shared<ExaMPM::Mesh2d>(
         num_cells_x, num_cells_y, cell_width );
 
@@ -569,17 +586,19 @@ int main( int argc, char *argv[] )
 
     // Assign properties to the geometry.
     int matid = 1;
-    double mass = 0.004;
+    double density = 2000.0;
+    double mass = 0.016;
     auto init_vf =
         [=](const std::vector<double>& r,std::vector<double>& v)
-        { v[0] = 0.0; v[1] = -50.0; };
+        { v[0] = 0.0; v[1] = 0.0; };
     geom->setMatId( matid );
     geom->setVelocityField( init_vf );
+    geom->setDensity( density );
     geom->setMass( mass );
 
     // Initialize the particles in the geometry.
     std::vector<ExaMPM::Particle> particles;
-    int order = 10;
+    int order = 2;
     int ppcell = mesh->particlesPerCell( order );
     std::vector<ExaMPM::Particle> candidates( ppcell,
                                               ExaMPM::Particle(space_dim) );
@@ -639,9 +658,9 @@ int main( int argc, char *argv[] )
     file_io.writeTimeStep( write_step, time, particles );
 
     // Time step
-    int num_step = 1300;
+    int num_step = 50000;
     double delta_t = 1.0e-6;
-    int num_write = 130;
+    int num_write = 200;
     int write_freq = num_step / num_write;
     for ( int step = 0; step < num_step; ++step )
     {
@@ -656,10 +675,10 @@ int main( int argc, char *argv[] )
         // First calculate the nodal masses.
         calculateNodalMass( mesh, particles, node_m );
 
-        // Calculate internal foraces.
+        // Calculate internal forces.
         calculateInternalForces( mesh, particles, node_f_int );
 
-        // Calculate external foraces.
+        // Calculate external forces.
         calculateExternalForces( gravity_field, mesh, particles, node_f_ext );
 
         // Calculate nodal momentum.

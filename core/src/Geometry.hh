@@ -37,6 +37,9 @@ class Geometry
     // Set the initial velocity field of the geometry.
     virtual void setVelocityField( VelocityField&& velocity_field ) = 0;
 
+    // Set the density.
+    virtual void setDensity( const double density ) = 0;
+
     // Set the initial total mass of the geometry.
     virtual void setMass( const double total_mass ) = 0;
 
