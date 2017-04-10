@@ -32,20 +32,22 @@ TEST_F(FileIOTest, file_io_test)
         std::make_shared<ExaMPM::Square>( bounds );
 
     // Create some particles.
-    std::vector<ExaMPM::Particle> particles( 2, ExaMPM::Particle(2) );
+    std::vector<ExaMPM::Particle> particles( 2, ExaMPM::Particle(2,4) );
     particles[0].r = { 2.1, 0.75 };
+    particles[0].volume = 2.0;
     particles[1].r = { 1.9, 1.0999 };
+    particles[1].volume = 2.0;
 
     // Assign values to the geometry.
     int matid = 3;
-    double mass = 3.43;
+    double density = 3.43;
     auto vf = []( const std::vector<double>& r,
                   std::vector<double>& v)
               { std::copy( r.begin(), r.end(), v.begin() ); };
 
     geometry->setMatId( matid );
     geometry->setVelocityField( vf );
-    geometry->setMass( mass );
+    geometry->setDensity( density );
 
     // Initialize particles
     geometry->initializeParticle( particles[0] );

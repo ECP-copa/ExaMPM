@@ -19,46 +19,85 @@
 #include <iostream>
 
 //---------------------------------------------------------------------------//
+// Locate the particles and compute grid values.
+void locateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
+                      std::vector<ExaMPM::Particle>& particles )
+{
+    int space_dim = mesh->spatialDimension();
+    std::vector<int> cell_id( space_dim );
+    std::vector<double> ref_coords( space_dim );
+
+    for ( auto& p : particles )
+    {
+        // Locate the particle.
+        mesh->locateParticle( p, cell_id );
+
+        // Get the node ids local to the particle.
+        mesh->cellNodeIds( cell_id, p.node_ids );
+
+        // Map the particle to the reference frame of the cell.
+        mesh->mapPhysicalToReferenceFrame( p, cell_id, ref_coords );
+
+        // Evaluate the cell basis function at the particle location.
+        mesh->shapeFunctionValue( ref_coords, p.basis_values );
+
+        // Evaluate the cell basis function gradient at the particle location.
+        mesh->shapeFunctionGradient( ref_coords, p.basis_gradients );
+    }
+}
+
+//---------------------------------------------------------------------------//
 // Calculate the nodal mass.
 void calculateNodalMass( const std::shared_ptr<ExaMPM::Mesh>& mesh,
                          const std::vector<ExaMPM::Particle>& particles,
                          std::vector<double>& node_m )
 {
-    int num_nodes = node_m.size();
-    int num_p = particles.size();
-    int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
-    std::vector<int> cell_id( space_dim );
-    std::vector<int> cell_nodes( nodes_per_cell );
-    std::vector<double> ref_coords( space_dim );
-    std::vector<double> shape_values( nodes_per_cell );
     int node_id = 0;
 
     // Reset the nodal mass.
     std::fill( node_m.begin(), node_m.end(), 0.0 );
 
     // Compute the nodal mass.
-    for ( int p = 0; p < num_p; ++p )
+    for ( auto& p : particles )
     {
-        // Get the particle location.
-        mesh->locateParticle( particles[p], cell_id );
-
-        // Get the cell nodes.
-        mesh->cellNodeIds( cell_id, cell_nodes );
-
-        // Project the particle to the reference frame of the cell.
-        mesh->mapPhysicalToReferenceFrame( particles[p],
-                                           cell_id,
-                                           ref_coords );
-
-        // Evaluate the cell shape function at the particle location.
-        mesh->shapeFunctionValue( ref_coords, shape_values );
-
         // Assemble the nodal mass.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
-            node_id = cell_nodes[n];
-            node_m[node_id] += shape_values[n] * particles[p].m;
+            node_id = p.node_ids[n];
+            node_m[node_id] += p.basis_values[n] * p.m;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+// Calculate nodal momentum.
+void calculateNodalMomentum(
+    const std::shared_ptr<ExaMPM::Mesh>& mesh,
+    const std::vector<ExaMPM::Particle>& particles,
+    std::vector<std::vector<double> >& node_p )
+{
+    int space_dim = mesh->spatialDimension();
+    int nodes_per_cell = mesh->nodesPerCell();
+    int node_id = 0;
+
+    // Reset the momentum
+    for ( auto& mom : node_p )
+        std::fill( mom.begin(), mom.end(), 0.0 );
+
+    // Update the momentum
+    for ( auto& p : particles )
+    {
+        // Calculate momentum.
+        for ( int n = 0; n < nodes_per_cell; ++n )
+        {
+            node_id = p.node_ids[n];
+
+            for ( int d = 0; d < space_dim; ++d )
+            {
+                node_p[node_id][d] +=
+                    p.m * p.v[d] * p.basis_values[n];
+            }
         }
     }
 }
@@ -71,48 +110,28 @@ void calculateExternalForces(
     const std::vector<ExaMPM::Particle>& particles,
     std::vector<std::vector<double> >& node_f_ext )
 {
-    int num_p = particles.size();
-    int num_nodes = mesh->totalNumNodes();
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
-    std::vector<int> cell_id( space_dim );
-    std::vector<int> cell_nodes( nodes_per_cell );
-    std::vector<double> ref_coords( space_dim );
-    std::vector<double> shape_values( nodes_per_cell );
     std::vector<double> local_acceleration( space_dim, 0.0 );
     int node_id = 0;
 
     // Reset the forces.
-    for ( int n = 0; n < num_nodes; ++n )
-        std::fill( node_f_ext[n].begin(), node_f_ext[n].end(), 0.0 );
+    for ( auto& f_ext : node_f_ext )
+        std::fill( f_ext.begin(), f_ext.end(), 0.0 );
 
     // Calculate forces.
-    for ( int p = 0; p < num_p; ++p )
+    for ( auto& p : particles )
     {
-        // Get the particle location.
-        mesh->locateParticle( particles[p], cell_id );
-
-        // Get the cell nodes.
-        mesh->cellNodeIds( cell_id, cell_nodes );
-
-        // Project the particle to the reference frame of the cell.
-        mesh->mapPhysicalToReferenceFrame( particles[p],
-                                           cell_id,
-                                           ref_coords );
-
-        // Evaluate the cell shape function at the particle location.
-        mesh->shapeFunctionValue( ref_coords, shape_values );
-
         // Calculate force.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
-            field( particles[p].r, local_acceleration );
+            field( p.r, local_acceleration );
 
-            node_id = cell_nodes[n];
+            node_id = p.node_ids[n];
             for ( int d = 0; d < space_dim; ++d )
             {
                 node_f_ext[node_id][d] +=
-                    particles[p].m * local_acceleration[d] * shape_values[n];
+                    p.m * local_acceleration[d] * p.basis_values[n];
             }
         }
     }
@@ -125,188 +144,29 @@ void calculateInternalForces( const std::shared_ptr<ExaMPM::Mesh>& mesh,
                               std::vector<std::vector<double> >& node_f_int )
 {
 
-    int num_p = particles.size();
-    int num_nodes = mesh->totalNumNodes();
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
-    std::vector<int> cell_id( space_dim );
-    std::vector<int> cell_nodes( nodes_per_cell );
-    std::vector<double> ref_coords( space_dim );
-    std::vector<std::vector<double> > shape_gradients(
-        nodes_per_cell, std::vector<double>(space_dim) );
     int node_id = 0;
 
     // Reset the forces.
-    for ( int n = 0; n < num_nodes; ++n )
-        std::fill( node_f_int[n].begin(), node_f_int[n].end(), 0.0 );
+    for ( auto& f_int : node_f_int )
+        std::fill( f_int.begin(), f_int.end(), 0.0 );
 
     // Compute forces.
-    for ( int p = 0; p < num_p; ++p )
+    for ( auto& p : particles )
     {
-        // Get the particle location.
-        mesh->locateParticle( particles[p], cell_id );
-
-        // Get the cell nodes.
-        mesh->cellNodeIds( cell_id, cell_nodes );
-
-        // Project the particle to the reference frame of the cell.
-        mesh->mapPhysicalToReferenceFrame( particles[p],
-                                           cell_id,
-                                           ref_coords );
-
-        // Evaluate the cell shape function gradient at the particle location.
-        mesh->shapeFunctionGradient( ref_coords, shape_gradients );
-
         // Project the stress gradients.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
-            node_id = cell_nodes[n];
+            node_id = p.node_ids[n];
 
             for ( int d = 0; d < space_dim; ++d )
             {
                 for ( int j = 0; j < space_dim; ++j )
                 {
                     node_f_int[node_id][d] -=
-                        particles[p].m * shape_gradients[n][j] *
-                        particles[p].stress[d][j];
+                        p.volume * p.basis_gradients[n][j] * p.stress[j][d];
                 }
-            }
-        }
-    }
-}
-
-//---------------------------------------------------------------------------//
-// Calculate nodal momentum.
-void calculateNodalMomentum(
-    const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<ExaMPM::Particle>& particles,
-    const std::vector<std::vector<double> >& node_f_int,
-    const std::vector<std::vector<double> >& node_f_ext,
-    const double delta_t,
-    std::vector<std::vector<double> >& node_p )
-{
-    int num_p = particles.size();
-    int num_nodes = mesh->totalNumNodes();
-    int space_dim = mesh->spatialDimension();
-    int nodes_per_cell = mesh->nodesPerCell();
-    std::vector<int> cell_id( space_dim );
-    std::vector<int> cell_nodes( nodes_per_cell );
-    std::vector<double> ref_coords( space_dim );
-    std::vector<double> shape_values( nodes_per_cell );
-    int node_id = 0;
-
-    // Reset the momentum
-    for ( int n = 0; n < num_nodes; ++n )
-        std::fill( node_p[n].begin(), node_p[n].end(), 0.0 );
-
-    // Update the momentum
-    for ( int p = 0; p < num_p; ++p )
-    {
-        // Get the particle location.
-        mesh->locateParticle( particles[p], cell_id );
-
-        // Get the cell nodes.
-        mesh->cellNodeIds( cell_id, cell_nodes );
-
-        // Project the particle to the reference frame of the cell.
-        mesh->mapPhysicalToReferenceFrame( particles[p],
-                                           cell_id,
-                                           ref_coords );
-
-        // Evaluate the cell shape function at the particle location.
-        mesh->shapeFunctionValue( ref_coords, shape_values );
-
-        // Calculate momentum.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = cell_nodes[n];
-
-            for ( int d = 0; d < space_dim; ++d )
-            {
-                node_p[node_id][d] +=
-                    particles[p].m * particles[p].v[d] * shape_values[n];
-            }
-        }
-    }
-
-    // Update with forces.
-    for ( int n = 0; n < num_nodes; ++n )
-    {
-        for ( int d = 0; d < space_dim; ++d )
-        {
-            node_p[n][d] += delta_t * (node_f_int[n][d] + node_f_ext[n][d]);
-        }
-    }
-
-    // Apply boundary conditions. No slip for now.
-    std::vector<int> boundary_nodes;
-    for ( int d = 0; d < space_dim; ++d )
-    {
-        std::vector<int> bid( space_dim, 0 );
-
-        // low boundary.
-        bid[d] = -1;
-        mesh->getBoundaryNodes( bid, boundary_nodes );
-        for ( auto n : boundary_nodes )
-            for ( int d = 0; d < space_dim; ++d )
-                node_p[n][d] = 0.0;
-
-        // high boundary.
-        bid[d] = 1;
-        mesh->getBoundaryNodes( bid, boundary_nodes );
-        for ( auto n : boundary_nodes )
-            for ( int d = 0; d < space_dim; ++d )
-                node_p[n][d] = 0.0;
-    }
-}
-
-//---------------------------------------------------------------------------//
-// Update particle velocity.
-void updateParticleVelocity( const std::shared_ptr<ExaMPM::Mesh>& mesh,
-                             const std::vector<std::vector<double> >& node_f_int,
-                             const std::vector<std::vector<double> >& node_f_ext,
-                             const std::vector<double>& node_m,
-                             const double delta_t,
-                             std::vector<ExaMPM::Particle>& particles )
-{
-    int num_p = particles.size();
-    int space_dim = mesh->spatialDimension();
-    int nodes_per_cell = mesh->nodesPerCell();
-    std::vector<int> cell_id( space_dim );
-    std::vector<int> cell_nodes( nodes_per_cell );
-    std::vector<double> ref_coords( space_dim );
-    std::vector<double> shape_values( nodes_per_cell );
-    int node_id = 0;
-
-    // Update the velocity.
-    for ( int p = 0; p < num_p; ++p )
-    {
-        // Get the particle location.
-        mesh->locateParticle( particles[p], cell_id );
-
-        // Get the cell nodes.
-        mesh->cellNodeIds( cell_id, cell_nodes );
-
-        // Project the particle to the reference frame of the cell.
-        mesh->mapPhysicalToReferenceFrame( particles[p],
-                                           cell_id,
-                                           ref_coords );
-
-        // Evaluate the cell shape function at the particle location.
-        mesh->shapeFunctionValue( ref_coords, shape_values );
-
-        // Increment the velocity
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = cell_nodes[n];
-
-            assert( node_m[node_id] > 0.0 );
-
-            for ( int d = 0; d < space_dim; ++d )
-            {
-                particles[p].v[d] +=
-                    delta_t * (node_f_int[node_id][d] + node_f_ext[node_id][d]) *
-                    shape_values[n] / node_m[node_id];
             }
         }
     }
@@ -316,55 +176,42 @@ void updateParticleVelocity( const std::shared_ptr<ExaMPM::Mesh>& mesh,
 // Calculate nodal velocities.
 void calculateNodalVelocities(
     const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<ExaMPM::Particle>& particles,
+    const std::vector<std::vector<double> >& node_p,
     const std::vector<double>& node_m,
+    const std::vector<std::vector<double> >& node_f_int,
+    const std::vector<std::vector<double> >& node_f_ext,
+    const double delta_t,
     std::vector<std::vector<double> >& node_v )
 {
-    int num_p = particles.size();
-    int num_nodes = mesh->totalNumNodes();
     int space_dim = mesh->spatialDimension();
-    int nodes_per_cell = mesh->nodesPerCell();
-    std::vector<int> cell_id( space_dim );
-    std::vector<int> cell_nodes( nodes_per_cell );
-    std::vector<double> ref_coords( space_dim );
-    std::vector<double> shape_values( nodes_per_cell );
-    int node_id = 0;
-
-    // Reset the velocities
-    for ( int n = 0; n < num_nodes; ++n )
-        std::fill( node_v[n].begin(), node_v[n].end(), 0.0 );
+    int num_nodes = mesh->totalNumNodes();
 
     // Update the velocity
-    for ( int p = 0; p < num_p; ++p )
+    for ( int n = 0; n < num_nodes; ++n )
     {
-        // Get the particle location.
-        mesh->locateParticle( particles[p], cell_id );
-
-        // Get the cell nodes.
-        mesh->cellNodeIds( cell_id, cell_nodes );
-
-        // Project the particle to the reference frame of the cell.
-        mesh->mapPhysicalToReferenceFrame( particles[p],
-                                           cell_id,
-                                           ref_coords );
-
-        // Evaluate the cell shape function at the particle location.
-        mesh->shapeFunctionValue( ref_coords, shape_values );
-
-        // Calculate velocity
-        for ( int n = 0; n < nodes_per_cell; ++n )
+        // If we have nodal mass do the update.
+        if ( node_m[n] > 0.0 )
         {
-            node_id = cell_nodes[n];
-
             for ( int d = 0; d < space_dim; ++d )
             {
-                node_v[node_id][d] +=
-                    particles[p].m * particles[p].v[d] * shape_values[n] / node_m[node_id];
+                node_v[n][d] =
+                    node_p[n][d] / node_m[n] +
+                    delta_t * ( node_f_int[n][d] + node_f_ext[n][d] ) /
+                    node_m[n];
+            }
+        }
+
+        // Otherwise we have no mass or momentum so no velocity.
+        else
+        {
+            for ( int d = 0; d < space_dim; ++d )
+            {
+                node_v[n][d] = 0.0;
             }
         }
     }
 
-    // Apply boundary conditions. No slip for now.
+    // Boundary conditions.
     std::vector<int> boundary_nodes;
     for ( int d = 0; d < space_dim; ++d )
     {
@@ -374,15 +221,13 @@ void calculateNodalVelocities(
         bid[d] = -1;
         mesh->getBoundaryNodes( bid, boundary_nodes );
         for ( auto n : boundary_nodes )
-            for ( int d = 0; d < space_dim; ++d )
-                node_v[n][d] = 0.0;
+            node_v[n][d] = 0.0;
 
         // high boundary.
         bid[d] = 1;
         mesh->getBoundaryNodes( bid, boundary_nodes );
         for ( auto n : boundary_nodes )
-            for ( int d = 0; d < space_dim; ++d )
-                node_v[n][d] = 0.0;
+            node_v[n][d] = 0.0;
     }
 }
 
@@ -396,56 +241,35 @@ void updateParticleStressStrain(
     const double delta_t,
     std::vector<ExaMPM::Particle>& particles )
 {
-    int num_p = particles.size();
-    int num_nodes = mesh->totalNumNodes();
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
-    std::vector<int> cell_id( space_dim );
-    std::vector<int> cell_nodes( nodes_per_cell );
-    std::vector<double> ref_coords( space_dim );
-    std::vector<std::vector<double> > shape_gradients(
-        nodes_per_cell, std::vector<double>(space_dim) );
     int node_id = 0;
     std::vector<std::vector<double> > strain_increment(
         space_dim, std::vector<double>(space_dim) );
     std::vector<std::vector<double> > stress_increment(
         space_dim, std::vector<double>(space_dim) );
-    double strain_trace = 0.0;
 
     // Update the stress and strain.
-    for ( int p = 0; p < num_p; ++p )
+    for ( auto& p : particles )
     {
         // Reset the strain incrememnt.
-        for ( int d = 0; d < space_dim; ++d )
-            std::fill( strain_increment[d].begin(), strain_increment[d].end(), 0.0 );
-
-        // Get the particle location.
-        mesh->locateParticle( particles[p], cell_id );
-
-        // Get the cell nodes.
-        mesh->cellNodeIds( cell_id, cell_nodes );
-
-        // Project the particle to the reference frame of the cell.
-        mesh->mapPhysicalToReferenceFrame( particles[p],
-                                           cell_id,
-                                           ref_coords );
-
-        // Evaluate the cell shape function gradient at the particle location.
-        mesh->shapeFunctionGradient( ref_coords, shape_gradients );
+        for ( auto& increment : strain_increment )
+            std::fill( increment.begin(), increment.end(), 0.0 );
 
         // Calculate the local strain increment at the particle with small
         // deformation theory.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
-            node_id = cell_nodes[n];
+            node_id = p.node_ids[n];
 
             for ( int j = 0; j < space_dim; ++j )
             {
                 for ( int i = 0; i < space_dim; ++i )
                 {
                     strain_increment[i][j] +=
-                        (shape_gradients[n][i] * node_v[node_id][j] +
-                         shape_gradients[n][j] * node_v[node_id][i]) * delta_t / 2.0;
+                        ( p.basis_gradients[n][i] * node_v[node_id][j] +
+                          p.basis_gradients[n][j] * node_v[node_id][i] ) *
+                        delta_t / 2.0;
                 }
             }
         }
@@ -455,7 +279,7 @@ void updateParticleStressStrain(
         {
             for ( int i = 0; i < space_dim; ++i )
             {
-                particles[p].strain[i][j] += strain_increment[i][j];
+                p.strain[i][j] += strain_increment[i][j];
             }
         }
 
@@ -467,66 +291,63 @@ void updateParticleStressStrain(
         {
             for ( int i = 0; i < space_dim; ++i )
             {
-                particles[p].stress[i][j] += stress_increment[i][j] / particles[p].rho;
+                p.stress[i][j] += stress_increment[i][j];
             }
         }
+    }
+}
 
-        // Update the particle density.
-        strain_trace = 0.0;
-        for ( int d = 0; d < space_dim; ++d )
+//---------------------------------------------------------------------------//
+// Update particle velocity. PIC update for now.
+void updateParticleVelocity( const std::shared_ptr<ExaMPM::Mesh>& mesh,
+                             const std::vector<std::vector<double> >& node_v,
+                             std::vector<ExaMPM::Particle>& particles )
+{
+    int space_dim = mesh->spatialDimension();
+    int nodes_per_cell = mesh->nodesPerCell();
+    int node_id = 0;
+
+    // Update the velocity.
+    for ( auto& p : particles )
+    {
+        // Reset the velocity.
+        std::fill( p.v.begin(), p.v.end(), 0.0 );
+
+        // Increment the velocity
+        for ( int n = 0; n < nodes_per_cell; ++n )
         {
-            strain_trace += strain_increment[d][d];
+            node_id = p.node_ids[n];
+
+            for ( int d = 0; d < space_dim; ++d )
+            {
+                p.v[d] += node_v[node_id][d] * p.basis_values[n];
+            }
         }
-        particles[p].rho /= (1 + strain_trace);
     }
 }
 
 //---------------------------------------------------------------------------//
 // Update particle position.
 void updateParticlePosition( const std::shared_ptr<ExaMPM::Mesh>& mesh,
-                             const std::vector<std::vector<double> >& node_p,
-                             const std::vector<double>& node_m,
+                             const std::vector<std::vector<double> >& node_v,
                              const double delta_t,
                              std::vector<ExaMPM::Particle>& particles )
 {
-    int num_p = particles.size();
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
-    std::vector<int> cell_id( space_dim );
-    std::vector<int> cell_nodes( nodes_per_cell );
-    std::vector<double> ref_coords( space_dim );
-    std::vector<double> shape_values( nodes_per_cell );
     int node_id = 0;
 
     // Update the position.
-    for ( int p = 0; p < num_p; ++p )
+    for ( auto& p : particles )
     {
-        // Get the particle location.
-        mesh->locateParticle( particles[p], cell_id );
-
-        // Get the cell nodes.
-        mesh->cellNodeIds( cell_id, cell_nodes );
-
-        // Project the particle to the reference frame of the cell.
-        mesh->mapPhysicalToReferenceFrame( particles[p],
-                                           cell_id,
-                                           ref_coords );
-
-        // Evaluate the cell shape function at the particle location.
-        mesh->shapeFunctionValue( ref_coords, shape_values );
-
         // Increment the position.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
-            node_id = cell_nodes[n];
-
-            assert( node_m[node_id] > 0.0 );
+            node_id = p.node_ids[n];
 
             for ( int d = 0; d < space_dim; ++d )
             {
-                particles[p].r[d] +=
-                    delta_t * node_p[node_id][d] *
-                    shape_values[n] / node_m[node_id];
+                p.r[d] += delta_t * node_v[node_id][d] * p.basis_values[n];
             }
         }
     }
@@ -538,29 +359,23 @@ void materialModel( const std::vector<std::vector<double> >& strain_rate,
                     std::vector<std::vector<double> >& stress_rate )
 {
     // youngs modulus
-    double E = 0.05e9;
-
-    // bulk modulus
-    double B = 1.5e9;
+    double E = 0.073e9;
 
     // poisson ratio
-    double nu = 0.48;
+    double nu = 0.0;
+
+    double G = E / ( 2 * (1+nu) );
 
     // 2d plane strain
-    stress_rate[0][0] = B * (strain_rate[0][0] + nu*strain_rate[1][1]) /
+    stress_rate[0][0] = E * (strain_rate[0][0] + nu*strain_rate[1][1]) /
                         ( 1 - nu*nu );
 
-    stress_rate[1][1] = B * (nu*strain_rate[0][0] + strain_rate[1][1]) /
+    stress_rate[1][1] = E * (nu*strain_rate[0][0] + strain_rate[1][1]) /
                         ( 1 - nu*nu );
 
-    stress_rate[0][1] = B * strain_rate[0][1] / (1 + nu);
+    stress_rate[0][1] = G * strain_rate[0][1];
 
-    stress_rate[1][0] = B * strain_rate[1][0] / (1 + nu);
-
-    // stress_rate[0][0] = E*strain_rate[0][0];
-    // stress_rate[0][1] = E*strain_rate[0][1];
-    // stress_rate[1][0] = E*strain_rate[1][0];
-    // stress_rate[1][1] = E*strain_rate[1][1];
+    stress_rate[1][0] = G * strain_rate[1][0];
 }
 
 //---------------------------------------------------------------------------//
@@ -571,7 +386,7 @@ int main( int argc, char *argv[] )
 
     // Create a mesh.
     int num_cells_x = 50;
-    int num_cells_y = 30;
+    int num_cells_y = 50;
     double cell_width = 0.001;
     auto mesh = std::make_shared<ExaMPM::Mesh2d>(
         num_cells_x, num_cells_y, cell_width );
@@ -579,29 +394,28 @@ int main( int argc, char *argv[] )
     // Get mesh data.
     int num_cells = mesh->totalNumCells();
     int num_nodes = mesh->totalNumNodes();
+    int nodes_per_cell = mesh->nodesPerCell();
 
     // Create a geometry.
-    std::vector<double> square_bnds = { 0.01, 0.03, 0.005, 0.025 };
+    std::vector<double> square_bnds = { 0.01, 0.03, 0.01, 0.03 };
     auto geom = std::make_shared<ExaMPM::Square>( square_bnds );
 
     // Assign properties to the geometry.
     int matid = 1;
-    double density = 2000.0;
-    double mass = 0.016;
+    double density = 1.01e3;
     auto init_vf =
         [=](const std::vector<double>& r,std::vector<double>& v)
         { v[0] = 0.0; v[1] = 0.0; };
     geom->setMatId( matid );
     geom->setVelocityField( init_vf );
     geom->setDensity( density );
-    geom->setMass( mass );
 
     // Initialize the particles in the geometry.
     std::vector<ExaMPM::Particle> particles;
     int order = 2;
     int ppcell = mesh->particlesPerCell( order );
-    std::vector<ExaMPM::Particle> candidates( ppcell,
-                                              ExaMPM::Particle(space_dim) );
+    std::vector<ExaMPM::Particle> candidates(
+        ppcell, ExaMPM::Particle(space_dim,nodes_per_cell) );
     for ( int c = 0; c < num_cells; ++c )
     {
         // Create the particles.
@@ -617,12 +431,6 @@ int main( int argc, char *argv[] )
             }
         }
     }
-
-    // Set the mass of the particles based on how many constructed the
-    // geometry.
-    int num_p = particles.size();
-    double mass_p = geom->getMass() / num_p;
-    for ( auto& p : particles ) p.m = mass_p;
 
     // Gravity acceleration function.
     auto gravity_field = [](const std::vector<double>& r,std::vector<double>& f)
@@ -658,9 +466,9 @@ int main( int argc, char *argv[] )
     file_io.writeTimeStep( write_step, time, particles );
 
     // Time step
-    int num_step = 50000;
-    double delta_t = 1.0e-6;
-    int num_write = 200;
+    int num_step = 10000;
+    double delta_t = 1.0e-5;
+    int num_write = 100;
     int write_freq = num_step / num_write;
     for ( int step = 0; step < num_step; ++step )
     {
@@ -672,30 +480,34 @@ int main( int argc, char *argv[] )
                       <<  time <<  " (s)" << std::endl;
         }
 
-        // First calculate the nodal masses.
+        // 1) Locate particles and evaluate basis functions.
+        locateParticles( mesh, particles );
+
+        // 2) Calculate the nodal masses.
         calculateNodalMass( mesh, particles, node_m );
 
-        // Calculate internal forces.
+        // 5) Calculate nodal momentum.
+        calculateNodalMomentum( mesh, particles, node_p );
+
+        // 3) Calculate internal forces.
         calculateInternalForces( mesh, particles, node_f_int );
 
-        // Calculate external forces.
+        // 4) Calculate external forces.
         calculateExternalForces( gravity_field, mesh, particles, node_f_ext );
 
-        // Calculate nodal momentum.
-        calculateNodalMomentum( mesh, particles, node_f_int, node_f_ext, delta_t, node_p );
+        // 8) Calculate nodal velocities.
+        calculateNodalVelocities(
+            mesh, node_p, node_m, node_f_int, node_f_ext, delta_t, node_v );
 
-        // Update the particle velocity.
-        updateParticleVelocity( mesh, node_f_int, node_f_ext, node_m, delta_t, particles );
+        // 7) Update the particle velocity.
+        updateParticleVelocity( mesh, node_v, particles );
 
-        // Calculate nodal velocities.
-        calculateNodalVelocities( mesh, particles, node_m, node_v );
-
-        // Update the particle stress and strain.
+        // 9) Update the particle stress and strain.
         updateParticleStressStrain(
             materialModel, mesh, node_v, delta_t, particles );
 
-        // Update the particle position.
-        updateParticlePosition( mesh, node_p, node_m, delta_t, particles );
+        // 10) Update the particle position.
+        updateParticlePosition( mesh, node_v, delta_t, particles );
 
         // Write the time step.
         if ( (step+1) % write_freq == 0 )
@@ -704,6 +516,9 @@ int main( int argc, char *argv[] )
             file_io.writeTimeStep( write_step, time, particles );
         }
     }
+
+    file_io.writeTimeStep( write_step+1, time, particles );
+
 
     return 0;
 }

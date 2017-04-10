@@ -15,7 +15,6 @@ namespace ExaMPM
 Square::Square( const std::vector<double>& bounds )
     : d_bounds( bounds )
     , d_matid( -1 )
-    , d_total_mass( 0.0 )
 {
     assert( 4 == d_bounds.size() );
 }
@@ -44,23 +43,7 @@ void Square::setDensity( const double density )
 }
 
 //---------------------------------------------------------------------------//
-// Set the initial total mass of the geometry.
-void Square::setMass( const double total_mass )
-{
-    assert( total_mass > 0.0 );
-    d_total_mass = total_mass;
-}
-
-//---------------------------------------------------------------------------//
-// Set the initial total mass of the geometry.
-double Square::getMass() const
-{
-    return d_total_mass;
-}
-
-//---------------------------------------------------------------------------//
-// Determine if a particle is in the geometry. If it is, keep track of it so
-// we know how many total particles there are.
+// Determine if a particle is in the geometry.
 bool Square::particleInGeometry( const Particle& p )
 {
     return
@@ -69,9 +52,8 @@ bool Square::particleInGeometry( const Particle& p )
 }
 
 //---------------------------------------------------------------------------//
-// Initialize the state of a particle in the geometry. This will be called
-// after we have counted how many particles are in the geometry with
-// particleInGeometry(). The given particle will be in the geometry.
+// Initialize the state of a particle in the geometry. The given particle will
+// be in the geometry.
 void Square::initializeParticle( Particle& p ) const
 {
     assert( ( d_bounds[0] <= p.r[0] && p.r[0] <= d_bounds[1] ) &&
@@ -85,6 +67,9 @@ void Square::initializeParticle( Particle& p ) const
 
     // Assign the density.
     p.rho = d_density;
+
+    // Assign the mass
+    p.m = p.rho * p.volume;
 }
 
 //---------------------------------------------------------------------------//

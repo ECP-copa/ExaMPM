@@ -82,26 +82,26 @@ void Mesh2d::getBoundaryNodes( const std::vector<int>& boundary_id,
         assert( !boundary_id[1] );
 
         // Size the boundary nodes input vector.
-        boundary_nodes.resize( d_num_cells_x + 1 );
+        boundary_nodes.resize( d_num_cells_y + 1 );
 
-        // Y index.
-        int j = 0;
+        // X index.
+        int i = 0;
 
         // Low X boundary.
         if ( boundary_id[0] < 0 )
         {
-            j = 0;
+            i = 0;
         }
 
         // High X boundary.
         else if ( boundary_id[0] > 0 )
         {
-            j = d_num_cells_y;
+            i = d_num_cells_x;
         }
 
         // Fill the boundary nodes.
-        for ( int i = 0; i < d_num_cells_x + 1; ++i )
-            boundary_nodes[i] = nodeId( i, j );
+        for ( int j = 0; j < d_num_cells_y + 1; ++j )
+            boundary_nodes[j] = nodeId( i, j );
 
     }
 
@@ -112,26 +112,26 @@ void Mesh2d::getBoundaryNodes( const std::vector<int>& boundary_id,
         assert( !boundary_id[0] );
 
         // Size the boundary nodes input vector.
-        boundary_nodes.resize( d_num_cells_y + 1 );
+        boundary_nodes.resize( d_num_cells_x + 1 );
 
-        // X index.
-        int i = 0;
+        // Y index.
+        int j = 0;
 
         // Low Y boundary.
         if ( boundary_id[1] < 0 )
         {
-            i = 0;
+            j = 0;
         }
 
         // High Y boundary.
         else if ( boundary_id[1] > 0 )
         {
-            i = d_num_cells_x;
+            j = d_num_cells_y;
         }
 
         // Fill the boundary nodes.
-        for ( int j = 0; j < d_num_cells_y + 1; ++j )
-            boundary_nodes[j] = nodeId( i, j );
+        for ( int i = 0; i < d_num_cells_x + 1; ++i )
+            boundary_nodes[i] = nodeId( i, j );
     }
 }
 
@@ -194,6 +194,10 @@ void Mesh2d::initializeParticles(
 
     double dp = d_cell_width / order;
 
+    // Calculate particle volume.
+    double cell_volume = d_cell_width * d_cell_width;
+    double p_vol = cell_volume / (order*order);
+
     // Initialize the particle locations.
     double x0 = cell_i*d_cell_width + dp / 2.0;
     double y0 = cell_j*d_cell_width + dp / 2.0;
@@ -212,6 +216,9 @@ void Mesh2d::initializeParticles(
             // Set the position.
             particles[lid].r[0] = x0 + i*dp;
             particles[lid].r[1] = y0 + j*dp;
+
+            // Set the volume.
+            particles[lid].volume = p_vol;
         }
     }
 }
@@ -227,6 +234,8 @@ void Mesh2d::locateParticle( const Particle& particle,
     cell_id[0] = std::floor( particle.r[0] / d_cell_width );
     cell_id[1] = std::floor( particle.r[1] / d_cell_width );
 
+    assert( 0 <= cell_id[0] );
+    assert( 0 <= cell_id[1] );
     assert( cell_id[0] < d_num_cells_x );
     assert( cell_id[1] < d_num_cells_y );
 }

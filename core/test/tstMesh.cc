@@ -149,24 +149,29 @@ TEST_F(MeshTest, mesh_test_2d)
     EXPECT_EQ( 4, cell_np );
 
     int cardinal_cell_id = cell_id[1] * num_cells_x + cell_id[0];
-    std::vector<ExaMPM::Particle> cell_particles( 4, ExaMPM::Particle(2) );
+    std::vector<ExaMPM::Particle> cell_particles( 4, ExaMPM::Particle(2,4) );
     mesh->initializeParticles( cardinal_cell_id, order, cell_particles );
 
     double particle_spacing = cell_width / 2.0;
     double base_x = cell_id[0] * cell_width + particle_spacing/2.0;
     double base_y = cell_id[1] * cell_width + particle_spacing/2.0;
+    double volume = cell_width * cell_width / 4;
 
     EXPECT_FLOAT_EQ( cell_particles[0].r[0], base_x );
     EXPECT_FLOAT_EQ( cell_particles[0].r[1], base_y );
+    EXPECT_FLOAT_EQ( cell_particles[0].volume, volume );
 
     EXPECT_FLOAT_EQ( cell_particles[1].r[0], base_x + particle_spacing );
     EXPECT_FLOAT_EQ( cell_particles[1].r[1], base_y );
+    EXPECT_FLOAT_EQ( cell_particles[1].volume, volume );
 
     EXPECT_FLOAT_EQ( cell_particles[2].r[0], base_x );
     EXPECT_FLOAT_EQ( cell_particles[2].r[1], base_y + particle_spacing );
+    EXPECT_FLOAT_EQ( cell_particles[2].volume, volume );
 
     EXPECT_FLOAT_EQ( cell_particles[3].r[0], base_x + particle_spacing );
     EXPECT_FLOAT_EQ( cell_particles[3].r[1], base_y + particle_spacing );
+    EXPECT_FLOAT_EQ( cell_particles[3].volume, volume );
 }
 
 //---------------------------------------------------------------------------//

@@ -38,19 +38,11 @@ class Square : public Geometry
     // Set the density.
     void setDensity( const double density ) override;
 
-    // Set the initial total mass of the geometry.
-    void setMass( const double total_mass ) override;
-
-    // Set the initial total mass of the geometry.
-    double getMass() const override;
-
-    // Determine if a particle is in the geometry. If it is, keep track of it
-    // so we know how many total particles there are.
+    // Determine if a particle is in the geometry.
     bool particleInGeometry( const Particle& p ) override;
 
-    // Initialize the state of a particle in the geometry. This will be called
-    // after we have counted how many particles are in the geometry with
-    // particleInGeometry(). The given particle will be in the geometry.
+    // Initialize the state of a particle in the geometry. The given particle
+    // will be in the geometry.
     void initializeParticle( Particle& p ) const override;
 
   private:

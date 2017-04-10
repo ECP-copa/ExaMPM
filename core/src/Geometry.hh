@@ -40,19 +40,11 @@ class Geometry
     // Set the density.
     virtual void setDensity( const double density ) = 0;
 
-    // Set the initial total mass of the geometry.
-    virtual void setMass( const double total_mass ) = 0;
-
-    // Set the initial total mass of the geometry.
-    virtual double getMass() const = 0;
-
-    // Determine if a particle is in the geometry. If it is, keep track of it
-    // so we know how many total particles there are.
+    // Determine if a particle is in the geometry.
     virtual bool particleInGeometry( const Particle& p ) = 0;
 
-    // Initialize the state of a particle in the geometry. This will be called
-    // after we have counted how many particles are in the geometry with
-    // particleInGeometry(). The given particle will be in the geometry.
+    // Initialize the state of a particle in the geometry. The given particle
+    // will be in the geometry.
     virtual void initializeParticle( Particle& p ) const = 0;
 };
 
