@@ -9,6 +9,7 @@
 #include "Mesh.hh"
 #include "Mesh2d.hh"
 #include "Square.hh"
+#include "Ring.hh"
 #include "FileIO.hh"
 
 #include <memory>
@@ -161,7 +162,7 @@ void calculateInternalForces(
     // Compute forces.
     for ( auto& p : particles )
     {
-        // Compute the first Piola-Kirchoff stress.
+        // Compute the stress based on the particle state..
         material_model( p, stress );
 
         // Project the stress gradients.
@@ -169,11 +170,11 @@ void calculateInternalForces(
         {
             node_id = p.node_ids[n];
 
-            for ( int d = 0; d < space_dim; ++d )
+            // Compute the force via the stress divergence.
+            for ( int i = 0; i < space_dim; ++i )
                 for ( int j = 0; j < space_dim; ++j )
-                    for ( int i = 0; i < space_dim; ++i )
-                        node_f_int[node_id][d] -=
-                            p.volume * stress[d][i] * p.F[j][i] * p.basis_gradients[n][j];
+                    node_f_int[node_id][i] +=
+                        p.volume * stress[i][j] * p.basis_gradients[n][j];
         }
     }
 }
@@ -263,57 +264,53 @@ void updateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
         {
             node_id = p.node_ids[n];
 
-            for ( int d = 0; d < space_dim; ++d )
+            for ( int i = 0; i < space_dim; ++i )
             {
                 // Increment the velocity
-                p.v[d] += node_v[node_id][d] * p.basis_values[n];
+                p.v[i] += node_v[node_id][i] * p.basis_values[n];
 
                 // Increment the position.
-                p.r[d] += delta_t * node_v[node_id][d] * p.basis_values[n];
+                p.r[i] += delta_t * node_v[node_id][i] * p.basis_values[n];
 
                 // Increment the deformation gradient.
                 for ( int j = 0; j < space_dim; ++j )
-                    F_increment[d][j] += node_v[node_id][d] * p.basis_gradients[n][j];
+                    F_increment[i][j] +=
+                        node_v[node_id][i] * p.basis_gradients[n][j];
             }
         }
 
         // Update the deformation gradient.
         for ( int i = 0; i < space_dim; ++i )
             for ( int j = 0; j < space_dim; ++j )
-                p.F[i][j] *= ( i == j ? 1.0 : 0.0 ) + delta_t * F_increment[i][j];
+                p.F[i][j] *=
+                    ( i == j ? 1.0 : 0.0 ) + delta_t * F_increment[i][j];
     }
 }
 
 //---------------------------------------------------------------------------//
 // Material model. Computes the first Piola-Kirchoff stress of a Neo-Hookean
-// material.
-void materialModel( const ExaMPM::Particle& particle,
+// material and then transforms it to the physical frame.
+void materialModel( const ExaMPM::Particle& p,
                     std::vector<std::vector<double> >& stress )
 {
     // youngs modulus
-    double E = 1.0e8;
+    double E = 0.073e9;
 
     // poisson ratio
     double nu = 0.4;
 
     // Calculate the jacobian of the deformation gradient.
-    double J = particle.F[0][0] * particle.F[1][1] -
-               particle.F[0][1] * particle.F[1][0];
+    double J = p.F[0][0]*p.F[1][1] - p.F[0][1]*p.F[1][0];
     assert( J > 0.0 );
 
-    // Calculate the transpse inverse of the deformation gradient.
-    std::vector<std::vector<double> > F_T_inv = stress;
-    F_T_inv[0][0] = particle.F[1][1] / J;
-    F_T_inv[0][1] = -particle.F[1][0] / J;
-    F_T_inv[1][0] = -particle.F[0][1] / J;
-    F_T_inv[1][1] = particle.F[0][0] / J;
-
     // Compute the stress.
-    double c = nu * std::log(J) - E;
-    stress[0][0] = E * particle.F[0][0] + c * F_T_inv[0][0];
-    stress[0][1] = E * particle.F[0][1] + c * F_T_inv[0][1];
-    stress[1][0] = E * particle.F[1][0] + c * F_T_inv[1][0];
-    stress[1][1] = E * particle.F[1][1] + c * F_T_inv[1][1];
+    double c1 = E / J;
+    double c2 = nu * std::log(J) / J;
+
+    stress[0][0] = c1 * (p.F[0][0]*p.F[0][0] + p.F[0][1]*p.F[0][1] - 1) + c2;
+    stress[0][1] = c1 * (p.F[0][0]*p.F[1][0] + p.F[0][1]*p.F[1][1]);
+    stress[1][0] = c1 * (p.F[0][0]*p.F[1][0] + p.F[0][1]*p.F[1][1]);
+    stress[1][1] = c1 * (p.F[1][0]*p.F[1][0] + p.F[1][1]*p.F[1][1] - 1) + c2;
 }
 
 //---------------------------------------------------------------------------//
@@ -323,8 +320,8 @@ int main( int argc, char *argv[] )
     int space_dim = 2;
 
     // Create a mesh.
-    int num_cells_x = 50;
-    int num_cells_y = 50;
+    int num_cells_x = 100;
+    int num_cells_y = 100;
     double cell_width = 0.001;
     auto mesh = std::make_shared<ExaMPM::Mesh2d>(
         num_cells_x, num_cells_y, cell_width );
@@ -334,23 +331,41 @@ int main( int argc, char *argv[] )
     int num_nodes = mesh->totalNumNodes();
     int nodes_per_cell = mesh->nodesPerCell();
 
-    // Create a geometry.
-    std::vector<double> square_bnds = { 0.01, 0.03, 0.01, 0.03 };
-    auto geom = std::make_shared<ExaMPM::Square>( square_bnds );
+    // Geometry
+    std::vector<std::shared_ptr<ExaMPM::Geometry> > geom;
+
+    // Create geometries.
+
+    // std::vector<double> c1 = {0.025,0.05};
+    // geom.push_back( std::make_shared<ExaMPM::Ring>(c1, 0.01, 0.02) );
+    // std::vector<double> c2 = {0.075,0.05};
+    // geom.push_back( std::make_shared<ExaMPM::Ring>(c2, 0.01, 0.02) );
+
+    std::vector<double> bnds = {0.025,0.075,0.005,0.055};
+    geom.push_back( std::make_shared<ExaMPM::Square>(bnds) );
+
 
     // Assign properties to the geometry.
-    int matid = 1;
+    int matid1 = 1;
     double density = 1.01e3;
-    auto init_vf =
+    auto init_vf1 =
         [=](const std::vector<double>& r,std::vector<double>& v)
         { v[0] = 0.0; v[1] = -10.0; };
-    geom->setMatId( matid );
-    geom->setVelocityField( init_vf );
-    geom->setDensity( density );
+    geom[0]->setMatId( matid1 );
+    geom[0]->setVelocityField( init_vf1 );
+    geom[0]->setDensity( density );
+
+    // int matid2 = 2;
+    // auto init_vf2 =
+    //     [=](const std::vector<double>& r,std::vector<double>& v)
+    //     { v[0] = -10.0; v[1] = 0.0; };
+    // geom[1]->setMatId( matid2 );
+    // geom[1]->setVelocityField( init_vf2 );
+    // geom[1]->setDensity( density );
 
     // Initialize the particles in the geometry.
     std::vector<ExaMPM::Particle> particles;
-    int order = 2;
+    int order = 1;
     int ppcell = mesh->particlesPerCell( order );
     std::vector<ExaMPM::Particle> candidates(
         ppcell, ExaMPM::Particle(space_dim,nodes_per_cell) );
@@ -362,17 +377,21 @@ int main( int argc, char *argv[] )
         // If they are in the geometry add them to the list.
         for ( int p = 0; p < ppcell; ++p )
         {
-            if ( geom->particleInGeometry(candidates[p]) )
+            for ( const auto& g : geom )
             {
-                geom->initializeParticle(candidates[p]);
-                particles.push_back( candidates[p] );
+                if ( g->particleInGeometry(candidates[p]) )
+                {
+                    g->initializeParticle(candidates[p]);
+                    particles.push_back( candidates[p] );
+                    break;
+                }
             }
         }
     }
 
     // Gravity acceleration function.
     auto gravity_field = [](const std::vector<double>& r,std::vector<double>& f)
-                         { f.back() = -9.81; };
+                         { f.back() = 0.0; };
 
     // Nodal mass
     std::vector<double> node_m( num_nodes, 0.0 );
@@ -406,7 +425,7 @@ int main( int argc, char *argv[] )
     // Time step
     int num_step = 10000;
     double delta_t = 1.0e-6;
-    int num_write = 50;
+    int num_write = 25;
     int write_freq = num_step / num_write;
     for ( int step = 0; step < num_step; ++step )
     {
@@ -432,6 +451,10 @@ int main( int argc, char *argv[] )
 
         // 5) Calculate external forces.
         calculateExternalForces( gravity_field, mesh, particles, node_f_ext );
+        std::cout << node_m[50] << " " << node_f_int[50][0] << " " << node_f_int[50][1]
+                  << " | "
+                  << node_m[151] << " " << node_f_int[151][0] << " " << node_f_int[151][1]
+                  << std::endl;
 
         // 6) Calculate nodal velocities.
         calculateNodalVelocities(

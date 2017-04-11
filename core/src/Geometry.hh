@@ -41,7 +41,7 @@ class Geometry
     virtual void setDensity( const double density ) = 0;
 
     // Determine if a particle is in the geometry.
-    virtual bool particleInGeometry( const Particle& p ) = 0;
+    virtual bool particleInGeometry( const Particle& p ) const = 0;
 
     // Initialize the state of a particle in the geometry. The given particle
     // will be in the geometry.

@@ -19,7 +19,7 @@ num_frame = len(h5file.keys())
 
 # setup plot
 fig = plt.figure()
-ax = plt.axes(xlim=(0, 0.05), ylim=(0, 0.05))
+ax = plt.axes(xlim=(0, 0.1), ylim=(0, 0.1))
 particles = ax.scatter([], [], c=[],s=25, cmap="hsv", vmin=0, vmax=1)
 
 # animation function.  This is called sequentially
@@ -30,7 +30,7 @@ def animate(i):
     x1 = group.get("POS_1")
     v0 = group.get("VEL_0")
     v1 = group.get("VEL_1")
-    s11 = group.get("STRAIN_1_1")
+    matid = group.get("MATID")
     v = np.zeros( len(v1) )
     x = np.zeros( (len(x0), 2) )
     for p in xrange(len(x1)):

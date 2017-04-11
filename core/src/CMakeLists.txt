@@ -9,12 +9,14 @@ APPEND_SET(HEADERS
   Mesh.hh
   Mesh2d.hh
   Particle.hh
+  Ring.hh
   Square.hh
   )
 
 APPEND_SET(SOURCES
   FileIO.cc
   Mesh2d.cc
+  Ring.cc
   Square.cc
   )
 

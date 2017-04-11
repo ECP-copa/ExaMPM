@@ -39,7 +39,7 @@ class Square : public Geometry
     void setDensity( const double density ) override;
 
     // Determine if a particle is in the geometry.
-    bool particleInGeometry( const Particle& p ) override;
+    bool particleInGeometry( const Particle& p ) const override;
 
     // Initialize the state of a particle in the geometry. The given particle
     // will be in the geometry.

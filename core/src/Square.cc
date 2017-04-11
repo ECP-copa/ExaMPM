@@ -44,7 +44,7 @@ void Square::setDensity( const double density )
 
 //---------------------------------------------------------------------------//
 // Determine if a particle is in the geometry.
-bool Square::particleInGeometry( const Particle& p )
+bool Square::particleInGeometry( const Particle& p ) const
 {
     return
         ( d_bounds[0] <= p.r[0] && p.r[0] <= d_bounds[1] ) &&
@@ -56,8 +56,7 @@ bool Square::particleInGeometry( const Particle& p )
 // be in the geometry.
 void Square::initializeParticle( Particle& p ) const
 {
-    assert( ( d_bounds[0] <= p.r[0] && p.r[0] <= d_bounds[1] ) &&
-            ( d_bounds[2] <= p.r[1] && p.r[1] <= d_bounds[3] ) );
+    assert( this->particleInGeometry(p) );
 
     // Assign the velocity.
     d_velocity_field( p.r, p.v );

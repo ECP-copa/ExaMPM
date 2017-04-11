@@ -102,7 +102,6 @@ void Mesh2d::getBoundaryNodes( const std::vector<int>& boundary_id,
         // Fill the boundary nodes.
         for ( int j = 0; j < d_num_cells_y + 1; ++j )
             boundary_nodes[j] = nodeId( i, j );
-
     }
 
     // Y Boundary
