@@ -211,7 +211,7 @@ void calculateNodalVelocities(
         }
     }
 
-    // Boundary conditions.
+    // Boundary conditions. Free slip for now.
     std::vector<int> boundary_nodes;
     for ( int d = 0; d < space_dim; ++d )
     {
@@ -355,27 +355,27 @@ void updateParticlePosition( const std::shared_ptr<ExaMPM::Mesh>& mesh,
 
 //---------------------------------------------------------------------------//
 // Material model.
-void materialModel( const std::vector<std::vector<double> >& strain_rate,
-                    std::vector<std::vector<double> >& stress_rate )
+void materialModel( const std::vector<std::vector<double> >& strain,
+                    std::vector<std::vector<double> >& stress )
 {
     // youngs modulus
-    double E = 0.073e9;
+    double E = 1.0e8;
 
     // poisson ratio
-    double nu = 0.0;
+    double nu = 0.4;
 
     double G = E / ( 2 * (1+nu) );
 
     // 2d plane strain
-    stress_rate[0][0] = E * (strain_rate[0][0] + nu*strain_rate[1][1]) /
-                        ( 1 - nu*nu );
+    stress[0][0] = E * (strain[0][0] + nu*strain[1][1]) /
+                   ( 1 - nu*nu );
 
-    stress_rate[1][1] = E * (nu*strain_rate[0][0] + strain_rate[1][1]) /
-                        ( 1 - nu*nu );
+    stress[1][1] = E * (nu*strain[0][0] + strain[1][1]) /
+                   ( 1 - nu*nu );
 
-    stress_rate[0][1] = G * strain_rate[0][1];
+    stress[0][1] = G * strain[0][1];
 
-    stress_rate[1][0] = G * strain_rate[1][0];
+    stress[1][0] = G * strain[1][0];
 }
 
 //---------------------------------------------------------------------------//
@@ -405,7 +405,7 @@ int main( int argc, char *argv[] )
     double density = 1.01e3;
     auto init_vf =
         [=](const std::vector<double>& r,std::vector<double>& v)
-        { v[0] = 0.0; v[1] = 0.0; };
+        { v[0] = 0.0; v[1] = -10.0; };
     geom->setMatId( matid );
     geom->setVelocityField( init_vf );
     geom->setDensity( density );
@@ -466,8 +466,8 @@ int main( int argc, char *argv[] )
     file_io.writeTimeStep( write_step, time, particles );
 
     // Time step
-    int num_step = 10000;
-    double delta_t = 1.0e-5;
+    int num_step = 100000;
+    double delta_t = 1.0e-6;
     int num_write = 100;
     int write_freq = num_step / num_write;
     for ( int step = 0; step < num_step; ++step )

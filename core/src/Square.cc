@@ -65,11 +65,8 @@ void Square::initializeParticle( Particle& p ) const
     // Assign the material id.
     p.matid = d_matid;
 
-    // Assign the density.
-    p.rho = d_density;
-
     // Assign the mass
-    p.m = p.rho * p.volume;
+    p.m = d_density * p.volume;
 }
 
 //---------------------------------------------------------------------------//

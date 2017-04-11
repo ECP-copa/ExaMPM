@@ -32,9 +32,6 @@ class Particle
     //! Mass.
     double m;
 
-    //! Density
-    double rho;
-
     //! Volume.
     double volume;
 

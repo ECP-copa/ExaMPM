@@ -71,14 +71,12 @@ TEST_F(GeometryTest, square_test)
     EXPECT_FLOAT_EQ( p1.v[0], p1.r[0] );
     EXPECT_FLOAT_EQ( p1.v[1], p1.r[1] );
     EXPECT_EQ( p1.matid, matid );
-    EXPECT_EQ( p1.rho, density );
     EXPECT_FLOAT_EQ( p1.m, density*2.0 );
 
     geometry->initializeParticle( p2 );
     EXPECT_FLOAT_EQ( p2.v[0], p2.r[0] );
     EXPECT_FLOAT_EQ( p2.v[1], p2.r[1] );
     EXPECT_EQ( p2.matid, matid );
-    EXPECT_EQ( p2.rho, density );
     EXPECT_FLOAT_EQ( p2.m, density*2.0 );
 }
 

@@ -19,9 +19,8 @@ num_frame = len(h5file.keys())
 
 # setup plot
 fig = plt.figure()
-ax = plt.axes(xlim=(0, 0.04), ylim=(0, 0.03))
+ax = plt.axes(xlim=(0, 0.04), ylim=(0, 0.04))
 particles = ax.scatter([], [], c=[],s=25, cmap="hsv", vmin=0, vmax=1)
-#particles, = ax.plot([], [], 'ro')
 
 # animation function.  This is called sequentially
 def animate(i):
@@ -40,7 +39,6 @@ def animate(i):
         x[p][1] = x1[p]
     particles.set_offsets( x )
     particles.set_array( v )
-#    particles.set_data( x0[:], x1[:] )
     return particles,
 
 # call the animator.  blit=True means only re-draw the parts that have changed.
