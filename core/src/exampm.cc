@@ -15,6 +15,7 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
+#include <cmath>
 #include <cassert>
 #include <iostream>
 
@@ -139,14 +140,19 @@ void calculateExternalForces(
 
 //---------------------------------------------------------------------------//
 // Calculate internal forces.
-void calculateInternalForces( const std::shared_ptr<ExaMPM::Mesh>& mesh,
-                              const std::vector<ExaMPM::Particle>& particles,
-                              std::vector<std::vector<double> >& node_f_int )
+void calculateInternalForces(
+    std::function<void(const ExaMPM::Particle&,
+                       std::vector<std::vector<double> >&)> material_model,
+    const std::shared_ptr<ExaMPM::Mesh>& mesh,
+    const std::vector<ExaMPM::Particle>& particles,
+    std::vector<std::vector<double> >& node_f_int )
 {
 
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
     int node_id = 0;
+    std::vector<std::vector<double> > stress(
+        space_dim, std::vector<double>(space_dim) );
 
     // Reset the forces.
     for ( auto& f_int : node_f_int )
@@ -155,19 +161,19 @@ void calculateInternalForces( const std::shared_ptr<ExaMPM::Mesh>& mesh,
     // Compute forces.
     for ( auto& p : particles )
     {
+        // Compute the first Piola-Kirchoff stress.
+        material_model( p, stress );
+
         // Project the stress gradients.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
             node_id = p.node_ids[n];
 
             for ( int d = 0; d < space_dim; ++d )
-            {
                 for ( int j = 0; j < space_dim; ++j )
-                {
-                    node_f_int[node_id][d] -=
-                        p.volume * p.basis_gradients[n][j] * p.stress[j][d];
-                }
-            }
+                    for ( int i = 0; i < space_dim; ++i )
+                        node_f_int[node_id][d] -=
+                            p.volume * stress[d][i] * p.F[j][i] * p.basis_gradients[n][j];
         }
     }
 }
@@ -232,130 +238,56 @@ void calculateNodalVelocities(
 }
 
 //---------------------------------------------------------------------------//
-// Update particle stress and strain.
-void updateParticleStressStrain(
-    std::function<void(const std::vector<std::vector<double> >&,
-                       std::vector<std::vector<double> >&)> material_model,
-    const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<std::vector<double> >& node_v,
-    const double delta_t,
-    std::vector<ExaMPM::Particle>& particles )
-{
-    int space_dim = mesh->spatialDimension();
-    int nodes_per_cell = mesh->nodesPerCell();
-    int node_id = 0;
-    std::vector<std::vector<double> > strain_increment(
-        space_dim, std::vector<double>(space_dim) );
-    std::vector<std::vector<double> > stress_increment(
-        space_dim, std::vector<double>(space_dim) );
-
-    // Update the stress and strain.
-    for ( auto& p : particles )
-    {
-        // Reset the strain incrememnt.
-        for ( auto& increment : strain_increment )
-            std::fill( increment.begin(), increment.end(), 0.0 );
-
-        // Calculate the local strain increment at the particle with small
-        // deformation theory.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = p.node_ids[n];
-
-            for ( int j = 0; j < space_dim; ++j )
-            {
-                for ( int i = 0; i < space_dim; ++i )
-                {
-                    strain_increment[i][j] +=
-                        ( p.basis_gradients[n][i] * node_v[node_id][j] +
-                          p.basis_gradients[n][j] * node_v[node_id][i] ) *
-                        delta_t / 2.0;
-                }
-            }
-        }
-
-        // Increment the particle strain.
-        for ( int j = 0; j < space_dim; ++j )
-        {
-            for ( int i = 0; i < space_dim; ++i )
-            {
-                p.strain[i][j] += strain_increment[i][j];
-            }
-        }
-
-        // Compute stress increment.
-        material_model( strain_increment, stress_increment );
-
-        // Increment the particle stress.
-        for ( int j = 0; j < space_dim; ++j )
-        {
-            for ( int i = 0; i < space_dim; ++i )
-            {
-                p.stress[i][j] += stress_increment[i][j];
-            }
-        }
-    }
-}
-
-//---------------------------------------------------------------------------//
 // Update particle velocity. PIC update for now.
-void updateParticleVelocity( const std::shared_ptr<ExaMPM::Mesh>& mesh,
-                             const std::vector<std::vector<double> >& node_v,
-                             std::vector<ExaMPM::Particle>& particles )
+void updateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
+                      const std::vector<std::vector<double> >& node_v,
+                      const double delta_t,
+                      std::vector<ExaMPM::Particle>& particles )
 {
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
     int node_id = 0;
+    std::vector<std::vector<double> > F_increment(
+        space_dim, std::vector<double>(space_dim) );
 
     // Update the velocity.
     for ( auto& p : particles )
     {
-        // Reset the velocity.
+        // Reset the velocity and deformation gradient increment.
         std::fill( p.v.begin(), p.v.end(), 0.0 );
+        for ( int d = 0; d < space_dim; ++d )
+            std::fill( F_increment[d].begin(), F_increment[d].end(), 0.0 );
 
-        // Increment the velocity
+        // Loop over adjacent nodes.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
             node_id = p.node_ids[n];
 
             for ( int d = 0; d < space_dim; ++d )
             {
+                // Increment the velocity
                 p.v[d] += node_v[node_id][d] * p.basis_values[n];
-            }
-        }
-    }
-}
 
-//---------------------------------------------------------------------------//
-// Update particle position.
-void updateParticlePosition( const std::shared_ptr<ExaMPM::Mesh>& mesh,
-                             const std::vector<std::vector<double> >& node_v,
-                             const double delta_t,
-                             std::vector<ExaMPM::Particle>& particles )
-{
-    int space_dim = mesh->spatialDimension();
-    int nodes_per_cell = mesh->nodesPerCell();
-    int node_id = 0;
-
-    // Update the position.
-    for ( auto& p : particles )
-    {
-        // Increment the position.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = p.node_ids[n];
-
-            for ( int d = 0; d < space_dim; ++d )
-            {
+                // Increment the position.
                 p.r[d] += delta_t * node_v[node_id][d] * p.basis_values[n];
+
+                // Increment the deformation gradient.
+                for ( int j = 0; j < space_dim; ++j )
+                    F_increment[d][j] += node_v[node_id][d] * p.basis_gradients[n][j];
             }
         }
+
+        // Update the deformation gradient.
+        for ( int i = 0; i < space_dim; ++i )
+            for ( int j = 0; j < space_dim; ++j )
+                p.F[i][j] *= ( i == j ? 1.0 : 0.0 ) + delta_t * F_increment[i][j];
     }
 }
 
 //---------------------------------------------------------------------------//
-// Material model.
-void materialModel( const std::vector<std::vector<double> >& strain,
+// Material model. Computes the first Piola-Kirchoff stress of a Neo-Hookean
+// material.
+void materialModel( const ExaMPM::Particle& particle,
                     std::vector<std::vector<double> >& stress )
 {
     // youngs modulus
@@ -364,18 +296,24 @@ void materialModel( const std::vector<std::vector<double> >& strain,
     // poisson ratio
     double nu = 0.4;
 
-    double G = E / ( 2 * (1+nu) );
+    // Calculate the jacobian of the deformation gradient.
+    double J = particle.F[0][0] * particle.F[1][1] -
+               particle.F[0][1] * particle.F[1][0];
+    assert( J > 0.0 );
 
-    // 2d plane strain
-    stress[0][0] = E * (strain[0][0] + nu*strain[1][1]) /
-                   ( 1 - nu*nu );
+    // Calculate the transpse inverse of the deformation gradient.
+    std::vector<std::vector<double> > F_T_inv = stress;
+    F_T_inv[0][0] = particle.F[1][1] / J;
+    F_T_inv[0][1] = -particle.F[1][0] / J;
+    F_T_inv[1][0] = -particle.F[0][1] / J;
+    F_T_inv[1][1] = particle.F[0][0] / J;
 
-    stress[1][1] = E * (nu*strain[0][0] + strain[1][1]) /
-                   ( 1 - nu*nu );
-
-    stress[0][1] = G * strain[0][1];
-
-    stress[1][0] = G * strain[1][0];
+    // Compute the stress.
+    double c = nu * std::log(J) - E;
+    stress[0][0] = E * particle.F[0][0] + c * F_T_inv[0][0];
+    stress[0][1] = E * particle.F[0][1] + c * F_T_inv[0][1];
+    stress[1][0] = E * particle.F[1][0] + c * F_T_inv[1][0];
+    stress[1][1] = E * particle.F[1][1] + c * F_T_inv[1][1];
 }
 
 //---------------------------------------------------------------------------//
@@ -466,9 +404,9 @@ int main( int argc, char *argv[] )
     file_io.writeTimeStep( write_step, time, particles );
 
     // Time step
-    int num_step = 100000;
+    int num_step = 10000;
     double delta_t = 1.0e-6;
-    int num_write = 100;
+    int num_write = 50;
     int write_freq = num_step / num_write;
     for ( int step = 0; step < num_step; ++step )
     {
@@ -486,28 +424,21 @@ int main( int argc, char *argv[] )
         // 2) Calculate the nodal masses.
         calculateNodalMass( mesh, particles, node_m );
 
-        // 5) Calculate nodal momentum.
+        // 3) Calculate nodal momentum.
         calculateNodalMomentum( mesh, particles, node_p );
 
-        // 3) Calculate internal forces.
-        calculateInternalForces( mesh, particles, node_f_int );
+        // 4) Calculate internal forces.
+        calculateInternalForces( materialModel, mesh, particles, node_f_int );
 
-        // 4) Calculate external forces.
+        // 5) Calculate external forces.
         calculateExternalForces( gravity_field, mesh, particles, node_f_ext );
 
-        // 8) Calculate nodal velocities.
+        // 6) Calculate nodal velocities.
         calculateNodalVelocities(
             mesh, node_p, node_m, node_f_int, node_f_ext, delta_t, node_v );
 
-        // 7) Update the particle velocity.
-        updateParticleVelocity( mesh, node_v, particles );
-
-        // 9) Update the particle stress and strain.
-        updateParticleStressStrain(
-            materialModel, mesh, node_v, delta_t, particles );
-
-        // 10) Update the particle position.
-        updateParticlePosition( mesh, node_v, delta_t, particles );
+        // 7) Update the particle quantities.
+        updateParticles( mesh, node_v, delta_t, particles );
 
         // Write the time step.
         if ( (step+1) % write_freq == 0 )

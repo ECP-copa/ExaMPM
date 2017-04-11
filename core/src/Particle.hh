@@ -38,11 +38,8 @@ class Particle
     //! Material id.
     int matid;
 
-    //! Total strain (history dependent).
-    std::vector<std::vector<double> > strain;
-
-    //! Total specific stress (history dependent).
-    std::vector<std::vector<double> > stress;
+    //! Deformation gradient.
+    std::vector<std::vector<double> > F;
     //@}
 
     //@{
@@ -68,12 +65,17 @@ class Particle
     Particle( const int space_dim, const int nodes_per_cell )
         : r( space_dim )
         , v( space_dim )
-        , strain( space_dim, std::vector<double>(space_dim,0.0) )
-        , stress( space_dim, std::vector<double>(space_dim,0.0) )
+        , F( space_dim, std::vector<double>(space_dim) )
         , node_ids( nodes_per_cell )
         , basis_values( nodes_per_cell )
         , basis_gradients( nodes_per_cell, std::vector<double>(space_dim,0.0) )
-    { /* ... */ }
+    {
+        // The initial deformation gradient is the identity.
+        F[0][0] = 1.0;
+        F[0][1] = 0.0;
+        F[1][0] = 0.0;
+        F[1][1] = 1.0;
+    }
 };
 
 //---------------------------------------------------------------------------//

@@ -114,33 +114,33 @@ TEST_F(MeshTest, mesh_test_2d)
     boundary_id[0] = -1;
     boundary_id[1] = 0;
     mesh->getBoundaryNodes( boundary_id, boundary_nodes );
-    EXPECT_EQ( num_nodes_x, boundary_nodes.size() );
-    for ( int i = 0; i < num_nodes_x; ++i )
-        EXPECT_EQ( boundary_nodes[i], getNodeId(i,0) );
+    EXPECT_EQ( num_nodes_y, boundary_nodes.size() );
+    for ( int j = 0; j < num_nodes_y; ++j )
+        EXPECT_EQ( boundary_nodes[j], getNodeId(0,j) );
 
     // lo y
     boundary_id[0] = 0;
     boundary_id[1] = -1;
     mesh->getBoundaryNodes( boundary_id, boundary_nodes );
-    EXPECT_EQ( num_nodes_y, boundary_nodes.size() );
-    for ( int j = 0; j < num_nodes_y; ++j )
-        EXPECT_EQ( boundary_nodes[j], getNodeId(0,j) );
+    EXPECT_EQ( num_nodes_x, boundary_nodes.size() );
+    for ( int i = 0; i < num_nodes_x; ++i )
+        EXPECT_EQ( boundary_nodes[i], getNodeId(i,0) );
 
     // hi x
     boundary_id[0] = 1;
     boundary_id[1] = 0;
     mesh->getBoundaryNodes( boundary_id, boundary_nodes );
-    EXPECT_EQ( num_nodes_x, boundary_nodes.size() );
-    for ( int i = 0; i < num_nodes_x; ++i )
-        EXPECT_EQ( boundary_nodes[i], getNodeId(i,num_cells_y) );
+    EXPECT_EQ( num_nodes_y, boundary_nodes.size() );
+    for ( int j = 0; j < num_nodes_y; ++j )
+        EXPECT_EQ( boundary_nodes[j], getNodeId(num_cells_x,j) );
 
     // hi y
     boundary_id[0] = 0;
     boundary_id[1] = 1;
     mesh->getBoundaryNodes( boundary_id, boundary_nodes );
-    EXPECT_EQ( num_nodes_y, boundary_nodes.size() );
-    for ( int j = 0; j < num_nodes_y; ++j )
-        EXPECT_EQ( boundary_nodes[j], getNodeId(num_cells_x,j) );
+    EXPECT_EQ( num_nodes_x, boundary_nodes.size() );
+    for ( int i = 0; i < num_nodes_x; ++i )
+        EXPECT_EQ( boundary_nodes[i], getNodeId(i,num_cells_y) );
 
 
     // Check initialization of particles.

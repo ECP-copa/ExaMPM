@@ -19,7 +19,7 @@ num_frame = len(h5file.keys())
 
 # setup plot
 fig = plt.figure()
-ax = plt.axes(xlim=(0, 0.04), ylim=(0, 0.04))
+ax = plt.axes(xlim=(0, 0.05), ylim=(0, 0.05))
 particles = ax.scatter([], [], c=[],s=25, cmap="hsv", vmin=0, vmax=1)
 
 # animation function.  This is called sequentially
