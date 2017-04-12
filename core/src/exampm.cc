@@ -7,13 +7,12 @@
 
 #include "Particle.hh"
 #include "Mesh.hh"
-#include "Mesh2d.hh"
-#include "Square.hh"
-#include "Ring.hh"
+#include "Box.hh"
 #include "FileIO.hh"
 
 #include <memory>
 #include <vector>
+#include <array>
 #include <algorithm>
 #include <functional>
 #include <cmath>
@@ -21,13 +20,58 @@
 #include <iostream>
 
 //---------------------------------------------------------------------------//
+// Calculate the determinant of a 3x3 matrix.
+double determinant( const std::array<std::array<double,3>,3>& m )
+{
+    return
+        m[0][0] * m[1][1] * m[2][2] +
+        m[0][1] * m[1][2] * m[2][0] +
+        m[0][2] * m[1][0] * m[2][1] -
+        m[0][2] * m[1][1] * m[2][0] -
+        m[0][1] * m[1][0] * m[2][2] -
+        m[0][0] * m[1][2] * m[2][1];
+}
+
+//---------------------------------------------------------------------------//
+// Initialize particles.
+void initializeParticles(
+    const std::vector<std::shared_ptr<ExaMPM::Geometry> >& geom,
+    const std::shared_ptr<ExaMPM::Mesh>& mesh,
+    const int order,
+    std::vector<ExaMPM::Particle>& particles )
+{
+    int ppcell = mesh->particlesPerCell( order );
+    std::vector<ExaMPM::Particle> candidates( ppcell );
+    int num_cells = mesh->totalNumCells();
+    for ( int c = 0; c < num_cells; ++c )
+    {
+        // Create the particles.
+        mesh->initializeParticles( c, order, candidates );
+
+        // If they are in the geometry add them to the list.
+        for ( int p = 0; p < ppcell; ++p )
+        {
+            for ( const auto& g : geom )
+            {
+                if ( g->particleInGeometry(candidates[p]) )
+                {
+                    g->initializeParticle(candidates[p]);
+                    particles.push_back( candidates[p] );
+                    break;
+                }
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
 // Locate the particles and compute grid values.
 void locateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
                       std::vector<ExaMPM::Particle>& particles )
 {
     int space_dim = mesh->spatialDimension();
-    std::vector<int> cell_id( space_dim );
-    std::vector<double> ref_coords( space_dim );
+    std::array<int,3> cell_id;
+    std::array<double,3> ref_coords;
 
     for ( auto& p : particles )
     {
@@ -107,14 +151,14 @@ void calculateNodalMomentum(
 //---------------------------------------------------------------------------//
 // Calculate external forces.
 void calculateExternalForces(
-    std::function<void(const std::vector<double>& r,std::vector<double>& v)> field,
+    std::function<void(const std::array<double,3>& r,std::array<double,3>& v)> field,
     const std::shared_ptr<ExaMPM::Mesh>& mesh,
     const std::vector<ExaMPM::Particle>& particles,
     std::vector<std::vector<double> >& node_f_ext )
 {
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
-    std::vector<double> local_acceleration( space_dim, 0.0 );
+    std::array<double,3> local_acceleration;
     int node_id = 0;
 
     // Reset the forces.
@@ -127,6 +171,7 @@ void calculateExternalForces(
         // Calculate force.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
+            local_acceleration = {0.0,0.0,0.0};
             field( p.r, local_acceleration );
 
             node_id = p.node_ids[n];
@@ -143,7 +188,7 @@ void calculateExternalForces(
 // Calculate internal forces.
 void calculateInternalForces(
     std::function<void(const ExaMPM::Particle&,
-                       std::vector<std::vector<double> >&)> material_model,
+                       std::array<std::array<double,3>,3>&)> material_model,
     const std::shared_ptr<ExaMPM::Mesh>& mesh,
     const std::vector<ExaMPM::Particle>& particles,
     std::vector<std::vector<double> >& node_f_int )
@@ -152,8 +197,7 @@ void calculateInternalForces(
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
     int node_id = 0;
-    std::vector<std::vector<double> > stress(
-        space_dim, std::vector<double>(space_dim) );
+    std::array<std::array<double,3>,3> stress;
 
     // Reset the forces.
     for ( auto& f_int : node_f_int )
@@ -173,8 +217,8 @@ void calculateInternalForces(
             // Compute the force via the stress divergence.
             for ( int i = 0; i < space_dim; ++i )
                 for ( int j = 0; j < space_dim; ++j )
-                    node_f_int[node_id][i] +=
-                        p.volume * stress[i][j] * p.basis_gradients[n][j];
+                    node_f_int[node_id][i] -=
+                        p.volume * p.basis_gradients[n][j] * stress[j][i];
         }
     }
 }
@@ -220,9 +264,10 @@ void calculateNodalVelocities(
 
     // Boundary conditions. Free slip for now.
     std::vector<int> boundary_nodes;
+    std::array<int,3> bid;
     for ( int d = 0; d < space_dim; ++d )
     {
-        std::vector<int> bid( space_dim, 0 );
+        bid = {0,0,0};
 
         // low boundary.
         bid[d] = -1;
@@ -239,25 +284,29 @@ void calculateNodalVelocities(
 }
 
 //---------------------------------------------------------------------------//
-// Update particle velocity. PIC update for now.
+// Update particle velocity.
 void updateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
                       const std::vector<std::vector<double> >& node_v,
+                      const std::vector<std::vector<double> >& node_p,
+                      const std::vector<double>& node_m,
                       const double delta_t,
                       std::vector<ExaMPM::Particle>& particles )
 {
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
     int node_id = 0;
-    std::vector<std::vector<double> > F_increment(
-        space_dim, std::vector<double>(space_dim) );
+    std::array<std::array<double,3>,3> V_grad;
+    std::array<std::array<double,3>,3> delta_F;
 
     // Update the velocity.
     for ( auto& p : particles )
     {
-        // Reset the velocity and deformation gradient increment.
-        std::fill( p.v.begin(), p.v.end(), 0.0 );
+        // Reset the deformation gradient increment and velocity gradient.
         for ( int d = 0; d < space_dim; ++d )
-            std::fill( F_increment[d].begin(), F_increment[d].end(), 0.0 );
+        {
+            std::fill( V_grad[d].begin(), V_grad[d].end(), 0.0 );
+            std::fill( delta_F[d].begin(), delta_F[d].end(), 0.0 );
+        }
 
         // Loop over adjacent nodes.
         for ( int n = 0; n < nodes_per_cell; ++n )
@@ -266,24 +315,42 @@ void updateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
 
             for ( int i = 0; i < space_dim; ++i )
             {
-                // Increment the velocity
-                p.v[i] += node_v[node_id][i] * p.basis_values[n];
+                // Increment the velocity. FLIP update.
+                p.v[i] += (node_v[node_id][i]-node_p[node_id][i]/node_m[node_id]) *
+                          p.basis_values[n];
 
                 // Increment the position.
                 p.r[i] += delta_t * node_v[node_id][i] * p.basis_values[n];
 
-                // Increment the deformation gradient.
+                // Compute the velocity gradient.
                 for ( int j = 0; j < space_dim; ++j )
-                    F_increment[i][j] +=
-                        node_v[node_id][i] * p.basis_gradients[n][j];
+                    V_grad[i][j] +=
+                        p.basis_gradients[n][i] * node_v[node_id][j];
             }
         }
+
+        // Scale the velocity gradient.
+        for ( int i = 0; i < space_dim; ++i )
+            for ( int j = 0; j < space_dim; ++j )
+                V_grad[i][j] *= delta_t;
+
+        // Compute the deformation gradient increment.
+        for ( int i = 0; i < space_dim; ++i )
+            for ( int j = 0; j < space_dim; ++j )
+                for ( int k = 0; k < space_dim; ++k )
+                    delta_F[i][j] += V_grad[i][k] * p.F[k][j];
 
         // Update the deformation gradient.
         for ( int i = 0; i < space_dim; ++i )
             for ( int j = 0; j < space_dim; ++j )
-                p.F[i][j] *=
-                    ( i == j ? 1.0 : 0.0 ) + delta_t * F_increment[i][j];
+                p.F[i][j] += delta_F[i][j];
+
+        // Add the velocity gradient to the identity.
+        for ( int i = 0; i < space_dim; ++i )
+            V_grad[i][i] += 1.0;
+
+        // Update the particle volume.
+        p.volume *= determinant( V_grad );
     }
 }
 
@@ -291,107 +358,98 @@ void updateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
 // Material model. Computes the first Piola-Kirchoff stress of a Neo-Hookean
 // material and then transforms it to the physical frame.
 void materialModel( const ExaMPM::Particle& p,
-                    std::vector<std::vector<double> >& stress )
+                    std::array<std::array<double,3>,3>& stress )
 {
     // youngs modulus
-    double E = 0.073e9;
+    double E = 1e5;
 
     // poisson ratio
-    double nu = 0.4;
+    double nu = 0.3;
 
-    // Calculate the jacobian of the deformation gradient.
-    double J = p.F[0][0]*p.F[1][1] - p.F[0][1]*p.F[1][0];
+    // Calculate the determinant of the deformation gradient.
+    double J = determinant( p.F );
     assert( J > 0.0 );
 
-    // Compute the stress.
-    double c1 = E / J;
-    double c2 = nu * std::log(J) / J;
+    // Reset the stress.
+    for ( int d = 0; d < 3; ++d )
+        stress[d] = { 0.0, 0.0, 0.0 };
 
-    stress[0][0] = c1 * (p.F[0][0]*p.F[0][0] + p.F[0][1]*p.F[0][1] - 1) + c2;
-    stress[0][1] = c1 * (p.F[0][0]*p.F[1][0] + p.F[0][1]*p.F[1][1]);
-    stress[1][0] = c1 * (p.F[0][0]*p.F[1][0] + p.F[0][1]*p.F[1][1]);
-    stress[1][1] = c1 * (p.F[1][0]*p.F[1][0] + p.F[1][1]*p.F[1][1] - 1) + c2;
+    // Calculate F*F^T
+    for ( int j = 0; j < 3; ++j )
+        for ( int i = 0; i < 3; ++i )
+            for ( int k = 0; k < 3; ++k )
+                stress[i][j] += p.F[i][k] * p.F[j][k];
+
+    // Subtract the identity.
+    for ( int i = 0; i < 3; ++i )
+        stress[i][i] -= 1.0;
+
+    // Scale by youngs modulus.
+    for ( int j = 0; j < 3; ++j )
+        for ( int i = 0; i < 3; ++i )
+            stress[i][j] *= E;
+
+    // Add the scaled identity.
+    double c = nu * std::log(J);
+    for ( int i = 0; i < 3; ++i )
+        stress[i][i] += c;
+
+    // Scale by the determinant of the deformation gradient.
+    for ( int j = 0; j < 3; ++j )
+        for ( int i = 0; i < 3; ++i )
+            stress[i][j] /= J;
 }
 
 //---------------------------------------------------------------------------//
 int main( int argc, char *argv[] )
 {
     // Set the spatial dimension.
-    int space_dim = 2;
+    int space_dim = 3;
 
     // Create a mesh.
-    int num_cells_x = 100;
-    int num_cells_y = 100;
-    double cell_width = 0.001;
-    auto mesh = std::make_shared<ExaMPM::Mesh2d>(
-        num_cells_x, num_cells_y, cell_width );
+    int num_cells_x = 20;
+    int num_cells_y = 20;
+    int num_cells_z = 20;
+    double cell_width = 0.05;
+    auto mesh = std::make_shared<ExaMPM::Mesh>(
+        num_cells_x, num_cells_y, num_cells_z, cell_width );
 
     // Get mesh data.
-    int num_cells = mesh->totalNumCells();
     int num_nodes = mesh->totalNumNodes();
-    int nodes_per_cell = mesh->nodesPerCell();
 
     // Geometry
     std::vector<std::shared_ptr<ExaMPM::Geometry> > geom;
 
     // Create geometries.
-
-    // std::vector<double> c1 = {0.025,0.05};
-    // geom.push_back( std::make_shared<ExaMPM::Ring>(c1, 0.01, 0.02) );
-    // std::vector<double> c2 = {0.075,0.05};
-    // geom.push_back( std::make_shared<ExaMPM::Ring>(c2, 0.01, 0.02) );
-
-    std::vector<double> bnds = {0.025,0.075,0.005,0.055};
-    geom.push_back( std::make_shared<ExaMPM::Square>(bnds) );
-
+    std::array<double,6> bnds = {0.1,0.3,0.5,0.7,0.5,0.7};
+    geom.push_back( std::make_shared<ExaMPM::Box>(bnds) );
+    bnds = {0.7,0.9,0.4,0.6,0.4,0.6};
+    geom.push_back( std::make_shared<ExaMPM::Box>(bnds) );
 
     // Assign properties to the geometry.
-    int matid1 = 1;
-    double density = 1.01e3;
+    int matid = 1;
+    double density = 1.0e3;
     auto init_vf1 =
-        [=](const std::vector<double>& r,std::vector<double>& v)
-        { v[0] = 0.0; v[1] = -10.0; };
-    geom[0]->setMatId( matid1 );
+        [=](const std::array<double,3>& r,std::array<double,3>& v)
+        { v[0] = 0.1; v[1] = 0.0; v[2] = 0.0; };
+    geom[0]->setMatId( matid );
     geom[0]->setVelocityField( init_vf1 );
     geom[0]->setDensity( density );
-
-    // int matid2 = 2;
-    // auto init_vf2 =
-    //     [=](const std::vector<double>& r,std::vector<double>& v)
-    //     { v[0] = -10.0; v[1] = 0.0; };
-    // geom[1]->setMatId( matid2 );
-    // geom[1]->setVelocityField( init_vf2 );
-    // geom[1]->setDensity( density );
+    auto init_vf2 =
+        [=](const std::array<double,3>& r,std::array<double,3>& v)
+        { v[0] = -0.1; v[1] = 0.0; v[2] = 0.0; };
+    geom[1]->setMatId( matid );
+    geom[1]->setVelocityField( init_vf2 );
+    geom[1]->setDensity( density );
 
     // Initialize the particles in the geometry.
     std::vector<ExaMPM::Particle> particles;
-    int order = 1;
-    int ppcell = mesh->particlesPerCell( order );
-    std::vector<ExaMPM::Particle> candidates(
-        ppcell, ExaMPM::Particle(space_dim,nodes_per_cell) );
-    for ( int c = 0; c < num_cells; ++c )
-    {
-        // Create the particles.
-        mesh->initializeParticles( c, order, candidates );
-
-        // If they are in the geometry add them to the list.
-        for ( int p = 0; p < ppcell; ++p )
-        {
-            for ( const auto& g : geom )
-            {
-                if ( g->particleInGeometry(candidates[p]) )
-                {
-                    g->initializeParticle(candidates[p]);
-                    particles.push_back( candidates[p] );
-                    break;
-                }
-            }
-        }
-    }
+    int order = 2;
+    initializeParticles( geom, mesh, order, particles );
 
     // Gravity acceleration function.
-    auto gravity_field = [](const std::vector<double>& r,std::vector<double>& f)
-                         { f.back() = 0.0; };
+    auto gravity_field = [](const std::array<double,3>& r,std::array<double,3>& f)
+                         { f[0] = 0.0; f[1] = 0.0; f[2] = 0.0; };
 
     // Nodal mass
     std::vector<double> node_m( num_nodes, 0.0 );
@@ -423,9 +481,9 @@ int main( int argc, char *argv[] )
     file_io.writeTimeStep( write_step, time, particles );
 
     // Time step
-    int num_step = 10000;
-    double delta_t = 1.0e-6;
-    int num_write = 25;
+    int num_step = 50000;
+    double delta_t = 1.0e-4;
+    int num_write = 50;
     int write_freq = num_step / num_write;
     for ( int step = 0; step < num_step; ++step )
     {
@@ -433,7 +491,7 @@ int main( int argc, char *argv[] )
 
         if ( (step+1) % write_freq == 0 )
         {
-            std::cout << "Time Step " << step+1 <<  ": "
+            std::cout << "Time Step " << step+1 << "/" << num_step << ": "
                       <<  time <<  " (s)" << std::endl;
         }
 
@@ -451,17 +509,13 @@ int main( int argc, char *argv[] )
 
         // 5) Calculate external forces.
         calculateExternalForces( gravity_field, mesh, particles, node_f_ext );
-        std::cout << node_m[50] << " " << node_f_int[50][0] << " " << node_f_int[50][1]
-                  << " | "
-                  << node_m[151] << " " << node_f_int[151][0] << " " << node_f_int[151][1]
-                  << std::endl;
 
         // 6) Calculate nodal velocities.
         calculateNodalVelocities(
             mesh, node_p, node_m, node_f_int, node_f_ext, delta_t, node_v );
 
         // 7) Update the particle quantities.
-        updateParticles( mesh, node_v, delta_t, particles );
+        updateParticles( mesh, node_v, node_p, node_m, delta_t, particles );
 
         // Write the time step.
         if ( (step+1) % write_freq == 0 )

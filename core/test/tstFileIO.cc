@@ -6,10 +6,11 @@
 
 #include "FileIO.hh"
 #include "Geometry.hh"
-#include "Square.hh"
+#include "Box.hh"
 #include "Particle.hh"
 
 #include <vector>
+#include <array>
 
 #include "gtest_main.hh"
 
@@ -26,23 +27,23 @@ class FileIOTest : public ::testing::Test
 //---------------------------------------------------------------------------//
 TEST_F(FileIOTest, file_io_test)
 {
-    // Create a square.
-    std::vector<double> bounds = {1.2, 2.3, 0.5, 1.1};
+    // Create a box.
+    std::array<double,6> bounds = {1.2, 2.3, 0.5, 1.1, 0.5, 1.1};
     std::shared_ptr<ExaMPM::Geometry> geometry =
-        std::make_shared<ExaMPM::Square>( bounds );
+        std::make_shared<ExaMPM::Box>( bounds );
 
     // Create some particles.
-    std::vector<ExaMPM::Particle> particles( 2, ExaMPM::Particle(2,4) );
-    particles[0].r = { 2.1, 0.75 };
+    std::vector<ExaMPM::Particle> particles( 2 );
+    particles[0].r = { 2.1, 0.75, 33.2 };
     particles[0].volume = 2.0;
-    particles[1].r = { 1.9, 1.0999 };
+    particles[1].r = { 1.9, 1.0999, 1.30 };
     particles[1].volume = 2.0;
 
     // Assign values to the geometry.
     int matid = 3;
     double density = 3.43;
-    auto vf = []( const std::vector<double>& r,
-                  std::vector<double>& v)
+    auto vf = []( const std::array<double,3>& r,
+                  std::array<double,3>& v)
               { std::copy( r.begin(), r.end(), v.begin() ); };
 
     geometry->setMatId( matid );

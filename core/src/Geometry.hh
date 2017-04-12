@@ -9,7 +9,7 @@
 
 #include "Particle.hh"
 
-#include <vector>
+#include <array>
 #include <functional>
 
 namespace ExaMPM
@@ -26,7 +26,7 @@ class Geometry
 
     // Velocity field function.
     using VelocityField = std::function<
-      void(const std::vector<double>& r,std::vector<double>& v)>;
+      void(const std::array<double,3>& r,std::array<double,3>& v)>;
 
     // Destructor.
     virtual ~Geometry() = default;

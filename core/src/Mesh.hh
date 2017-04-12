@@ -9,6 +9,7 @@
 
 #include "Particle.hh"
 
+#include <array>
 #include <vector>
 
 namespace ExaMPM
@@ -18,76 +19,106 @@ namespace ExaMPM
 /*!
  * \class Mesh
  *
- * \brief Interface for a logically structured grid.
+ * \brief Uniform hexahedral mesh.
  */
 class Mesh
 {
   public:
 
-    // Destructor.
-    virtual ~Mesh() = default;
+    // Constructor.
+    Mesh( const int num_cells_x,
+          const int num_cells_y,
+          const int num_cells_z,
+          const double cell_width );
 
     // Get the spatial dimension of the mesh.
-    virtual int spatialDimension() const = 0;
+    int spatialDimension() const;
 
     // Get the number of nodes per cell in the mesh.
-    virtual int nodesPerCell() const = 0;
+    int nodesPerCell() const;
 
     // Get the total number of cells in the mesh.
-    virtual int totalNumCells() const = 0;
+    int totalNumCells() const;
 
     // Get the total number of nodes in the mesh.
-    virtual int totalNumNodes() const = 0;
+    int totalNumNodes() const;
 
     // Given a node id get its coordinates.
-    virtual void nodeCoordinates( const int node_id,
-                                  std::vector<double>& coords ) const = 0;
+    void nodeCoordinates( const int node_id,
+                          std::array<double,3>& coords ) const;
 
-    // Given a boundary id get the ids of the nodes on that boundary. Boundary
-    // ids should be indicates as (+/- x, +/- y, ... )
-    virtual void getBoundaryNodes( const std::vector<int>& boundary_id,
-                                   std::vector<int>& boundary_nodes ) const = 0;
+    // Given a boundary id get the ids of the nodes on that boundary.
+    void getBoundaryNodes( const std::array<int,3>& boundary_id,
+                           std::vector<int>& boundary_nodes ) const;
 
     // Get the number of particles in a cell for a given order.
-    virtual int particlesPerCell( const int order ) const = 0;
+    int particlesPerCell( const int order ) const;
 
     // Given a cardinal cell id intitalize a number of particles in that cell.
-    virtual void initializeParticles(
+    void initializeParticles(
         const int cell_id,
         const int order,
-        std::vector<Particle>& particles ) const = 0;
+        std::vector<Particle>& particles ) const;
 
     // Given a particle determine the cardinal index of the cell in which it
     // is located.
-    virtual void locateParticle( const Particle& particle,
-                                 std::vector<int>& cell_id ) const = 0;
+    void locateParticle( const Particle& particle,
+                         std::array<int,3>& cell_id ) const;
 
     // Given a cell ids get the node ids of the cell.
-    virtual void cellNodeIds( const std::vector<int>& cell_id,
-                              std::vector<int>& nodes ) const = 0;
+    void cellNodeIds( const std::array<int,3>& cell_id,
+                      std::array<int,8>& nodes ) const;
 
     // Map the coordinates of a particle from the physical frame to the
     // reference frame of the cell in which it is located.
-    virtual void mapPhysicalToReferenceFrame(
+    void mapPhysicalToReferenceFrame(
         const Particle& particle,
-        const std::vector<int>& cell_id,
-        std::vector<double>& ref_coords ) const = 0;
+        const std::array<int,3>& cell_id,
+        std::array<double,3>& ref_coords ) const;
 
     // Given reference coordinates in a cell get the value of the shape
     // function at those coordinates.
-    virtual void shapeFunctionValue( const std::vector<double>& ref_coords,
-                                     std::vector<double>& values ) const = 0;
+    void shapeFunctionValue( const std::array<double,3>& ref_coords,
+                             std::array<double,8>& values ) const;
 
     // Given reference coordinates in a cell get the gradient of the shape
     // function at those coordinates. Indexed as [Node][Dim].
-    virtual void shapeFunctionGradient(
-        const std::vector<double>& ref_coords,
-        std::vector<std::vector<double> >& gradients ) const = 0;
+    void shapeFunctionGradient(
+        const std::array<double,3>& ref_coords,
+        std::array<std::array<double,3>, 8>& gradients ) const;
+
+  private:
+
+    // Given ijk indices of a node compute the node id.
+    int nodeId( const int i, const int j, const int k ) const;
+
+  private:
+
+    // Number of cells in x direction.
+    int d_num_cells_x;
+
+    // Number of cells in y direction.
+    int d_num_cells_y;
+
+    // Number of cells in z direction.
+    int d_num_cells_z;
+
+    // Mesh cell width.
+    double d_cell_width;
+
+    // Number of nodes in the x direction.
+    int d_num_nodes_x;
+
+    // Number of nodes in the y direction.
+    int d_num_nodes_y;
+
+    // Number of nodes in the z direction.
+    int d_num_nodes_z;
 };
 
-//---------------------------------------------------------------------------//
-
 } // end namespace ExaMPM
+
+//---------------------------------------------------------------------------//
 
 #endif // end EXAMPM_MESH_HH
 

@@ -1,34 +1,32 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file Square.cc
+ * \file Box.cc
  */
 //---------------------------------------------------------------------------//
 
-#include "Square.hh"
+#include "Box.hh"
 
 #include <cassert>
 
 namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
-// Constructor. Bounds give (-x,+x,-y,+y).
-Square::Square( const std::vector<double>& bounds )
+// Constructor. Bounds give (-x,+x,-y,+y,-z,+z).
+Box::Box( const std::array<double,6>& bounds )
     : d_bounds( bounds )
     , d_matid( -1 )
-{
-    assert( 4 == d_bounds.size() );
-}
+{ /* ... */ }
 
 //---------------------------------------------------------------------------//
 // Set the initial material id of the geometry.
-void Square::setMatId( const int matid )
+void Box::setMatId( const int matid )
 {
     d_matid = matid;
 }
 
 //---------------------------------------------------------------------------//
 // Set the initial velocity field of the geometry.
-void Square::setVelocityField( VelocityField&& velocity_field )
+void Box::setVelocityField( VelocityField&& velocity_field )
 {
     assert( velocity_field );
     d_velocity_field = velocity_field;
@@ -36,7 +34,7 @@ void Square::setVelocityField( VelocityField&& velocity_field )
 
 //---------------------------------------------------------------------------//
 // Set the density.
-void Square::setDensity( const double density )
+void Box::setDensity( const double density )
 {
     assert( density > 0.0 );
     d_density = density;
@@ -44,17 +42,18 @@ void Square::setDensity( const double density )
 
 //---------------------------------------------------------------------------//
 // Determine if a particle is in the geometry.
-bool Square::particleInGeometry( const Particle& p ) const
+bool Box::particleInGeometry( const Particle& p ) const
 {
     return
         ( d_bounds[0] <= p.r[0] && p.r[0] <= d_bounds[1] ) &&
-        ( d_bounds[2] <= p.r[1] && p.r[1] <= d_bounds[3] );
+        ( d_bounds[2] <= p.r[1] && p.r[1] <= d_bounds[3] ) &&
+        ( d_bounds[4] <= p.r[2] && p.r[2] <= d_bounds[5] );
 }
 
 //---------------------------------------------------------------------------//
 // Initialize the state of a particle in the geometry. The given particle will
 // be in the geometry.
-void Square::initializeParticle( Particle& p ) const
+void Box::initializeParticle( Particle& p ) const
 {
     assert( this->particleInGeometry(p) );
 
@@ -73,5 +72,5 @@ void Square::initializeParticle( Particle& p ) const
 } // end namespace ExaMPM
 
 //---------------------------------------------------------------------------//
-// end Square.cc
+// end Box.cc
 //---------------------------------------------------------------------------//

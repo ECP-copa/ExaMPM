@@ -1,24 +1,24 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file Square.hh
+ * \file Box.hh
  */
 //---------------------------------------------------------------------------//
 
-#ifndef EXAMPM_SQUARE_HH
-#define EXAMPM_SQUARE_HH
+#ifndef EXAMPM_BOX_HH
+#define EXAMPM_BOX_HH
 
 #include "Geometry.hh"
 #include "Particle.hh"
 
-#include <vector>
+#include <array>
 
 namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 /*!
- * \class Square
+ * \class Box
  */
-class Square : public Geometry
+class Box : public Geometry
 {
   public:
 
@@ -26,8 +26,8 @@ class Square : public Geometry
     using Base = Geometry;
     using VelocityField = typename Base::VelocityField;
 
-    // Constructor. Bounds give (-x,+x,-y,+y).
-    Square( const std::vector<double>& bounds );
+    // Constructor. Bounds give (-x,+x,-y,+y,-z,+z).
+    Box( const std::array<double,6>& bounds );
 
     // Set the initial material id of the geometry.
     void setMatId( const int matid ) override;
@@ -48,7 +48,7 @@ class Square : public Geometry
   private:
 
     // Bounds.
-    std::vector<double> d_bounds;
+    std::array<double,6> d_bounds;
 
     // Material id.
     int d_matid;
@@ -67,8 +67,8 @@ class Square : public Geometry
 
 } // end namespace ExaMPM
 
-#endif // end EXAMPM_SQUARE_HH
+#endif // end EXAMPM_BOX_HH
 
 //---------------------------------------------------------------------------//
-// end Square.hh
+// end Box.hh
 //---------------------------------------------------------------------------//

@@ -5,7 +5,6 @@
 //---------------------------------------------------------------------------//
 
 #include "Mesh.hh"
-#include "Mesh2d.hh"
 #include "Particle.hh"
 
 #include <vector>
@@ -23,27 +22,29 @@ class MeshTest : public ::testing::Test
 //---------------------------------------------------------------------------//
 // TESTS
 //---------------------------------------------------------------------------//
-TEST_F(MeshTest, mesh_test_2d)
+TEST_F(MeshTest, mesh_test)
 {
-    // Create a 2d mesh.
+    // Create a mesh.
     int num_cells_x = 145;
     int num_cells_y = 103;
+    int num_cells_z = 103;
     int num_nodes_x = num_cells_x + 1;
     int num_nodes_y = num_cells_y + 1;
+    int num_nodes_z = num_cells_z + 1;
     double cell_width = 0.4;
     std::shared_ptr<ExaMPM::Mesh> mesh =
-        std::make_shared<ExaMPM::Mesh2d>(
-            num_cells_x, num_cells_y, cell_width );
+        std::make_shared<ExaMPM::Mesh>(
+            num_cells_x, num_cells_y, num_cells_z, cell_width );
 
     // Check the mesh.
-    EXPECT_EQ( 2, mesh->spatialDimension() );
-    EXPECT_EQ( 4, mesh->nodesPerCell() );
+    EXPECT_EQ( 3, mesh->spatialDimension() );
+    EXPECT_EQ( 8, mesh->nodesPerCell() );
     EXPECT_EQ( num_cells_x*num_cells_y, mesh->totalNumCells() );
     EXPECT_EQ( num_nodes_x*num_nodes_y, mesh->totalNumNodes() );
 
     // Create a particle and assign a location.
     ExaMPM::Particle p;
-    p.r = { 32.3, 22.9 };
+    p.r = { 32.3, 22.9, 12.2 };
 
     // Check the particle location.
     std::vector<int> cell_id( 2 );
