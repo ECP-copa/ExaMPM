@@ -425,10 +425,16 @@ void materialModel( const ExaMPM::Particle& p,
                     std::array<std::array<double,3>,3>& stress )
 {
     // youngs modulus
-    double E = 1e5;
+    double E = 1e9;
 
     // poisson ratio
     double nu = 0.3;
+
+    // lame's first parameter
+    double lambda = E * nu / ( (1+nu)*(1-2*nu) );
+
+    // lame's second parameter
+    double mu = E / (2 *(1+nu) );
 
     // Calculate the determinant of the deformation gradient.
     double J = determinant( p.F );
@@ -448,13 +454,13 @@ void materialModel( const ExaMPM::Particle& p,
     for ( int i = 0; i < 3; ++i )
         stress[i][i] -= 1.0;
 
-    // Scale by youngs modulus.
+    // Scale by mu.
     for ( int j = 0; j < 3; ++j )
         for ( int i = 0; i < 3; ++i )
-            stress[i][j] *= E;
+            stress[i][j] *= mu;
 
     // Add the scaled identity.
-    double c = nu * std::log(J);
+    double c = lambda * std::log(J);
     for ( int i = 0; i < 3; ++i )
         stress[i][i] += c;
 
@@ -471,10 +477,10 @@ int main( int argc, char *argv[] )
     int space_dim = 3;
 
     // Create a mesh.
-    int num_cells_x = 20;
-    int num_cells_y = 20;
-    int num_cells_z = 20;
-    double cell_width = 0.05;
+    int num_cells_x = 50;
+    int num_cells_y = 50;
+    int num_cells_z = 50;
+    double cell_width = 0.025;
     auto mesh = std::make_shared<ExaMPM::Mesh>(
         num_cells_x, num_cells_y, num_cells_z, cell_width );
 
@@ -485,9 +491,9 @@ int main( int argc, char *argv[] )
     std::vector<std::shared_ptr<ExaMPM::Geometry> > geom;
 
     // Create geometries.
-    std::array<double,6> bnds = {0.1,0.3,0.5,0.7,0.4,0.6};
+    std::array<double,6> bnds = {0.2,0.4,0.4,0.6,0.4,0.6};
     geom.push_back( std::make_shared<ExaMPM::Box>(bnds) );
-    bnds = {0.7,0.9,0.4,0.6,0.4,0.6};
+    bnds = {0.6,0.8,0.5,0.7,0.4,0.6};
     geom.push_back( std::make_shared<ExaMPM::Box>(bnds) );
 
     // Assign properties to the geometry.
@@ -548,7 +554,7 @@ int main( int argc, char *argv[] )
     file_io.writeTimeStep( write_step, time, particles );
 
     // Time step
-    int num_step = 20000;
+    int num_step = 1000;
     double delta_t = 1.0e-3;
     int num_write = 50;
     int write_freq = num_step / num_write;
