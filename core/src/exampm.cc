@@ -399,16 +399,20 @@ void updateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
         {
             node_id = p.node_ids[n];
 
-            for ( int d = 0; d < space_dim; ++d )
+            // Only add a contribution from an adjacent node if it has mass.
+            if ( node_m[node_id] > 0.0 )
             {
-                // Increment the position.
-                p.r[d] += delta_t *
-                          (node_p[node_id][d] + node_imp[node_id][d]) *
-                          p.basis_values[n] / node_m[node_id];
+                for ( int d = 0; d < space_dim; ++d )
+                {
+                    // Increment the position.
+                    p.r[d] += delta_t *
+                              (node_p[node_id][d] + node_imp[node_id][d]) *
+                              p.basis_values[n] / node_m[node_id];
 
-                // Increment the velocity.
-                p.v[d] += node_imp[node_id][d] * p.basis_values[n] /
-                          node_m[node_id];
+                    // Increment the velocity.
+                    p.v[d] += node_imp[node_id][d] * p.basis_values[n] /
+                              node_m[node_id];
+                }
             }
         }
     }
@@ -421,7 +425,7 @@ void materialModel( const ExaMPM::Particle& p,
                     std::array<std::array<double,3>,3>& stress )
 {
     // youngs modulus
-    double E = 1e5;
+    double E = 1e4;
 
     // poisson ratio
     double nu = 0.3;
@@ -545,8 +549,8 @@ int main( int argc, char *argv[] )
     file_io.writeTimeStep( write_step, time, particles );
 
     // Time step
-    int num_step = 5000;
-    double delta_t = 1.0e-3;
+    int num_step = 50000;
+    double delta_t = 1.0e-4;
     int num_write = 50;
     int write_freq = num_step / num_write;
     for ( int step = 0; step < num_step; ++step )
