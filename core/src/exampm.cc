@@ -425,7 +425,7 @@ void materialModel( const ExaMPM::Particle& p,
                     std::array<std::array<double,3>,3>& stress )
 {
     // youngs modulus
-    double E = 1e9;
+    double E = 1e8;
 
     // poisson ratio
     double nu = 0.3;
@@ -477,10 +477,10 @@ int main( int argc, char *argv[] )
     int space_dim = 3;
 
     // Create a mesh.
-    int num_cells_x = 50;
-    int num_cells_y = 50;
-    int num_cells_z = 50;
-    double cell_width = 0.025;
+    int num_cells_x = 25;
+    int num_cells_y = 25;
+    int num_cells_z = 25;
+    double cell_width = 0.04;
     auto mesh = std::make_shared<ExaMPM::Mesh>(
         num_cells_x, num_cells_y, num_cells_z, cell_width );
 
@@ -554,9 +554,9 @@ int main( int argc, char *argv[] )
     file_io.writeTimeStep( write_step, time, particles );
 
     // Time step
-    int num_step = 1000;
+    int num_step = 10000;
     double delta_t = 1.0e-3;
-    int num_write = 50;
+    int num_write = 100;
     int write_freq = num_step / num_write;
     for ( int step = 0; step < num_step; ++step )
     {
