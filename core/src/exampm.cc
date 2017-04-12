@@ -146,6 +146,123 @@ void calculateNodalMomentum(
             }
         }
     }
+
+    // Boundary conditions. Free slip for now.
+    std::vector<int> boundary_nodes;
+    std::array<int,3> bid;
+    for ( int d = 0; d < space_dim; ++d )
+    {
+        bid = {0,0,0};
+
+        // low boundary.
+        bid[d] = -1;
+        mesh->getBoundaryNodes( bid, boundary_nodes );
+        for ( auto n : boundary_nodes )
+            node_p[n][d] = 0.0;
+
+        // high boundary.
+        bid[d] = 1;
+        mesh->getBoundaryNodes( bid, boundary_nodes );
+        for ( auto n : boundary_nodes )
+            node_p[n][d] = 0.0;
+    }
+}
+
+//---------------------------------------------------------------------------//
+// Calculate nodal velocities.
+void calculateNodalVelocity(
+    const std::shared_ptr<ExaMPM::Mesh>& mesh,
+    const std::vector<std::vector<double> >& node_p,
+    const std::vector<double>& node_m,
+    std::vector<std::vector<double> >& node_v )
+{
+    int space_dim = mesh->spatialDimension();
+    int num_nodes = mesh->totalNumNodes();
+
+    // Update the velocity
+    for ( int n = 0; n < num_nodes; ++n )
+    {
+        // If we have nodal mass do the update.
+        if ( node_m[n] > 0.0 )
+        {
+            for ( int d = 0; d < space_dim; ++d )
+            {
+                node_v[n][d] = node_p[n][d] / node_m[n];
+            }
+        }
+
+        // Otherwise we have no mass or momentum so no velocity.
+        else
+        {
+            for ( int d = 0; d < space_dim; ++d )
+            {
+                node_v[n][d] = 0.0;
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+// Update particle deformation gradient.
+void updateDeformationGradient(
+    const std::shared_ptr<ExaMPM::Mesh>& mesh,
+    const std::vector<std::vector<double> >& node_v,
+    const double delta_t,
+    std::vector<ExaMPM::Particle>& particles )
+{
+    int space_dim = mesh->spatialDimension();
+    int nodes_per_cell = mesh->nodesPerCell();
+    int node_id = 0;
+    std::array<std::array<double,3>,3> V_grad;
+    std::array<std::array<double,3>,3> delta_F;
+
+    // Update the velocity.
+    for ( auto& p : particles )
+    {
+        // Reset the deformation gradient increment and velocity gradient.
+        for ( int d = 0; d < space_dim; ++d )
+        {
+            std::fill( V_grad[d].begin(), V_grad[d].end(), 0.0 );
+            std::fill( delta_F[d].begin(), delta_F[d].end(), 0.0 );
+        }
+
+        // Loop over adjacent nodes.
+        for ( int n = 0; n < nodes_per_cell; ++n )
+        {
+            node_id = p.node_ids[n];
+
+            for ( int i = 0; i < space_dim; ++i )
+            {
+                // Compute the velocity gradient.
+                for ( int j = 0; j < space_dim; ++j )
+                    V_grad[i][j] +=
+                        p.basis_gradients[n][i] * node_v[node_id][j];
+            }
+        }
+
+        // Scale the velocity gradient.
+        for ( int i = 0; i < space_dim; ++i )
+            for ( int j = 0; j < space_dim; ++j )
+                V_grad[i][j] *= delta_t;
+
+        // Compute the deformation gradient increment.
+        for ( int i = 0; i < space_dim; ++i )
+            for ( int j = 0; j < space_dim; ++j )
+                for ( int k = 0; k < space_dim; ++k )
+                    delta_F[i][j] += V_grad[i][k] * p.F[k][j];
+
+        // Update the deformation gradient.
+        for ( int i = 0; i < space_dim; ++i )
+            for ( int j = 0; j < space_dim; ++j )
+                p.F[i][j] += delta_F[i][j];
+
+        // Add the velocity gradient to the identity.
+        for ( int i = 0; i < space_dim; ++i )
+            V_grad[i][i] += 1.0;
+
+        // Update the particle volume.
+        p.volume *= determinant( V_grad );
+    }
 }
 
 //---------------------------------------------------------------------------//
@@ -224,43 +341,21 @@ void calculateInternalForces(
 }
 
 //---------------------------------------------------------------------------//
-// Calculate nodal velocities.
-void calculateNodalVelocities(
+// Calculate nodal impulse.
+void calculateNodalImpulse(
     const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<std::vector<double> >& node_p,
-    const std::vector<double>& node_m,
     const std::vector<std::vector<double> >& node_f_int,
     const std::vector<std::vector<double> >& node_f_ext,
     const double delta_t,
-    std::vector<std::vector<double> >& node_v )
+    std::vector<std::vector<double> >& node_imp )
 {
     int space_dim = mesh->spatialDimension();
     int num_nodes = mesh->totalNumNodes();
 
-    // Update the velocity
+    // Calculate impulse.
     for ( int n = 0; n < num_nodes; ++n )
-    {
-        // If we have nodal mass do the update.
-        if ( node_m[n] > 0.0 )
-        {
-            for ( int d = 0; d < space_dim; ++d )
-            {
-                node_v[n][d] =
-                    node_p[n][d] / node_m[n] +
-                    delta_t * ( node_f_int[n][d] + node_f_ext[n][d] ) /
-                    node_m[n];
-            }
-        }
-
-        // Otherwise we have no mass or momentum so no velocity.
-        else
-        {
-            for ( int d = 0; d < space_dim; ++d )
-            {
-                node_v[n][d] = 0.0;
-            }
-        }
-    }
+        for ( int d = 0; d < space_dim; ++d )
+            node_imp[n][d] = delta_t * (node_f_int[n][d] + node_f_ext[n][d]);
 
     // Boundary conditions. Free slip for now.
     std::vector<int> boundary_nodes;
@@ -273,20 +368,20 @@ void calculateNodalVelocities(
         bid[d] = -1;
         mesh->getBoundaryNodes( bid, boundary_nodes );
         for ( auto n : boundary_nodes )
-            node_v[n][d] = 0.0;
+            node_imp[n][d] = 0.0;
 
         // high boundary.
         bid[d] = 1;
         mesh->getBoundaryNodes( bid, boundary_nodes );
         for ( auto n : boundary_nodes )
-            node_v[n][d] = 0.0;
+            node_imp[n][d] = 0.0;
     }
 }
 
 //---------------------------------------------------------------------------//
-// Update particle velocity.
+// Update particle velocity and position.
 void updateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
-                      const std::vector<std::vector<double> >& node_v,
+                      const std::vector<std::vector<double> >& node_imp,
                       const std::vector<std::vector<double> >& node_p,
                       const std::vector<double>& node_m,
                       const double delta_t,
@@ -295,62 +390,27 @@ void updateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
     int node_id = 0;
-    std::array<std::array<double,3>,3> V_grad;
-    std::array<std::array<double,3>,3> delta_F;
 
     // Update the velocity.
     for ( auto& p : particles )
     {
-        // Reset the deformation gradient increment and velocity gradient.
-        for ( int d = 0; d < space_dim; ++d )
-        {
-            std::fill( V_grad[d].begin(), V_grad[d].end(), 0.0 );
-            std::fill( delta_F[d].begin(), delta_F[d].end(), 0.0 );
-        }
-
         // Loop over adjacent nodes.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
             node_id = p.node_ids[n];
 
-            for ( int i = 0; i < space_dim; ++i )
+            for ( int d = 0; d < space_dim; ++d )
             {
-                // Increment the velocity. FLIP update.
-                p.v[i] += (node_v[node_id][i]-node_p[node_id][i]/node_m[node_id]) *
-                          p.basis_values[n];
-
                 // Increment the position.
-                p.r[i] += delta_t * node_v[node_id][i] * p.basis_values[n];
+                p.r[d] += delta_t *
+                          (node_p[node_id][d] + node_imp[node_id][d]) *
+                          p.basis_values[n] / node_m[node_id];
 
-                // Compute the velocity gradient.
-                for ( int j = 0; j < space_dim; ++j )
-                    V_grad[i][j] +=
-                        p.basis_gradients[n][i] * node_v[node_id][j];
+                // Increment the velocity.
+                p.v[d] += node_imp[node_id][d] * p.basis_values[n] /
+                          node_m[node_id];
             }
         }
-
-        // Scale the velocity gradient.
-        for ( int i = 0; i < space_dim; ++i )
-            for ( int j = 0; j < space_dim; ++j )
-                V_grad[i][j] *= delta_t;
-
-        // Compute the deformation gradient increment.
-        for ( int i = 0; i < space_dim; ++i )
-            for ( int j = 0; j < space_dim; ++j )
-                for ( int k = 0; k < space_dim; ++k )
-                    delta_F[i][j] += V_grad[i][k] * p.F[k][j];
-
-        // Update the deformation gradient.
-        for ( int i = 0; i < space_dim; ++i )
-            for ( int j = 0; j < space_dim; ++j )
-                p.F[i][j] += delta_F[i][j];
-
-        // Add the velocity gradient to the identity.
-        for ( int i = 0; i < space_dim; ++i )
-            V_grad[i][i] += 1.0;
-
-        // Update the particle volume.
-        p.volume *= determinant( V_grad );
     }
 }
 
@@ -462,6 +522,10 @@ int main( int argc, char *argv[] )
     std::vector<std::vector<double> > node_p(
         num_nodes, std::vector<double>(space_dim,0.0) );
 
+    // Nodal impulse
+    std::vector<std::vector<double> > node_imp(
+        num_nodes, std::vector<double>(space_dim,0.0) );
+
     // Nodal internal force.
     std::vector<std::vector<double> > node_f_int(
         num_nodes, std::vector<double>(space_dim,0.0) );
@@ -481,8 +545,8 @@ int main( int argc, char *argv[] )
     file_io.writeTimeStep( write_step, time, particles );
 
     // Time step
-    int num_step = 50000;
-    double delta_t = 1.0e-4;
+    int num_step = 5000;
+    double delta_t = 1.0e-3;
     int num_write = 50;
     int write_freq = num_step / num_write;
     for ( int step = 0; step < num_step; ++step )
@@ -504,18 +568,24 @@ int main( int argc, char *argv[] )
         // 3) Calculate nodal momentum.
         calculateNodalMomentum( mesh, particles, node_p );
 
+        // 3) Calculate nodal velocity.
+        calculateNodalVelocity( mesh, node_p, node_m, node_v );
+
+        // 3) Update the particle deformation graadient.
+        updateDeformationGradient( mesh, node_v, delta_t, particles );
+
         // 4) Calculate internal forces.
         calculateInternalForces( materialModel, mesh, particles, node_f_int );
 
         // 5) Calculate external forces.
         calculateExternalForces( gravity_field, mesh, particles, node_f_ext );
 
-        // 6) Calculate nodal velocities.
-        calculateNodalVelocities(
-            mesh, node_p, node_m, node_f_int, node_f_ext, delta_t, node_v );
+        // 6) Calculate node impulse.
+        calculateNodalImpulse(
+            mesh, node_f_int, node_f_ext, delta_t, node_imp );
 
         // 7) Update the particle quantities.
-        updateParticles( mesh, node_v, node_p, node_m, delta_t, particles );
+        updateParticles( mesh, node_imp, node_p, node_m, delta_t, particles );
 
         // Write the time step.
         if ( (step+1) % write_freq == 0 )
