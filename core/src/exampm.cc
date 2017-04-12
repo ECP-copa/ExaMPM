@@ -425,7 +425,7 @@ void materialModel( const ExaMPM::Particle& p,
                     std::array<std::array<double,3>,3>& stress )
 {
     // youngs modulus
-    double E = 1e4;
+    double E = 1e5;
 
     // poisson ratio
     double nu = 0.3;
@@ -485,24 +485,23 @@ int main( int argc, char *argv[] )
     std::vector<std::shared_ptr<ExaMPM::Geometry> > geom;
 
     // Create geometries.
-    std::array<double,6> bnds = {0.1,0.3,0.5,0.7,0.5,0.7};
+    std::array<double,6> bnds = {0.1,0.3,0.5,0.7,0.4,0.6};
     geom.push_back( std::make_shared<ExaMPM::Box>(bnds) );
     bnds = {0.7,0.9,0.4,0.6,0.4,0.6};
     geom.push_back( std::make_shared<ExaMPM::Box>(bnds) );
 
     // Assign properties to the geometry.
-    int matid = 1;
     double density = 1.0e3;
     auto init_vf1 =
         [=](const std::array<double,3>& r,std::array<double,3>& v)
         { v[0] = 0.1; v[1] = 0.0; v[2] = 0.0; };
-    geom[0]->setMatId( matid );
+    geom[0]->setMatId( 1 );
     geom[0]->setVelocityField( init_vf1 );
     geom[0]->setDensity( density );
     auto init_vf2 =
         [=](const std::array<double,3>& r,std::array<double,3>& v)
         { v[0] = -0.1; v[1] = 0.0; v[2] = 0.0; };
-    geom[1]->setMatId( matid );
+    geom[1]->setMatId( 2 );
     geom[1]->setVelocityField( init_vf2 );
     geom[1]->setDensity( density );
 
@@ -549,8 +548,8 @@ int main( int argc, char *argv[] )
     file_io.writeTimeStep( write_step, time, particles );
 
     // Time step
-    int num_step = 50000;
-    double delta_t = 1.0e-4;
+    int num_step = 20000;
+    double delta_t = 1.0e-3;
     int num_write = 50;
     int write_freq = num_step / num_write;
     for ( int step = 0; step < num_step; ++step )
