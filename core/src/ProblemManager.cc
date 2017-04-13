@@ -305,7 +305,7 @@ void ProblemManager::calculateNodalVelocity(
 }
 
 //---------------------------------------------------------------------------//
-// Update the particle deformation gradient.
+// Update the particle deformation gradient and velocity gradient.
 void ProblemManager::updateParticleDeformationGradient(
     const std::vector<std::array<double,3> >& node_v,
     const double delta_t )
@@ -313,29 +313,29 @@ void ProblemManager::updateParticleDeformationGradient(
     int space_dim = d_mesh->spatialDimension();
     int nodes_per_cell = d_mesh->nodesPerCell();
     int node_id = 0;
-    std::array<std::array<double,3>,3> V_grad;
     std::array<std::array<double,3>,3> delta_F;
+    std::array<std::array<double,3>,3> work;
 
-    // Update the velocity.
+    // Update the particles
     for ( auto& p : d_particles )
     {
         // Reset the deformation gradient increment and velocity gradient.
         for ( int d = 0; d < space_dim; ++d )
         {
-            std::fill( V_grad[d].begin(), V_grad[d].end(), 0.0 );
+            std::fill( p.grad_v[d].begin(), p.grad_v[d].end(), 0.0 );
             std::fill( delta_F[d].begin(), delta_F[d].end(), 0.0 );
+            std::fill( work[d].begin(), work[d].end(), 0.0 );
         }
 
-        // Loop over adjacent nodes.
+        // Compute the velocity gradient at the particle.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
             node_id = p.node_ids[n];
 
             for ( int i = 0; i < space_dim; ++i )
             {
-                // Compute the velocity gradient.
                 for ( int j = 0; j < space_dim; ++j )
-                    V_grad[i][j] +=
+                    p.grad_v[i][j] +=
                         p.basis_gradients[n][i] * node_v[node_id][j];
             }
         }
@@ -343,25 +343,25 @@ void ProblemManager::updateParticleDeformationGradient(
         // Scale the velocity gradient.
         for ( int i = 0; i < space_dim; ++i )
             for ( int j = 0; j < space_dim; ++j )
-                V_grad[i][j] *= delta_t;
+                work[i][j] = p.grad_v[i][j] * delta_t;
 
         // Compute the deformation gradient increment.
         for ( int i = 0; i < space_dim; ++i )
             for ( int j = 0; j < space_dim; ++j )
                 for ( int k = 0; k < space_dim; ++k )
-                    delta_F[i][j] += V_grad[i][k] * p.F[k][j];
+                    delta_F[i][j] += work[i][k] * p.F[k][j];
 
         // Update the deformation gradient.
         for ( int i = 0; i < space_dim; ++i )
             for ( int j = 0; j < space_dim; ++j )
                 p.F[i][j] += delta_F[i][j];
 
-        // Add the velocity gradient to the identity.
+        // Add the scaled velocity gradient to the identity.
         for ( int i = 0; i < space_dim; ++i )
-            V_grad[i][i] += 1.0;
+            work[i][i] += 1.0;
 
         // Update the particle volume.
-        p.volume *= TensorTools::determinant( V_grad );
+        p.volume *= TensorTools::determinant( work );
     }
 }
 
@@ -486,7 +486,7 @@ void ProblemManager::updateParticlePositionAndVelocity(
                               (node_p[node_id][d] + node_imp[node_id][d]) *
                               p.basis_values[n] / node_m[node_id];
 
-                    // Increment the velocity.
+                    // Increment the velocity. (FLIP Update)
                     p.v[d] += node_imp[node_id][d] * p.basis_values[n] /
                               node_m[node_id];
                 }

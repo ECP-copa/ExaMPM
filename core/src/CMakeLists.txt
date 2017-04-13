@@ -10,6 +10,7 @@ APPEND_SET(HEADERS
   Geometry.hh
   Mesh.hh
   NeoHookeanStress.hh
+  NewtonianViscousStress.hh
   Particle.hh
   ProblemManager.hh
   Sphere.hh
@@ -23,6 +24,7 @@ APPEND_SET(SOURCES
   FileIO.cc
   Geometry.cc
   Mesh.cc
+  NewtonianViscousStress.cc
   NeoHookeanStress.cc
   ProblemManager.cc
   Sphere.cc

@@ -41,7 +41,7 @@ int main( int argc, char *argv[] )
 
     // Setup a stress model.
     std::vector<std::shared_ptr<ExaMPM::StressModel> > materials( 1 );
-    double youngs_modulus = 1.0e9;
+    double youngs_modulus = 1.0e7;
     double poisson_ratio = 0.4;
     materials[0] = std::make_shared<ExaMPM::NeoHookeanStress>(
         youngs_modulus, poisson_ratio );
@@ -77,8 +77,8 @@ int main( int argc, char *argv[] )
     manager.initialize( geom, order );
 
     // Solve the problem.
-    int num_steps = 3000;
-    double delta_t = 1.0e-3;
+    int num_steps = 10000;
+    double delta_t = 1.0e-4;
     std::string output_file( "particles.h5" );
     int write_freq = 100;
     manager.solve( num_steps, delta_t, output_file, write_freq );

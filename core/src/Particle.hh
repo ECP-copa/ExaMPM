@@ -30,6 +30,12 @@ class Particle
     //! Velocity.
     std::array<double,3> v;
 
+    //! Deformation gradient.
+    std::array<std::array<double,3>,3> F;
+
+    //! Velocity gradient.
+    std::array<std::array<double,3>,3> grad_v;
+
     //! Mass.
     double m;
 
@@ -38,9 +44,6 @@ class Particle
 
     //! Material id.
     int matid;
-
-    //! Deformation gradient.
-    std::array<std::array<double,3>,3> F;
     //@}
 
     //@{
