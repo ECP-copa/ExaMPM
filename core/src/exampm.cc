@@ -9,6 +9,9 @@
 #include "Mesh.hh"
 #include "Box.hh"
 #include "FileIO.hh"
+#include "StressModel.hh"
+#include "NeoHookeanStress.hh"
+#include "TensorTools.hh"
 
 #include <memory>
 #include <vector>
@@ -18,19 +21,6 @@
 #include <cmath>
 #include <cassert>
 #include <iostream>
-
-//---------------------------------------------------------------------------//
-// Calculate the determinant of a 3x3 matrix.
-double determinant( const std::array<std::array<double,3>,3>& m )
-{
-    return
-        m[0][0] * m[1][1] * m[2][2] +
-        m[0][1] * m[1][2] * m[2][0] +
-        m[0][2] * m[1][0] * m[2][1] -
-        m[0][2] * m[1][1] * m[2][0] -
-        m[0][1] * m[1][0] * m[2][2] -
-        m[0][0] * m[1][2] * m[2][1];
-}
 
 //---------------------------------------------------------------------------//
 // Initialize particles.
@@ -261,7 +251,7 @@ void updateDeformationGradient(
             V_grad[i][i] += 1.0;
 
         // Update the particle volume.
-        p.volume *= determinant( V_grad );
+        p.volume *= ExaMPM::TensorTools::determinant( V_grad );
     }
 }
 
@@ -304,8 +294,7 @@ void calculateExternalForces(
 //---------------------------------------------------------------------------//
 // Calculate internal forces.
 void calculateInternalForces(
-    std::function<void(const ExaMPM::Particle&,
-                       std::array<std::array<double,3>,3>&)> material_model,
+    const std::shared_ptr<ExaMPM::StressModel>& stress_model,
     const std::shared_ptr<ExaMPM::Mesh>& mesh,
     const std::vector<ExaMPM::Particle>& particles,
     std::vector<std::vector<double> >& node_f_int )
@@ -324,7 +313,7 @@ void calculateInternalForces(
     for ( auto& p : particles )
     {
         // Compute the stress based on the particle state..
-        material_model( p, stress );
+        stress_model->calculateStress( p, stress );
 
         // Project the stress gradients.
         for ( int n = 0; n < nodes_per_cell; ++n )
@@ -419,58 +408,6 @@ void updateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
 }
 
 //---------------------------------------------------------------------------//
-// Material model. Computes the first Piola-Kirchoff stress of a Neo-Hookean
-// material and then transforms it to the physical frame.
-void materialModel( const ExaMPM::Particle& p,
-                    std::array<std::array<double,3>,3>& stress )
-{
-    // youngs modulus
-    double E = 1e8;
-
-    // poisson ratio
-    double nu = 0.3;
-
-    // lame's first parameter
-    double lambda = E * nu / ( (1+nu)*(1-2*nu) );
-
-    // lame's second parameter
-    double mu = E / (2 *(1+nu) );
-
-    // Calculate the determinant of the deformation gradient.
-    double J = determinant( p.F );
-    assert( J > 0.0 );
-
-    // Reset the stress.
-    for ( int d = 0; d < 3; ++d )
-        stress[d] = { 0.0, 0.0, 0.0 };
-
-    // Calculate F*F^T
-    for ( int j = 0; j < 3; ++j )
-        for ( int i = 0; i < 3; ++i )
-            for ( int k = 0; k < 3; ++k )
-                stress[i][j] += p.F[i][k] * p.F[j][k];
-
-    // Subtract the identity.
-    for ( int i = 0; i < 3; ++i )
-        stress[i][i] -= 1.0;
-
-    // Scale by mu.
-    for ( int j = 0; j < 3; ++j )
-        for ( int i = 0; i < 3; ++i )
-            stress[i][j] *= mu;
-
-    // Add the scaled identity.
-    double c = lambda * std::log(J);
-    for ( int i = 0; i < 3; ++i )
-        stress[i][i] += c;
-
-    // Scale by the determinant of the deformation gradient.
-    for ( int j = 0; j < 3; ++j )
-        for ( int i = 0; i < 3; ++i )
-            stress[i][j] /= J;
-}
-
-//---------------------------------------------------------------------------//
 int main( int argc, char *argv[] )
 {
     // Set the spatial dimension.
@@ -510,6 +447,13 @@ int main( int argc, char *argv[] )
     geom[1]->setMatId( 2 );
     geom[1]->setVelocityField( init_vf2 );
     geom[1]->setDensity( density );
+
+    // Setup a stress model.
+    double youngs_modulus = 1.0e9;
+    double poisson_ratio = 0.4;
+    std::shared_ptr<ExaMPM::StressModel> stress_model =
+        std::make_shared<ExaMPM::NeoHookeanStress>(
+            youngs_modulus, poisson_ratio );
 
     // Initialize the particles in the geometry.
     std::vector<ExaMPM::Particle> particles;
@@ -554,9 +498,9 @@ int main( int argc, char *argv[] )
     file_io.writeTimeStep( write_step, time, particles );
 
     // Time step
-    int num_step = 10000;
+    int num_step = 3000;
     double delta_t = 1.0e-3;
-    int num_write = 100;
+    int num_write = 30;
     int write_freq = num_step / num_write;
     for ( int step = 0; step < num_step; ++step )
     {
@@ -580,11 +524,11 @@ int main( int argc, char *argv[] )
         // 3) Calculate nodal velocity.
         calculateNodalVelocity( mesh, node_p, node_m, node_v );
 
-        // 3) Update the particle deformation graadient.
+        // 3) Update the particle deformation gradient.
         updateDeformationGradient( mesh, node_v, delta_t, particles );
 
         // 4) Calculate internal forces.
-        calculateInternalForces( materialModel, mesh, particles, node_f_int );
+        calculateInternalForces( stress_model, mesh, particles, node_f_int );
 
         // 5) Calculate external forces.
         calculateExternalForces( gravity_field, mesh, particles, node_f_ext );
