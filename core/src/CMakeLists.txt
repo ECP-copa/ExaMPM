@@ -11,6 +11,7 @@ APPEND_SET(HEADERS
   Mesh.hh
   NeoHookeanStress.hh
   Particle.hh
+  ProblemManager.hh
   StressModel.hh
   TensorTools.hh
   )
@@ -21,6 +22,7 @@ APPEND_SET(SOURCES
   FileIO.cc
   Mesh.cc
   NeoHookeanStress.cc
+  ProblemManager.cc
   )
 
 TRIBITS_ADD_LIBRARY(

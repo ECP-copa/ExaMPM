@@ -5,428 +5,27 @@
  */
 //---------------------------------------------------------------------------//
 
-#include "Particle.hh"
-#include "Mesh.hh"
 #include "Box.hh"
-#include "FileIO.hh"
 #include "StressModel.hh"
 #include "NeoHookeanStress.hh"
-#include "TensorTools.hh"
 #include "BoundaryCondition.hh"
+#include "ProblemManager.hh"
 
 #include <memory>
 #include <vector>
 #include <array>
-#include <algorithm>
 #include <functional>
-#include <cmath>
-#include <cassert>
-#include <iostream>
-
-//---------------------------------------------------------------------------//
-// Initialize particles.
-void initializeParticles(
-    const std::vector<std::shared_ptr<ExaMPM::Geometry> >& geom,
-    const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const int order,
-    std::vector<ExaMPM::Particle>& particles )
-{
-    int ppcell = mesh->particlesPerCell( order );
-    std::vector<ExaMPM::Particle> candidates( ppcell );
-    int num_cells = mesh->totalNumCells();
-    for ( int c = 0; c < num_cells; ++c )
-    {
-        // Create the particles.
-        mesh->initializeParticles( c, order, candidates );
-
-        // If they are in the geometry add them to the list.
-        for ( int p = 0; p < ppcell; ++p )
-        {
-            for ( const auto& g : geom )
-            {
-                if ( g->particleInGeometry(candidates[p]) )
-                {
-                    g->initializeParticle(candidates[p]);
-                    particles.push_back( candidates[p] );
-                    break;
-                }
-            }
-        }
-    }
-}
-
-//---------------------------------------------------------------------------//
-// Locate the particles and compute grid values.
-void locateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
-                      std::vector<ExaMPM::Particle>& particles )
-{
-    int space_dim = mesh->spatialDimension();
-    std::array<int,3> cell_id;
-    std::array<double,3> ref_coords;
-
-    for ( auto& p : particles )
-    {
-        // Locate the particle.
-        mesh->locateParticle( p, cell_id );
-
-        // Get the node ids local to the particle.
-        mesh->cellNodeIds( cell_id, p.node_ids );
-
-        // Map the particle to the reference frame of the cell.
-        mesh->mapPhysicalToReferenceFrame( p, cell_id, ref_coords );
-
-        // Evaluate the cell basis function at the particle location.
-        mesh->shapeFunctionValue( ref_coords, p.basis_values );
-
-        // Evaluate the cell basis function gradient at the particle location.
-        mesh->shapeFunctionGradient( ref_coords, p.basis_gradients );
-    }
-}
-
-//---------------------------------------------------------------------------//
-// Calculate the nodal mass.
-void calculateNodalMass( const std::shared_ptr<ExaMPM::Mesh>& mesh,
-                         const std::vector<ExaMPM::Particle>& particles,
-                         std::vector<double>& node_m )
-{
-    int nodes_per_cell = mesh->nodesPerCell();
-    int node_id = 0;
-
-    // Reset the nodal mass.
-    std::fill( node_m.begin(), node_m.end(), 0.0 );
-
-    // Compute the nodal mass.
-    for ( auto& p : particles )
-    {
-        // Assemble the nodal mass.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = p.node_ids[n];
-            node_m[node_id] += p.basis_values[n] * p.m;
-        }
-    }
-}
-
-//---------------------------------------------------------------------------//
-// Calculate nodal momentum.
-void calculateNodalMomentum(
-    const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<ExaMPM::Particle>& particles,
-    const std::vector<double>& node_m,
-    const std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6>& bc,
-    std::vector<std::array<double,3> >& node_p )
-{
-    int space_dim = mesh->spatialDimension();
-    int nodes_per_cell = mesh->nodesPerCell();
-    int node_id = 0;
-
-    // Reset the momentum
-    for ( auto& mom : node_p )
-        std::fill( mom.begin(), mom.end(), 0.0 );
-
-    // Update the momentum
-    for ( auto& p : particles )
-    {
-        // Calculate momentum.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = p.node_ids[n];
-
-            for ( int d = 0; d < space_dim; ++d )
-            {
-                node_p[node_id][d] +=
-                    p.m * p.v[d] * p.basis_values[n];
-            }
-        }
-    }
-
-    // Boundary conditions.
-    for ( int b = 0; b < 6; ++b )
-        bc[b]->evaluateMomentumCondition( mesh, b, node_m, node_p );
-}
-
-//---------------------------------------------------------------------------//
-// Calculate nodal velocities.
-void calculateNodalVelocity(
-    const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<std::array<double,3> >& node_p,
-    const std::vector<double>& node_m,
-    std::vector<std::array<double,3> >& node_v )
-{
-    int space_dim = mesh->spatialDimension();
-    int num_nodes = mesh->totalNumNodes();
-
-    // Update the velocity
-    for ( int n = 0; n < num_nodes; ++n )
-    {
-        // If we have nodal mass do the update.
-        if ( node_m[n] > 0.0 )
-        {
-            for ( int d = 0; d < space_dim; ++d )
-            {
-                node_v[n][d] = node_p[n][d] / node_m[n];
-            }
-        }
-
-        // Otherwise we have no mass or momentum so no velocity.
-        else
-        {
-            for ( int d = 0; d < space_dim; ++d )
-            {
-                node_v[n][d] = 0.0;
-            }
-        }
-    }
-}
-
-//---------------------------------------------------------------------------//
-// Update particle deformation gradient.
-void updateDeformationGradient(
-    const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<std::array<double,3> >& node_v,
-    const double delta_t,
-    std::vector<ExaMPM::Particle>& particles )
-{
-    int space_dim = mesh->spatialDimension();
-    int nodes_per_cell = mesh->nodesPerCell();
-    int node_id = 0;
-    std::array<std::array<double,3>,3> V_grad;
-    std::array<std::array<double,3>,3> delta_F;
-
-    // Update the velocity.
-    for ( auto& p : particles )
-    {
-        // Reset the deformation gradient increment and velocity gradient.
-        for ( int d = 0; d < space_dim; ++d )
-        {
-            std::fill( V_grad[d].begin(), V_grad[d].end(), 0.0 );
-            std::fill( delta_F[d].begin(), delta_F[d].end(), 0.0 );
-        }
-
-        // Loop over adjacent nodes.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = p.node_ids[n];
-
-            for ( int i = 0; i < space_dim; ++i )
-            {
-                // Compute the velocity gradient.
-                for ( int j = 0; j < space_dim; ++j )
-                    V_grad[i][j] +=
-                        p.basis_gradients[n][i] * node_v[node_id][j];
-            }
-        }
-
-        // Scale the velocity gradient.
-        for ( int i = 0; i < space_dim; ++i )
-            for ( int j = 0; j < space_dim; ++j )
-                V_grad[i][j] *= delta_t;
-
-        // Compute the deformation gradient increment.
-        for ( int i = 0; i < space_dim; ++i )
-            for ( int j = 0; j < space_dim; ++j )
-                for ( int k = 0; k < space_dim; ++k )
-                    delta_F[i][j] += V_grad[i][k] * p.F[k][j];
-
-        // Update the deformation gradient.
-        for ( int i = 0; i < space_dim; ++i )
-            for ( int j = 0; j < space_dim; ++j )
-                p.F[i][j] += delta_F[i][j];
-
-        // Add the velocity gradient to the identity.
-        for ( int i = 0; i < space_dim; ++i )
-            V_grad[i][i] += 1.0;
-
-        // Update the particle volume.
-        p.volume *= ExaMPM::TensorTools::determinant( V_grad );
-    }
-}
-
-//---------------------------------------------------------------------------//
-// Calculate external forces.
-void calculateExternalForces(
-    std::function<void(const std::array<double,3>& r,std::array<double,3>& v)> field,
-    const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<ExaMPM::Particle>& particles,
-    std::vector<std::array<double,3> >& node_f_ext )
-{
-    int space_dim = mesh->spatialDimension();
-    int nodes_per_cell = mesh->nodesPerCell();
-    std::array<double,3> local_acceleration;
-    int node_id = 0;
-
-    // Reset the forces.
-    for ( auto& f_ext : node_f_ext )
-        std::fill( f_ext.begin(), f_ext.end(), 0.0 );
-
-    // Calculate forces.
-    for ( auto& p : particles )
-    {
-        // Calculate force.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            local_acceleration = {0.0,0.0,0.0};
-            field( p.r, local_acceleration );
-
-            node_id = p.node_ids[n];
-            for ( int d = 0; d < space_dim; ++d )
-            {
-                node_f_ext[node_id][d] +=
-                    p.m * local_acceleration[d] * p.basis_values[n];
-            }
-        }
-    }
-}
-
-//---------------------------------------------------------------------------//
-// Calculate internal forces.
-void calculateInternalForces(
-    const std::shared_ptr<ExaMPM::StressModel>& stress_model,
-    const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<ExaMPM::Particle>& particles,
-    std::vector<std::array<double,3> >& node_f_int )
-{
-
-    int space_dim = mesh->spatialDimension();
-    int nodes_per_cell = mesh->nodesPerCell();
-    int node_id = 0;
-    std::array<std::array<double,3>,3> stress;
-
-    // Reset the forces.
-    for ( auto& f_int : node_f_int )
-        std::fill( f_int.begin(), f_int.end(), 0.0 );
-
-    // Compute forces.
-    for ( auto& p : particles )
-    {
-        // Compute the stress based on the particle state..
-        stress_model->calculateStress( p, stress );
-
-        // Project the stress gradients.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = p.node_ids[n];
-
-            // Compute the force via the stress divergence.
-            for ( int i = 0; i < space_dim; ++i )
-                for ( int j = 0; j < space_dim; ++j )
-                    node_f_int[node_id][i] -=
-                        p.volume * p.basis_gradients[n][j] * stress[j][i];
-        }
-    }
-}
-
-//---------------------------------------------------------------------------//
-// Calculate nodal impulse.
-void calculateNodalImpulse(
-    const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<std::array<double,3> >& node_f_int,
-    const std::vector<std::array<double,3> >& node_f_ext,
-    const std::vector<double>& node_m,
-    const double delta_t,
-    const std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6>& bc,
-    std::vector<std::array<double,3> >& node_imp )
-{
-    int space_dim = mesh->spatialDimension();
-    int num_nodes = mesh->totalNumNodes();
-
-    // Calculate impulse.
-    for ( int n = 0; n < num_nodes; ++n )
-        for ( int d = 0; d < space_dim; ++d )
-            node_imp[n][d] = delta_t * (node_f_int[n][d] + node_f_ext[n][d]);
-
-    // Boundary conditions.
-    for ( int b = 0; b < 6; ++b )
-        bc[b]->evaluateImpulseCondition( mesh, b, node_m, node_imp );
-}
-
-//---------------------------------------------------------------------------//
-// Update particle velocity and position.
-void updateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
-                      const std::vector<std::array<double,3> >& node_imp,
-                      const std::vector<std::array<double,3> >& node_p,
-                      const std::vector<double>& node_m,
-                      const double delta_t,
-                      std::vector<ExaMPM::Particle>& particles )
-{
-    int space_dim = mesh->spatialDimension();
-    int nodes_per_cell = mesh->nodesPerCell();
-    int node_id = 0;
-
-    // Update the velocity.
-    for ( auto& p : particles )
-    {
-        // Loop over adjacent nodes.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = p.node_ids[n];
-
-            // Only add a contribution from an adjacent node if it has mass.
-            if ( node_m[node_id] > 0.0 )
-            {
-                for ( int d = 0; d < space_dim; ++d )
-                {
-                    // Increment the position.
-                    p.r[d] += delta_t *
-                              (node_p[node_id][d] + node_imp[node_id][d]) *
-                              p.basis_values[n] / node_m[node_id];
-
-                    // Increment the velocity.
-                    p.v[d] += node_imp[node_id][d] * p.basis_values[n] /
-                              node_m[node_id];
-                }
-            }
-        }
-    }
-}
 
 //---------------------------------------------------------------------------//
 int main( int argc, char *argv[] )
 {
-    // Set the spatial dimension.
-    int space_dim = 3;
-
-    // Create a mesh.
+    // Create the problem manager.
     int num_cells_x = 25;
     int num_cells_y = 25;
     int num_cells_z = 25;
     double cell_width = 0.04;
-    auto mesh = std::make_shared<ExaMPM::Mesh>(
+    ExaMPM::ProblemManager manager(
         num_cells_x, num_cells_y, num_cells_z, cell_width );
-
-    // Get mesh data.
-    int num_nodes = mesh->totalNumNodes();
-
-    // Geometry
-    std::vector<std::shared_ptr<ExaMPM::Geometry> > geom;
-
-    // Create geometries.
-    std::array<double,6> bnds = {0.2,0.4,0.4,0.6,0.4,0.6};
-    geom.push_back( std::make_shared<ExaMPM::Box>(bnds) );
-    bnds = {0.6,0.8,0.5,0.7,0.4,0.6};
-    geom.push_back( std::make_shared<ExaMPM::Box>(bnds) );
-
-    // Assign properties to the geometry.
-    double density = 1.0e3;
-    auto init_vf1 =
-        [=](const std::array<double,3>& r,std::array<double,3>& v)
-        { v[0] = 0.1; v[1] = 0.0; v[2] = 0.0; };
-    geom[0]->setMatId( 1 );
-    geom[0]->setVelocityField( init_vf1 );
-    geom[0]->setDensity( density );
-    auto init_vf2 =
-        [=](const std::array<double,3>& r,std::array<double,3>& v)
-        { v[0] = -0.1; v[1] = 0.0; v[2] = 0.0; };
-    geom[1]->setMatId( 2 );
-    geom[1]->setVelocityField( init_vf2 );
-    geom[1]->setDensity( density );
-
-    // Setup a stress model.
-    double youngs_modulus = 1.0e9;
-    double poisson_ratio = 0.4;
-    std::shared_ptr<ExaMPM::StressModel> stress_model =
-        std::make_shared<ExaMPM::NeoHookeanStress>(
-            youngs_modulus, poisson_ratio );
 
     // Create boundary conditions.
     std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6> bc;
@@ -437,101 +36,53 @@ int main( int argc, char *argv[] )
     bc[4] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
     bc[5] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
 
-    // Initialize the particles in the geometry.
-    std::vector<ExaMPM::Particle> particles;
+    // Set boundary conditions with the manager.
+    manager.setBoundaryConditions( bc );
+
+    // Setup a stress model.
+    std::vector<std::shared_ptr<ExaMPM::StressModel> > materials( 1 );
+    double youngs_modulus = 1.0e9;
+    double poisson_ratio = 0.4;
+    materials[0] = std::make_shared<ExaMPM::NeoHookeanStress>(
+        youngs_modulus, poisson_ratio );
+
+    // Set the materials with the manager.
+    manager.setMaterialModels( materials );
+
+    // Geometry
+    std::vector<std::shared_ptr<ExaMPM::Geometry> > geom( 2 );
+
+    // Create geometries.
+    std::array<double,6> bnds = {0.2,0.4,0.4,0.6,0.4,0.6};
+    geom[0] = std::make_shared<ExaMPM::Box>(bnds);
+    bnds = {0.6,0.8,0.5,0.7,0.4,0.6};
+    geom[1] = std::make_shared<ExaMPM::Box>(bnds);
+
+    // Assign properties to the geometry.
+    double density = 1.0e3;
+    auto init_vf1 =
+        [=](const std::array<double,3>& r,std::array<double,3>& v)
+        { v[0] = 0.1; v[1] = 0.0; v[2] = 0.0; };
+    geom[0]->setMatId( 0 );
+    geom[0]->setVelocityField( init_vf1 );
+    geom[0]->setDensity( density );
+    auto init_vf2 =
+        [=](const std::array<double,3>& r,std::array<double,3>& v)
+        { v[0] = -0.1; v[1] = 0.0; v[2] = 0.0; };
+    geom[1]->setMatId( 0 );
+    geom[1]->setVelocityField( init_vf2 );
+    geom[1]->setDensity( density );
+
+    // Initialize the manager.
     int order = 2;
-    initializeParticles( geom, mesh, order, particles );
+    manager.initialize( geom, order );
 
-    // Gravity acceleration function.
-    auto gravity_field = [](const std::array<double,3>& r,std::array<double,3>& f)
-                         { f[0] = 0.0; f[1] = 0.0; f[2] = 0.0; };
-
-    // Nodal mass
-    std::vector<double> node_m( num_nodes, 0.0 );
-
-    // Nodal velocity
-    std::vector<std::array<double,3> > node_v(
-        num_nodes, std::array<double,3>() );
-
-    // Nodal momentum
-    std::vector<std::array<double,3> > node_p(
-        num_nodes, std::array<double,3>() );
-
-    // Nodal impulse
-    std::vector<std::array<double,3> > node_imp(
-        num_nodes, std::array<double,3>() );
-
-    // Nodal internal force.
-    std::vector<std::array<double,3> > node_f_int(
-        num_nodes, std::array<double,3>() );
-
-    // Nodal external force
-    std::vector<std::array<double,3> > node_f_ext(
-        num_nodes, std::array<double,3>() );
-
-    // Setup an output writer.
-    ExaMPM::FileIO file_io( "particles.h5" );
-
-    // Time step parameters
-    double time = 0.0;
-
-    // Write the initial state.
-    int write_step = 0;
-    file_io.writeTimeStep( write_step, time, particles );
-
-    // Time step
-    int num_step = 3000;
+    // Solve the problem.
+    int num_steps = 3000;
     double delta_t = 1.0e-3;
-    int num_write = 30;
-    int write_freq = num_step / num_write;
-    for ( int step = 0; step < num_step; ++step )
-    {
-        time += delta_t;
-
-        if ( (step+1) % write_freq == 0 )
-        {
-            std::cout << "Time Step " << step+1 << "/" << num_step << ": "
-                      <<  time <<  " (s)" << std::endl;
-        }
-
-        // 1) Locate particles and evaluate basis functions.
-        locateParticles( mesh, particles );
-
-        // 2) Calculate the nodal masses.
-        calculateNodalMass( mesh, particles, node_m );
-
-        // 3) Calculate nodal momentum.
-        calculateNodalMomentum( mesh, particles, node_m, bc, node_p );
-
-        // 3) Calculate nodal velocity.
-        calculateNodalVelocity( mesh, node_p, node_m, node_v );
-
-        // 3) Update the particle deformation gradient.
-        updateDeformationGradient( mesh, node_v, delta_t, particles );
-
-        // 4) Calculate internal forces.
-        calculateInternalForces( stress_model, mesh, particles, node_f_int );
-
-        // 5) Calculate external forces.
-        calculateExternalForces( gravity_field, mesh, particles, node_f_ext );
-
-        // 6) Calculate node impulse.
-        calculateNodalImpulse(
-            mesh, node_f_int, node_f_ext, node_m, delta_t, bc, node_imp );
-
-        // 7) Update the particle quantities.
-        updateParticles( mesh, node_imp, node_p, node_m, delta_t, particles );
-
-        // Write the time step.
-        if ( (step+1) % write_freq == 0 )
-        {
-            ++write_step;
-            file_io.writeTimeStep( write_step, time, particles );
-        }
-    }
-
-    file_io.writeTimeStep( write_step+1, time, particles );
-
+    std::string output_file( "particles.h5" );
+    int write_freq = 100;
+    manager.solve( num_steps, delta_t, output_file, write_freq );
 
     return 0;
 }
