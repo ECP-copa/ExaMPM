@@ -24,7 +24,102 @@ Mesh::Mesh( const int num_cells_x,
     , d_num_nodes_x( num_cells_x + 1 )
     , d_num_nodes_y( num_cells_y + 1 )
     , d_num_nodes_z( num_cells_z + 1 )
-{ /* ... */ }
+{
+    // Create the boundary nodes.
+
+    // -X boundary.
+    {
+        // Boundary id.
+        int bid = 0;
+
+        // X index.
+        int i = 0;
+
+        // Fill the boundary nodes.
+        d_boundary_nodes[bid].resize( d_num_nodes_x*d_num_nodes_z );
+        for ( int k = 0; k < d_num_nodes_z; ++k )
+            for ( int j = 0; j < d_num_nodes_y; ++j )
+                d_boundary_nodes[bid][k*d_num_nodes_y+j] = nodeId( i, j, k );
+    }
+
+    // +X boundary.
+    {
+        // Boundary id.
+        int bid = 1;
+
+        // X index
+        int i = d_num_cells_x;
+
+        // Fill the boundary nodes.
+        d_boundary_nodes[bid].resize( d_num_nodes_x*d_num_nodes_z );
+        for ( int k = 0; k < d_num_nodes_z; ++k )
+            for ( int j = 0; j < d_num_nodes_y; ++j )
+                d_boundary_nodes[bid][k*d_num_nodes_y+j] = nodeId( i, j, k );
+    }
+
+
+    // -Y boundary
+    {
+        // Boundary id.
+        int bid = 2;
+
+        // Y index.
+        int j = 0;
+
+        // Fill the boundary nodes.
+        d_boundary_nodes[bid].resize( d_num_nodes_x*d_num_nodes_z );
+        for ( int k = 0; k < d_num_nodes_z; ++k )
+            for ( int i = 0; i < d_num_nodes_x; ++i )
+                d_boundary_nodes[bid][k*d_num_nodes_x+i] = nodeId( i, j, k );
+
+    }
+
+    // +Y boundary
+    {
+        // Boundary id.
+        int bid = 3;
+
+        // Y index.
+        int j = d_num_cells_y;
+
+        // Fill the boundary nodes.
+        d_boundary_nodes[bid].resize( d_num_nodes_x*d_num_nodes_z );
+        for ( int k = 0; k < d_num_nodes_z; ++k )
+            for ( int i = 0; i < d_num_nodes_x; ++i )
+                d_boundary_nodes[bid][k*d_num_nodes_x+i] = nodeId( i, j, k );
+
+    }
+
+    // -Z boundary
+    {
+        // Boundary id.
+        int bid = 4;
+
+        // Z index.
+        int k = 0;
+
+        // Fill the boundary nodes.
+        d_boundary_nodes[bid].resize( d_num_nodes_x*d_num_nodes_y );
+        for ( int j = 0; j< d_num_nodes_y; ++j )
+            for ( int i = 0; i < d_num_nodes_x; ++i )
+                d_boundary_nodes[bid][j*d_num_nodes_x+i] = nodeId( i, j, k );
+    }
+
+    // +Z boundary
+    {
+        // Boundary id.
+        int bid = 5;
+
+        // Z index.
+        int k = d_num_cells_z;
+
+        // Fill the boundary nodes.
+        d_boundary_nodes[bid].resize( d_num_nodes_x*d_num_nodes_y );
+        for ( int j = 0; j< d_num_nodes_y; ++j )
+            for ( int i = 0; i < d_num_nodes_x; ++i )
+                d_boundary_nodes[bid][j*d_num_nodes_x+i] = nodeId( i, j, k );
+    }
+}
 
 //---------------------------------------------------------------------------//
 // Get the spatial dimension of the mesh.
@@ -79,107 +174,11 @@ void Mesh::nodeCoordinates( const int node_id,
 
 //---------------------------------------------------------------------------//
 // Given a boundary id get the ids of the nodes on that boundary.
-void Mesh::getBoundaryNodes( const std::array<int,3>& boundary_id,
-                             std::vector<int>& boundary_nodes ) const
+const std::vector<int>&
+Mesh::getBoundaryNodes( const int boundary_id ) const
 {
-    // X boundary.
-    if ( boundary_id[0] )
-    {
-        // Make sure a Y boundary was also not input.
-        assert( !boundary_id[1] );
-
-        // Make sure a Z boundary was also not input.
-        assert( !boundary_id[2] );
-
-        // Size the boundary nodes input vector.
-        boundary_nodes.resize( d_num_nodes_y*d_num_nodes_z );
-
-        // X index.
-        int i = 0;
-
-        // Low X boundary.
-        if ( boundary_id[0] < 0 )
-        {
-            i = 0;
-        }
-
-        // High X boundary.
-        else if ( boundary_id[0] > 0 )
-        {
-            i = d_num_cells_x;
-        }
-
-        // Fill the boundary nodes.
-        for ( int k = 0; k < d_num_nodes_z; ++k )
-            for ( int j = 0; j < d_num_nodes_y; ++j )
-                boundary_nodes[k*d_num_nodes_y+j] = nodeId( i, j, k );
-    }
-
-    // Y Boundary
-    else if ( boundary_id[1] )
-    {
-        // Make sure an X boundary was also not input.
-        assert( !boundary_id[0] );
-
-        // Make sure a Z boundary was also not input.
-        assert( !boundary_id[2] );
-
-        // Size the boundary nodes input vector.
-        boundary_nodes.resize( d_num_nodes_x*d_num_nodes_z );
-
-        // Y index.
-        int j = 0;
-
-        // Low Y boundary.
-        if ( boundary_id[1] < 0 )
-        {
-            j = 0;
-        }
-
-        // High Y boundary.
-        else if ( boundary_id[1] > 0 )
-        {
-            j = d_num_cells_y;
-        }
-
-        // Fill the boundary nodes.
-        for ( int k = 0; k < d_num_nodes_z; ++k )
-            for ( int i = 0; i < d_num_nodes_x; ++i )
-                boundary_nodes[k*d_num_nodes_x+i] = nodeId( i, j, k );
-    }
-
-    // Z Boundary
-    else if ( boundary_id[2] )
-    {
-        // Make sure an X boundary was also not input.
-        assert( !boundary_id[0] );
-
-        // Make sure a Y boundary was also not input.
-        assert( !boundary_id[1] );
-
-        // Size the boundary nodes input vector.
-        boundary_nodes.resize( d_num_nodes_x*d_num_nodes_y );
-
-        // Z index.
-        int k = 0;
-
-        // Low Z boundary.
-        if ( boundary_id[2] < 0 )
-        {
-            k = 0;
-        }
-
-        // High Z boundary.
-        else if ( boundary_id[2] > 0 )
-        {
-            k = d_num_cells_z;
-        }
-
-        // Fill the boundary nodes.
-        for ( int j = 0; j< d_num_nodes_y; ++j )
-            for ( int i = 0; i < d_num_nodes_x; ++i )
-                boundary_nodes[j*d_num_nodes_x+i] = nodeId( i, j, k );
-    }
+    assert( 0 <= boundary_id && boundary_id < 6 );
+    return d_boundary_nodes[boundary_id];
 }
 
 //---------------------------------------------------------------------------//

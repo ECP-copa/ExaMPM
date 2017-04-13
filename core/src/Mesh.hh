@@ -48,8 +48,8 @@ class Mesh
                           std::array<double,3>& coords ) const;
 
     // Given a boundary id get the ids of the nodes on that boundary.
-    void getBoundaryNodes( const std::array<int,3>& boundary_id,
-                           std::vector<int>& boundary_nodes ) const;
+    const std::vector<int>&
+    getBoundaryNodes( const int boundary_id ) const;
 
     // Get the number of particles in a cell for a given order.
     int particlesPerCell( const int order ) const;
@@ -114,6 +114,10 @@ class Mesh
 
     // Number of nodes in the z direction.
     int d_num_nodes_z;
+
+    // Boundary node ids.
+    // (-x = 0, +x = 1, -y = 2, +y = 3, -z = 4, +z = 5)
+    std::array<std::vector<int>,6> d_boundary_nodes;
 };
 
 } // end namespace ExaMPM

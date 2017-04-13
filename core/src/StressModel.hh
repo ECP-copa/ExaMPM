@@ -22,6 +22,9 @@ class StressModel
 {
   public:
 
+    // Destructor
+    virtual ~StressModel() = default;
+
     // Given a particle state calculate the particle stress.
     virtual void
     calculateStress( const ExaMPM::Particle& p,

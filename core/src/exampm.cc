@@ -12,6 +12,7 @@
 #include "StressModel.hh"
 #include "NeoHookeanStress.hh"
 #include "TensorTools.hh"
+#include "BoundaryCondition.hh"
 
 #include <memory>
 #include <vector>
@@ -111,7 +112,9 @@ void calculateNodalMass( const std::shared_ptr<ExaMPM::Mesh>& mesh,
 void calculateNodalMomentum(
     const std::shared_ptr<ExaMPM::Mesh>& mesh,
     const std::vector<ExaMPM::Particle>& particles,
-    std::vector<std::vector<double> >& node_p )
+    const std::vector<double>& node_m,
+    const std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6>& bc,
+    std::vector<std::array<double,3> >& node_p )
 {
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
@@ -137,34 +140,18 @@ void calculateNodalMomentum(
         }
     }
 
-    // Boundary conditions. Free slip for now.
-    std::vector<int> boundary_nodes;
-    std::array<int,3> bid;
-    for ( int d = 0; d < space_dim; ++d )
-    {
-        bid = {0,0,0};
-
-        // low boundary.
-        bid[d] = -1;
-        mesh->getBoundaryNodes( bid, boundary_nodes );
-        for ( auto n : boundary_nodes )
-            node_p[n][d] = 0.0;
-
-        // high boundary.
-        bid[d] = 1;
-        mesh->getBoundaryNodes( bid, boundary_nodes );
-        for ( auto n : boundary_nodes )
-            node_p[n][d] = 0.0;
-    }
+    // Boundary conditions.
+    for ( int b = 0; b < 6; ++b )
+        bc[b]->evaluateMomentumCondition( mesh, b, node_m, node_p );
 }
 
 //---------------------------------------------------------------------------//
 // Calculate nodal velocities.
 void calculateNodalVelocity(
     const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<std::vector<double> >& node_p,
+    const std::vector<std::array<double,3> >& node_p,
     const std::vector<double>& node_m,
-    std::vector<std::vector<double> >& node_v )
+    std::vector<std::array<double,3> >& node_v )
 {
     int space_dim = mesh->spatialDimension();
     int num_nodes = mesh->totalNumNodes();
@@ -196,7 +183,7 @@ void calculateNodalVelocity(
 // Update particle deformation gradient.
 void updateDeformationGradient(
     const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<std::vector<double> >& node_v,
+    const std::vector<std::array<double,3> >& node_v,
     const double delta_t,
     std::vector<ExaMPM::Particle>& particles )
 {
@@ -261,7 +248,7 @@ void calculateExternalForces(
     std::function<void(const std::array<double,3>& r,std::array<double,3>& v)> field,
     const std::shared_ptr<ExaMPM::Mesh>& mesh,
     const std::vector<ExaMPM::Particle>& particles,
-    std::vector<std::vector<double> >& node_f_ext )
+    std::vector<std::array<double,3> >& node_f_ext )
 {
     int space_dim = mesh->spatialDimension();
     int nodes_per_cell = mesh->nodesPerCell();
@@ -297,7 +284,7 @@ void calculateInternalForces(
     const std::shared_ptr<ExaMPM::StressModel>& stress_model,
     const std::shared_ptr<ExaMPM::Mesh>& mesh,
     const std::vector<ExaMPM::Particle>& particles,
-    std::vector<std::vector<double> >& node_f_int )
+    std::vector<std::array<double,3> >& node_f_int )
 {
 
     int space_dim = mesh->spatialDimension();
@@ -333,10 +320,12 @@ void calculateInternalForces(
 // Calculate nodal impulse.
 void calculateNodalImpulse(
     const std::shared_ptr<ExaMPM::Mesh>& mesh,
-    const std::vector<std::vector<double> >& node_f_int,
-    const std::vector<std::vector<double> >& node_f_ext,
+    const std::vector<std::array<double,3> >& node_f_int,
+    const std::vector<std::array<double,3> >& node_f_ext,
+    const std::vector<double>& node_m,
     const double delta_t,
-    std::vector<std::vector<double> >& node_imp )
+    const std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6>& bc,
+    std::vector<std::array<double,3> >& node_imp )
 {
     int space_dim = mesh->spatialDimension();
     int num_nodes = mesh->totalNumNodes();
@@ -346,32 +335,16 @@ void calculateNodalImpulse(
         for ( int d = 0; d < space_dim; ++d )
             node_imp[n][d] = delta_t * (node_f_int[n][d] + node_f_ext[n][d]);
 
-    // Boundary conditions. Free slip for now.
-    std::vector<int> boundary_nodes;
-    std::array<int,3> bid;
-    for ( int d = 0; d < space_dim; ++d )
-    {
-        bid = {0,0,0};
-
-        // low boundary.
-        bid[d] = -1;
-        mesh->getBoundaryNodes( bid, boundary_nodes );
-        for ( auto n : boundary_nodes )
-            node_imp[n][d] = 0.0;
-
-        // high boundary.
-        bid[d] = 1;
-        mesh->getBoundaryNodes( bid, boundary_nodes );
-        for ( auto n : boundary_nodes )
-            node_imp[n][d] = 0.0;
-    }
+    // Boundary conditions.
+    for ( int b = 0; b < 6; ++b )
+        bc[b]->evaluateImpulseCondition( mesh, b, node_m, node_imp );
 }
 
 //---------------------------------------------------------------------------//
 // Update particle velocity and position.
 void updateParticles( const std::shared_ptr<ExaMPM::Mesh>& mesh,
-                      const std::vector<std::vector<double> >& node_imp,
-                      const std::vector<std::vector<double> >& node_p,
+                      const std::vector<std::array<double,3> >& node_imp,
+                      const std::vector<std::array<double,3> >& node_p,
                       const std::vector<double>& node_m,
                       const double delta_t,
                       std::vector<ExaMPM::Particle>& particles )
@@ -455,6 +428,15 @@ int main( int argc, char *argv[] )
         std::make_shared<ExaMPM::NeoHookeanStress>(
             youngs_modulus, poisson_ratio );
 
+    // Create boundary conditions.
+    std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6> bc;
+    bc[0] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
+    bc[1] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
+    bc[2] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
+    bc[3] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
+    bc[4] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
+    bc[5] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
+
     // Initialize the particles in the geometry.
     std::vector<ExaMPM::Particle> particles;
     int order = 2;
@@ -468,24 +450,24 @@ int main( int argc, char *argv[] )
     std::vector<double> node_m( num_nodes, 0.0 );
 
     // Nodal velocity
-    std::vector<std::vector<double> > node_v(
-        num_nodes, std::vector<double>(space_dim,0.0) );
+    std::vector<std::array<double,3> > node_v(
+        num_nodes, std::array<double,3>() );
 
     // Nodal momentum
-    std::vector<std::vector<double> > node_p(
-        num_nodes, std::vector<double>(space_dim,0.0) );
+    std::vector<std::array<double,3> > node_p(
+        num_nodes, std::array<double,3>() );
 
     // Nodal impulse
-    std::vector<std::vector<double> > node_imp(
-        num_nodes, std::vector<double>(space_dim,0.0) );
+    std::vector<std::array<double,3> > node_imp(
+        num_nodes, std::array<double,3>() );
 
     // Nodal internal force.
-    std::vector<std::vector<double> > node_f_int(
-        num_nodes, std::vector<double>(space_dim,0.0) );
+    std::vector<std::array<double,3> > node_f_int(
+        num_nodes, std::array<double,3>() );
 
     // Nodal external force
-    std::vector<std::vector<double> > node_f_ext(
-        num_nodes, std::vector<double>(space_dim,0.0) );
+    std::vector<std::array<double,3> > node_f_ext(
+        num_nodes, std::array<double,3>() );
 
     // Setup an output writer.
     ExaMPM::FileIO file_io( "particles.h5" );
@@ -519,7 +501,7 @@ int main( int argc, char *argv[] )
         calculateNodalMass( mesh, particles, node_m );
 
         // 3) Calculate nodal momentum.
-        calculateNodalMomentum( mesh, particles, node_p );
+        calculateNodalMomentum( mesh, particles, node_m, bc, node_p );
 
         // 3) Calculate nodal velocity.
         calculateNodalVelocity( mesh, node_p, node_m, node_v );
@@ -535,7 +517,7 @@ int main( int argc, char *argv[] )
 
         // 6) Calculate node impulse.
         calculateNodalImpulse(
-            mesh, node_f_int, node_f_ext, delta_t, node_imp );
+            mesh, node_f_int, node_f_ext, node_m, delta_t, bc, node_imp );
 
         // 7) Update the particle quantities.
         updateParticles( mesh, node_imp, node_p, node_m, delta_t, particles );
