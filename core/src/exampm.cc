@@ -49,23 +49,22 @@ int main( int argc, char *argv[] )
     // Set the materials with the manager.
     manager.setMaterialModels( materials );
 
-    // Geometry
+    // Create geometries.
     std::vector<std::shared_ptr<ExaMPM::Geometry> > geom( 2 );
 
-    // Create geometries.
+    double density = 1.0e3;
+
     std::array<double,6> bnds = {0.2,0.4,0.4,0.6,0.4,0.6};
     geom[0] = std::make_shared<ExaMPM::Box>(bnds);
-    bnds = {0.6,0.8,0.5,0.7,0.4,0.6};
-    geom[1] = std::make_shared<ExaMPM::Box>(bnds);
-
-    // Assign properties to the geometry.
-    double density = 1.0e3;
     auto init_vf1 =
         [=](const std::array<double,3>& r,std::array<double,3>& v)
         { v[0] = 0.1; v[1] = 0.0; v[2] = 0.0; };
     geom[0]->setMatId( 0 );
     geom[0]->setVelocityField( init_vf1 );
     geom[0]->setDensity( density );
+
+    bnds = {0.6,0.8,0.5,0.7,0.4,0.6};
+    geom[1] = std::make_shared<ExaMPM::Box>(bnds);
     auto init_vf2 =
         [=](const std::array<double,3>& r,std::array<double,3>& v)
         { v[0] = -0.1; v[1] = 0.0; v[2] = 0.0; };

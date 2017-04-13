@@ -1,11 +1,11 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file Box.hh
+ * \file Sphere.hh
  */
 //---------------------------------------------------------------------------//
 
-#ifndef EXAMPM_BOX_HH
-#define EXAMPM_BOX_HH
+#ifndef EXAMPM_SPHERE_HH
+#define EXAMPM_SPHERE_HH
 
 #include "Geometry.hh"
 #include "Particle.hh"
@@ -16,9 +16,9 @@ namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 /*!
- * \class Box
+ * \class Sphere
  */
-class Box : public Geometry
+class Sphere : public Geometry
 {
   public:
 
@@ -26,24 +26,27 @@ class Box : public Geometry
     using Base = Geometry;
     using VelocityField = typename Base::VelocityField;
 
-    // Constructor. Bounds give (-x,+x,-y,+y,-z,+z).
-    Box( const std::array<double,6>& bounds );
+    // Constructor.
+    Sphere( const std::array<double,3>& center, const double radius );
 
     // Determine if a particle is in the geometry.
     bool particleInGeometry( const Particle& p ) const override;
 
   private:
 
-    // Bounds.
-    std::array<double,6> d_bounds;
+    // Center.
+    std::array<double,3> d_center;
+
+    // Radius.
+    double d_radius;
 };
 
 //---------------------------------------------------------------------------//
 
 } // end namespace ExaMPM
 
-#endif // end EXAMPM_BOX_HH
+#endif // end EXAMPM_SPHERE_HH
 
 //---------------------------------------------------------------------------//
-// end Box.hh
+// end Sphere.hh
 //---------------------------------------------------------------------------//

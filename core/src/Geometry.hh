@@ -31,21 +31,32 @@ class Geometry
     // Destructor.
     virtual ~Geometry() = default;
 
-    // Set the initial material id of the geometry.
-    virtual void setMatId( const int matid ) = 0;
-
-    // Set the initial velocity field of the geometry.
-    virtual void setVelocityField( VelocityField&& velocity_field ) = 0;
-
-    // Set the density.
-    virtual void setDensity( const double density ) = 0;
-
     // Determine if a particle is in the geometry.
     virtual bool particleInGeometry( const Particle& p ) const = 0;
 
+    // Set the initial material id of the geometry.
+    void setMatId( const int matid );
+
+    // Set the initial velocity field of the geometry.
+    void setVelocityField( VelocityField&& velocity_field );
+
+    // Set the density.
+    void setDensity( const double density );
+
     // Initialize the state of a particle in the geometry. The given particle
     // will be in the geometry.
-    virtual void initializeParticle( Particle& p ) const = 0;
+    void initializeParticle( Particle& p ) const;
+
+  private:
+
+    // Material id.
+    int d_matid;
+
+    // Velocity field.
+    VelocityField d_velocity_field;
+
+    // Density.
+    double d_density;
 };
 
 //---------------------------------------------------------------------------//
