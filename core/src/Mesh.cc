@@ -36,7 +36,7 @@ Mesh::Mesh( const int num_cells_x,
         int i = 0;
 
         // Fill the boundary nodes.
-        d_boundary_nodes[bid].resize( d_num_nodes_x*d_num_nodes_z );
+        d_boundary_nodes[bid].resize( d_num_nodes_y*d_num_nodes_z );
         for ( int k = 0; k < d_num_nodes_z; ++k )
             for ( int j = 0; j < d_num_nodes_y; ++j )
                 d_boundary_nodes[bid][k*d_num_nodes_y+j] = nodeId( i, j, k );
@@ -51,7 +51,7 @@ Mesh::Mesh( const int num_cells_x,
         int i = d_num_cells_x;
 
         // Fill the boundary nodes.
-        d_boundary_nodes[bid].resize( d_num_nodes_x*d_num_nodes_z );
+        d_boundary_nodes[bid].resize( d_num_nodes_y*d_num_nodes_z );
         for ( int k = 0; k < d_num_nodes_z; ++k )
             for ( int j = 0; j < d_num_nodes_y; ++j )
                 d_boundary_nodes[bid][k*d_num_nodes_y+j] = nodeId( i, j, k );
