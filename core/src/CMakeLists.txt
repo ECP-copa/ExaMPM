@@ -8,12 +8,15 @@ APPEND_SET(HEADERS
   Box.hh
   FileIO.hh
   Geometry.hh
+  LagrangianFiniteStrain.hh
+  MaterialModel.hh
   Mesh.hh
   NeoHookeanStress.hh
   NewtonianViscousStress.hh
   Particle.hh
   ProblemManager.hh
   Sphere.hh
+  StrainModel.hh
   StressModel.hh
   TensorTools.hh
   )
@@ -23,6 +26,7 @@ APPEND_SET(SOURCES
   Box.cc
   FileIO.cc
   Geometry.cc
+  LagrangianFiniteStrain.cc
   Mesh.cc
   NewtonianViscousStress.cc
   NeoHookeanStress.cc

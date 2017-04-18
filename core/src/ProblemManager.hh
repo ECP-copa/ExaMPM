@@ -11,7 +11,7 @@
 #include "Geometry.hh"
 #include "Particle.hh"
 #include "BoundaryCondition.hh"
-#include "StressModel.hh"
+#include "MaterialModel.hh"
 
 #include <memory>
 #include <vector>
@@ -46,8 +46,7 @@ class ProblemManager
                            std::array<double,3>& f)> force_field );
 
     // Set material models.
-    void setMaterialModels(
-        const std::vector<std::shared_ptr<StressModel> >& materials );
+    void setMaterialModels( const std::vector<MaterialModel>& materials );
 
     // Initialize the problem with a given order over a set of geometries.
     void initialize( const std::vector<std::shared_ptr<Geometry> >& geometry,
@@ -81,6 +80,9 @@ class ProblemManager
     void updateParticleGradients(
         const std::vector<std::array<double,3> >& node_v,
         const double delta_t );
+
+    // Update particle strain and stress tensors.
+    void updateParticleStressStrain();
 
     // Calculate external forces at mesh nodes.
     void calculateExternalNodalForces(
@@ -118,7 +120,7 @@ class ProblemManager
         const std::array<double,3>& r,std::array<double,3>& f)> d_body_force;
 
     // Material models.
-    std::vector<std::shared_ptr<StressModel> > d_materials;
+    std::vector<MaterialModel> d_materials;
 
     // Particles.
     std::vector<Particle> d_particles;

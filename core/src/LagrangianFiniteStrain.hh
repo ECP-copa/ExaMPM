@@ -1,40 +1,38 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file StressModel.hh
+ * \file LagrangianFiniteStrain.hh
  */
 //---------------------------------------------------------------------------//
 
-#ifndef EXAMPM_STRESSMODEL_HPP
-#define EXAMPM_STRESSMODEL_HPP
+#ifndef EXAMPM_LAGRANGIANFINITESTRAIN_HH
+#define EXAMPM_LAGRANGIANFINITESTRAIN_HH
 
+#include "StrainModel.hh"
 #include "Particle.hh"
-
-#include <array>
 
 namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 /*
- * \class Stress model.
- * \brief Stress model for a given material.
+ * \class LagrangianFiniteStrain
+ * \brief Implements a Lagrangian finite strain model:
+ *
+ * E = 0.5 * ( F*F^T - I )
  */
-class StressModel
+class LagrangianFiniteStrain : public StrainModel
 {
   public:
 
-    // Destructor
-    virtual ~StressModel() = default;
-
-    // Given a particle state calculate the particle stress.
-    virtual void calculateStress( ExaMPM::Particle& p ) const = 0;
+    // Given a particle state calculate the particle strain.
+    void calculateStrain( ExaMPM::Particle& p ) const override;
 };
 
 //---------------------------------------------------------------------------//
 
 } // end namespace ExaMPM
 
-#endif // end EXAMPM_STRESSMODEL_HPP
+#endif // end EXAMPM_LAGRANGIANFINITESTRAIN_HH
 
 //---------------------------------------------------------------------------//
-// end StressModel.hh
+// end LagrangianFiniteStrain.hh
 //---------------------------------------------------------------------------//

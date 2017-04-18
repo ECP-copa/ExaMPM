@@ -8,6 +8,8 @@
 #include "Box.hh"
 #include "NeoHookeanStress.hh"
 #include "NewtonianViscousStress.hh"
+#include "LagrangianFiniteStrain.hh"
+#include "MaterialModel.hh"
 #include "BoundaryCondition.hh"
 #include "ProblemManager.hh"
 
@@ -39,13 +41,20 @@ int main( int argc, char *argv[] )
     // Set boundary conditions with the manager.
     manager.setBoundaryConditions( bc );
 
+    // Create materials.
+    std::vector<ExaMPM::MaterialModel> materials( 1 );
+
+    // Setup a strain model.
+    materials[0].strain_model =
+        std::make_shared<ExaMPM::LagrangianFiniteStrain>();
+
     // Setup a stress model.
-    std::vector<std::shared_ptr<ExaMPM::StressModel> > materials( 1 );
     double viscosity = 1.0e-3;
     double density = 1.0e3;
     double bulk_modulus = 2.0e9;
-    materials[0] = std::make_shared<ExaMPM::NewtonianViscousStress>(
-        viscosity,bulk_modulus,density);
+    materials[0].stress_model =
+        std::make_shared<ExaMPM::NewtonianViscousStress>(
+            viscosity,bulk_modulus,density);
 
     // Set the materials with the manager.
     manager.setMaterialModels( materials );
@@ -73,7 +82,7 @@ int main( int argc, char *argv[] )
     manager.initialize( geom, order );
 
     // Solve the problem.
-    int num_steps = 10000;
+    int num_steps = 13000;
     double delta_t = 1.0e-4;
     std::string output_file( "particles.h5" );
     int write_freq = 1000;

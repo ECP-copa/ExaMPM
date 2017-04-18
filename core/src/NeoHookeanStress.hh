@@ -33,18 +33,19 @@ class NeoHookeanStress : public StressModel
 
     // Constructor.
     NeoHookeanStress( const double youngs_modulus,
-                      const double poisson_ratio );
+                      const double poisson_ratio,
+                      const double initial_density );
 
     // Given a particle state calculate the particle stress.
     void calculateStress( ExaMPM::Particle& p ) const override;
 
   private:
 
-    // First Lame parameter.
-    double d_lambda;
+    // Bulk modulus scaled by the initial density.
+    double d_K;
 
-    // Second Lame parameter.
-    double d_mu;
+    // Shear modulus scaled by the initial density.
+    double d_G;
 };
 
 //---------------------------------------------------------------------------//

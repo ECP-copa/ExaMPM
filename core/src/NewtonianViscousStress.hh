@@ -42,10 +42,10 @@ class NewtonianViscousStress : public StressModel
 
   private:
 
-    // Fluid dynamic viscosity.
+    // Fluid dynamic viscosity scaled by the initial density.
     double d_viscosity;
 
-    // Fluid bulk modulus normalized by the initial density.
+    // Fluid bulk modulus scaled by the initial density.
     double d_bulk_modulus;
 };
 

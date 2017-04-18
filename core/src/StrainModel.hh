@@ -1,11 +1,11 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file StressModel.hh
+ * \file StrainModel.hh
  */
 //---------------------------------------------------------------------------//
 
-#ifndef EXAMPM_STRESSMODEL_HPP
-#define EXAMPM_STRESSMODEL_HPP
+#ifndef EXAMPM_STRAINMODEL_HPP
+#define EXAMPM_STRAINMODEL_HPP
 
 #include "Particle.hh"
 
@@ -15,26 +15,26 @@ namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 /*
- * \class Stress model.
- * \brief Stress model for a given material.
+ * \class Strain model.
+ * \brief Strain model for a given material.
  */
-class StressModel
+class StrainModel
 {
   public:
 
     // Destructor
-    virtual ~StressModel() = default;
+    virtual ~StrainModel() = default;
 
-    // Given a particle state calculate the particle stress.
-    virtual void calculateStress( ExaMPM::Particle& p ) const = 0;
+    // Given a particle state calculate the particle strain.
+    virtual void calculateStrain( ExaMPM::Particle& p ) const = 0;
 };
 
 //---------------------------------------------------------------------------//
 
 } // end namespace ExaMPM
 
-#endif // end EXAMPM_STRESSMODEL_HPP
+#endif // end EXAMPM_STRAINMODEL_HPP
 
 //---------------------------------------------------------------------------//
-// end StressModel.hh
+// end StrainModel.hh
 //---------------------------------------------------------------------------//

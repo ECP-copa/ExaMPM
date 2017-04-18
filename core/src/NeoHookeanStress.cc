@@ -16,52 +16,35 @@ namespace ExaMPM
 //---------------------------------------------------------------------------//
 // Constructor.
 NeoHookeanStress::NeoHookeanStress( const double youngs_modulus,
-                                    const double poisson_ratio )
+                                    const double poisson_ratio,
+                                    const double initial_density )
 {
-    // First Lame parameter.
-    d_lambda = youngs_modulus * poisson_ratio /
-               ( (1+poisson_ratio)*(1-2*poisson_ratio) );
+    // Bulk modulus.
+    d_K = youngs_modulus / (3 * (1 - 2*poisson_ratio) );
 
-    // Second Lame parameter.
-    d_mu = youngs_modulus / (2 *(1+poisson_ratio) );
+    // Shear modulus.
+    d_G = youngs_modulus / (2 * (1+poisson_ratio) );
 }
 
 //---------------------------------------------------------------------------//
 // Given a particle state calculate the stress.
 void NeoHookeanStress::calculateStress( ExaMPM::Particle& p ) const
 {
-    // Calculate the determinant of the deformation gradient.
-    double J = TensorTools::determinant( p.F );
-    assert( J > 0.0 );
-
-    // Reset the stress.
-    for ( int d = 0; d < 3; ++d )
-        p.stress[d] = { 0.0, 0.0, 0.0 };
-
-    // Calculate F*F^T
-    for ( int j = 0; j < 3; ++j )
-        for ( int i = 0; i < 3; ++i )
-            for ( int k = 0; k < 3; ++k )
-                p.stress[i][j] += p.F[i][k] * p.F[j][k];
-
-    // Subtract the identity.
+    // Calculate the volumetric dilation.
+    double dilation = 0.0;
     for ( int i = 0; i < 3; ++i )
-        p.stress[i][i] -= 1.0;
+        dilation += p.strain[i][i];
 
-    // Scale by mu.
-    for ( int j = 0; j < 3; ++j )
-        for ( int i = 0; i < 3; ++i )
-            p.stress[i][j] *= d_mu;
-
-    // Add the scaled identity.
-    double c = d_lambda * std::log(J);
+    // Calculate the deviatoric stress.
+    double density = p.m / p.volume;
     for ( int i = 0; i < 3; ++i )
-        p.stress[i][i] += c;
+        for ( int j = 0; j < 3; ++j )
+            p.stress[i][j] =
+                -2.0 * density * d_G * dilation / 3.0;
 
-    // Scale by the determinant of the deformation gradient.
-    for ( int j = 0; j < 3; ++j )
-        for ( int i = 0; i < 3; ++i )
-            p.stress[i][j] /= J;
+    // Add the volumetric stress.
+    for ( int i = 0; i < 3; ++i )
+        p.stress[i][i] += density * d_K * dilation;
 }
 
 //---------------------------------------------------------------------------//

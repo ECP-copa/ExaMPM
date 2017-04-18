@@ -42,7 +42,7 @@ void ProblemManager::setBoundaryConditions(
 //---------------------------------------------------------------------------//
 // Set material models.
 void ProblemManager::setMaterialModels(
-        const std::vector<std::shared_ptr<StressModel> >& materials )
+        const std::vector<MaterialModel>& materials )
 {
     d_materials = materials;
 }
@@ -162,17 +162,20 @@ void ProblemManager::solve( const int num_time_steps,
         // 5) Update the particle gradients.
         updateParticleGradients( node_v, time_step_size );
 
-        // 6) Calculate internal forces.
+        // 6) Update the particle stress and strain.
+        updateParticleStressStrain();
+
+        // 7) Calculate internal forces.
         calculateInternalNodalForces( node_f_int );
 
-        // 7) Calculate external forces.
+        // 8) Calculate external forces.
         calculateExternalNodalForces( node_f_ext );
 
-        // 8) Calculate node impulse.
+        // 9) Calculate node impulse.
         calculateNodalImpulse(
             node_f_int, node_f_ext, node_m, time_step_size, node_imp );
 
-        // 9) Update the particle position and velocity.
+        // 10) Update the particle position and velocity.
         updateParticlePositionAndVelocity(
             node_imp, node_p, node_m, time_step_size );
 
@@ -366,6 +369,22 @@ void ProblemManager::updateParticleGradients(
 }
 
 //---------------------------------------------------------------------------//
+// Update particle strain and stress tensors.
+void ProblemManager::updateParticleStressStrain()
+{
+    for ( auto& p : d_particles )
+    {
+        assert( 0 <= p.matid && p.matid < d_materials.size() );
+
+        // Compute the particle strain.
+        d_materials[p.matid].strain_model->calculateStrain( p );
+
+        // Compute the particle stress.
+        d_materials[p.matid].stress_model->calculateStress( p );
+    }
+}
+
+//---------------------------------------------------------------------------//
 // Calculate external forces at mesh nodes.
 void ProblemManager::calculateExternalNodalForces(
     std::vector<std::array<double,3> >& node_f_ext )
@@ -385,7 +404,6 @@ void ProblemManager::calculateExternalNodalForces(
         // Calculate force.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
-            local_acceleration = {0.0,0.0,0.0};
             d_body_force( p.r, local_acceleration );
 
             node_id = p.node_ids[n];
@@ -415,9 +433,6 @@ void ProblemManager::calculateInternalNodalForces(
     for ( auto& p : d_particles )
     {
         assert( 0 <= p.matid && p.matid < d_materials.size() );
-
-        // Compute the particle stress.
-        d_materials[p.matid]->calculateStress( p );
 
         // Project the particle stress gradients.
         for ( int n = 0; n < nodes_per_cell; ++n )
