@@ -55,6 +55,9 @@ class Particle
     //@{
     //! Grid state of particle.
 
+    //! Cardinal cell id.
+    int cell_id;
+
     //! Adjacent node ids.
     std::array<int,8> node_ids;
 

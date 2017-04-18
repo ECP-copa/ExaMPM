@@ -287,6 +287,9 @@ void Mesh::locateParticle( const Particle& particle,
     cell_id[1] = std::floor( particle.r[1] / d_cell_width );
     cell_id[2] = std::floor( particle.r[2] / d_cell_width );
 
+    // Assign a cardinal cell id to the particle.
+    p.cell_id = cellId( cell_id[0], cell_id[1], cell_id[2] );
+
     assert( 0 <= cell_id[0] );
     assert( 0 <= cell_id[1] );
     assert( 0 <= cell_id[2] );
@@ -413,6 +416,13 @@ void Mesh::shapeFunctionGradient(
         gradients[7][0] = -(1.0 + ref_coords[1])*(1.0 + ref_coords[2])/8.0;
         gradients[7][1] =  (1.0 - ref_coords[0])*(1.0 + ref_coords[2])/8.0;
         gradients[7][2] =  (1.0 - ref_coords[0])*(1.0 + ref_coords[1])/8.0;
+}
+
+//---------------------------------------------------------------------------//
+// Given ij indices of a cell compute the cell id.
+int Mesh::cellId( const int i, const int j, const int k ) const
+{
+    return d_num_cells_x*d_num_cells_y*k + d_num_cells_x*j + i;
 }
 
 //---------------------------------------------------------------------------//

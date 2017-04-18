@@ -89,6 +89,9 @@ class Mesh
 
   private:
 
+    // Given ijk indices of a cell compute the cell id.
+    int cellId( const int i, const int j, const int k ) const;
+
     // Given ijk indices of a node compute the node id.
     int nodeId( const int i, const int j, const int k ) const;
 
