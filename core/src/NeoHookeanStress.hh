@@ -36,9 +36,7 @@ class NeoHookeanStress : public StressModel
                       const double poisson_ratio );
 
     // Given a particle state calculate the particle stress.
-    void calculateStress(
-        const ExaMPM::Particle& p,
-        std::array<std::array<double,3>,3>& stress ) const override;
+    void calculateStress( ExaMPM::Particle& p ) const override;
 
   private:
 

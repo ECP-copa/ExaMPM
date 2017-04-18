@@ -109,6 +109,24 @@ void FileIO::writeTimeStep( const int time_step,
             }
         }
     }
+
+    // Write the patricle stress
+    {
+        for ( int j = 0; j < space_dim; ++j )
+        {
+            for ( int i = 0; i < space_dim; ++i )
+            {
+                for ( int p = 0; p < num_p; ++p )
+                {
+                    data[p] = particles[p].stress[i][j];
+                }
+
+                std::string dset_name =
+                    "STRESS_" + std::to_string(i) + "_" + std::to_string(j);
+                writeVector( group_handle, dset_name, data );
+            }
+        }
+    }
 }
 
 //---------------------------------------------------------------------------//

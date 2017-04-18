@@ -27,8 +27,7 @@ class StressModel
 
     // Given a particle state calculate the particle stress.
     virtual void
-    calculateStress( const ExaMPM::Particle& p,
-                     std::array<std::array<double,3>,3>& stress ) const = 0;
+    calculateStress( ExaMPM::Particle& p ) const = 0;
 };
 
 //---------------------------------------------------------------------------//

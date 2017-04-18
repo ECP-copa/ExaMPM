@@ -17,31 +17,36 @@ namespace ExaMPM
 //---------------------------------------------------------------------------//
 /*!
  * \class NewtonianViscousStress
- * \brief Stress model for a incompressible viscous newtonian fluid.
+ * \brief Stress model for a viscous nearly-compressible newtonian fluid.
  *
- * Implements a stress model for incompressible viscous newtonian fluids:
+ * Implements a stress model for viscous nearly-compressible newtonian fluids:
  *
- * sigma = mu * ( grad V + grad V^T )
+ * sigma = (rho * k / rho_0) * theta * I + mu * ( grad V + grad V^T )
  *
- * where mu is the fluid viscosity, grad V the velocity gradient, and sigma is
- * the resulting stress.
+ * where mu is the fluid dynamic viscosity, grad V the velocity gradient, rho
+ * the fluid density, rho_0 the initial fluid density, k the fluid bulk
+ * viscosity, theta the volumetric dilation, I the idenity, and sigma is the
+ * resulting stress.
  */
 class NewtonianViscousStress : public StressModel
 {
   public:
 
     // Constructor.
-    NewtonianViscousStress( const double viscosity );
+    NewtonianViscousStress( const double dynamic_viscosity,
+                            const double bulk_modulus,
+                            const double initial_density );
 
     // Given a particle state calculate the particle stress.
-    void calculateStress(
-        const ExaMPM::Particle& p,
-        std::array<std::array<double,3>,3>& stress ) const override;
+    void calculateStress( ExaMPM::Particle& p ) const override;
 
   private:
 
-    // Fluid viscosity.
+    // Fluid dynamic viscosity.
     double d_viscosity;
+
+    // Fluid bulk modulus normalized by the initial density.
+    double d_bulk_modulus;
 };
 
 //---------------------------------------------------------------------------//

@@ -78,7 +78,7 @@ class ProblemManager
         std::vector<std::array<double,3> >& node_v );
 
     // Update the particle deformation gradient and velocity gradient.
-    void updateParticleDeformationGradient(
+    void updateParticleGradients(
         const std::vector<std::array<double,3> >& node_v,
         const double delta_t );
 

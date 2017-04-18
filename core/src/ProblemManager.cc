@@ -159,8 +159,8 @@ void ProblemManager::solve( const int num_time_steps,
         // 4) Calculate nodal velocity.
         calculateNodalVelocity( node_p, node_m, node_v );
 
-        // 5) Update the particle deformation gradient.
-        updateParticleDeformationGradient( node_v, time_step_size );
+        // 5) Update the particle gradients.
+        updateParticleGradients( node_v, time_step_size );
 
         // 6) Calculate internal forces.
         calculateInternalNodalForces( node_f_int );
@@ -306,7 +306,7 @@ void ProblemManager::calculateNodalVelocity(
 
 //---------------------------------------------------------------------------//
 // Update the particle deformation gradient and velocity gradient.
-void ProblemManager::updateParticleDeformationGradient(
+void ProblemManager::updateParticleGradients(
     const std::vector<std::array<double,3> >& node_v,
     const double delta_t )
 {
@@ -406,7 +406,6 @@ void ProblemManager::calculateInternalNodalForces(
     int space_dim = d_mesh->spatialDimension();
     int nodes_per_cell = d_mesh->nodesPerCell();
     int node_id = 0;
-    std::array<std::array<double,3>,3> stress;
 
     // Reset the forces.
     for ( auto& f_int : node_f_int )
@@ -417,10 +416,10 @@ void ProblemManager::calculateInternalNodalForces(
     {
         assert( 0 <= p.matid && p.matid < d_materials.size() );
 
-        // Compute the stress based on the particle state..
-        d_materials[p.matid]->calculateStress( p, stress );
+        // Compute the particle stress.
+        d_materials[p.matid]->calculateStress( p );
 
-        // Project the stress gradients.
+        // Project the particle stress gradients.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
             node_id = p.node_ids[n];
@@ -429,7 +428,7 @@ void ProblemManager::calculateInternalNodalForces(
             for ( int i = 0; i < space_dim; ++i )
                 for ( int j = 0; j < space_dim; ++j )
                     node_f_int[node_id][i] -=
-                        p.volume * p.basis_gradients[n][j] * stress[j][i];
+                        p.volume * p.basis_gradients[n][j] * p.stress[j][i];
         }
     }
 }

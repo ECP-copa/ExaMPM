@@ -36,6 +36,9 @@ class Particle
     //! Velocity gradient.
     std::array<std::array<double,3>,3> grad_v;
 
+    //! Deformation stress.
+    std::array<std::array<double,3>,3> stress;
+
     //! Mass.
     double m;
 
@@ -56,7 +59,7 @@ class Particle
     std::array<double,8> basis_values;
 
     //! Node basis gradients.
-    std::array<std::array<double,3>,8 > basis_gradients;
+    std::array<std::array<double,3>,8> basis_gradients;
 
     //@}
 
