@@ -278,7 +278,7 @@ void Mesh::initializeParticles(
 //---------------------------------------------------------------------------//
 // Given a particle determine the cardinal index of the cell in which it
 // is located.
-void Mesh::locateParticle( const Particle& particle,
+void Mesh::locateParticle( Particle& particle,
                            std::array<int,3>& cell_id ) const
 {
     // Mesh spans (0.0,d_num_cells_x*cell_width) in x and
@@ -288,7 +288,7 @@ void Mesh::locateParticle( const Particle& particle,
     cell_id[2] = std::floor( particle.r[2] / d_cell_width );
 
     // Assign a cardinal cell id to the particle.
-    p.cell_id = cellId( cell_id[0], cell_id[1], cell_id[2] );
+    particle.cell_id = cellId( cell_id[0], cell_id[1], cell_id[2] );
 
     assert( 0 <= cell_id[0] );
     assert( 0 <= cell_id[1] );
@@ -343,6 +343,7 @@ void Mesh::mapPhysicalToReferenceFrame(
     //        |                |
     //        |                |
     //    0 (-1,-1)----------(1,-1) 1
+
     ref_coords[0] = (particle.r[0]/d_cell_width - cell_id[0])*2.0 - 1.0;
     ref_coords[1] = (particle.r[1]/d_cell_width - cell_id[1])*2.0 - 1.0;
     ref_coords[2] = (particle.r[2]/d_cell_width - cell_id[2])*2.0 - 1.0;

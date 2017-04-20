@@ -1,11 +1,11 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file LagrangianFiniteStrain.hh
+ * \file EulerianAlmansiFiniteStrain.hh
  */
 //---------------------------------------------------------------------------//
 
-#ifndef EXAMPM_LAGRANGIANFINITESTRAIN_HH
-#define EXAMPM_LAGRANGIANFINITESTRAIN_HH
+#ifndef EXAMPM_EULERIANALMANSIFINITESTRAIN_HH
+#define EXAMPM_EULERIANALMANSIFINITESTRAIN_HH
 
 #include "StrainModel.hh"
 #include "Particle.hh"
@@ -14,12 +14,12 @@ namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 /*
- * \class LagrangianFiniteStrain
- * \brief Implements a Green Lagrangian finite strain model:
+ * \class EulerianAlmansiFiniteStrain
+ * \brief Implements a Eulerian-Almansi finite strain model:
  *
  * E = 0.5 * ( F*F^T - I )
  */
-class LagrangianFiniteStrain : public StrainModel
+class EulerianAlmansiFiniteStrain : public StrainModel
 {
   public:
 
@@ -31,8 +31,8 @@ class LagrangianFiniteStrain : public StrainModel
 
 } // end namespace ExaMPM
 
-#endif // end EXAMPM_LAGRANGIANFINITESTRAIN_HH
+#endif // end EXAMPM_EULERIANALMANSIFINITESTRAIN_HH
 
 //---------------------------------------------------------------------------//
-// end LagrangianFiniteStrain.hh
+// end EulerianAlmansiFiniteStrain.hh
 //---------------------------------------------------------------------------//

@@ -62,7 +62,7 @@ class Mesh
 
     // Given a particle determine the cardinal index of the cell in which it
     // is located.
-    void locateParticle( const Particle& particle,
+    void locateParticle( Particle& particle,
                          std::array<int,3>& cell_id ) const;
 
     // Given a cell ids get the node ids of the cell.

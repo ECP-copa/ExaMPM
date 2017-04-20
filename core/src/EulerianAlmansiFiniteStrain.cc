@@ -1,35 +1,38 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file LagrangianFiniteStrain.cc
+ * \file EulerianAlmansiFiniteStrain.cc
  */
 //---------------------------------------------------------------------------//
 
-#include "LagrangianFiniteStrain.hh"
-#include <cmath>
+#include "EulerianAlmansiFiniteStrain.hh"
+#include "TensorTools.hh"
+
 namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 // Given a particle state calculate the particle strain.
-void LagrangianFiniteStrain::calculateStrain( ExaMPM::Particle& p ) const
+void EulerianAlmansiFiniteStrain::calculateStrain( ExaMPM::Particle& p ) const
 {
-    // Reset the particle strain.
+    // Calculate F*F^T
+    std::array<std::array<double,3>,3> fft;
     for ( int i = 0; i < 3; ++i )
-        std::fill( p.strain[i].begin(), p.strain[i].end(), 0.0 );
-
-    // Calculate F^T*F
+        std::fill( fft[i].begin(), fft[i].end(), 0.0 );
     for ( int j = 0; j < 3; ++j )
         for ( int i = 0; i < 3; ++i )
             for ( int k = 0; k < 3; ++k )
-                p.strain[i][j] += p.F[k][i] * p.F[k][j];
+                fft[i][j] += p.F[i][k] * p.F[j][k];
+
+    // Invert F*F^T.
+    TensorTools::inverse( fft, p.strain );
 
     // Subtract the identity.
     for ( int i = 0; i < 3; ++i )
         p.strain[i][i] -= 1.0;
 
-    // Scale by 1/2
+    // Scale by -1/2
     for ( int j = 0; j < 3; ++j )
         for ( int i = 0; i < 3; ++i )
-           p.strain[i][j] *= 0.5;
+           p.strain[i][j] *= -0.5;
 }
 
 //---------------------------------------------------------------------------//
@@ -37,5 +40,5 @@ void LagrangianFiniteStrain::calculateStrain( ExaMPM::Particle& p ) const
 } // end namespace ExaMPM
 
 //---------------------------------------------------------------------------//
-// end LagrangianFiniteStrain.cc
+// end EulerianAlmansiFiniteStrain.cc
 //---------------------------------------------------------------------------//

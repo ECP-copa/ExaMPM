@@ -10,7 +10,7 @@
 #include <array>
 #include <cmath>
 #include <cassert>
-
+#include <iostream>
 namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
@@ -21,9 +21,11 @@ NeoHookeanStress::NeoHookeanStress( const double youngs_modulus,
 {
     // Bulk modulus.
     d_K = youngs_modulus / (3 * (1 - 2*poisson_ratio) );
+    d_K /= initial_density;
 
     // Shear modulus.
     d_G = youngs_modulus / (2 * (1+poisson_ratio) );
+    d_G /= initial_density;
 }
 
 //---------------------------------------------------------------------------//
@@ -36,15 +38,18 @@ void NeoHookeanStress::calculateStress( ExaMPM::Particle& p ) const
         dilation += p.strain[i][i];
 
     // Calculate the deviatoric stress.
-    double density = p.m / p.volume;
     for ( int i = 0; i < 3; ++i )
         for ( int j = 0; j < 3; ++j )
-            p.stress[i][j] =
-                -2.0 * density * d_G * dilation / 3.0;
+            p.stress[i][j] = p.strain[i][j];
+    for ( int i = 0; i < 3; ++i )
+        p.stress[i][i] -= dilation / 3.0;
+    for ( int i = 0; i < 3; ++i )
+        for ( int j = 0; j < 3; ++j )
+            p.stress[i][j] *= 2 * d_G;
 
     // Add the volumetric stress.
     for ( int i = 0; i < 3; ++i )
-        p.stress[i][i] += density * d_K * dilation;
+        p.stress[i][i] += d_K * dilation;
 }
 
 //---------------------------------------------------------------------------//

@@ -16,7 +16,8 @@ namespace ExaMPM
 //---------------------------------------------------------------------------//
 /*
  * \class Stress model.
- * \brief Stress model for a given material.
+ * \brief Specific stress model for a given material. The specific stress is
+ * the stress divided by the density.
  */
 class StressModel
 {
@@ -25,7 +26,7 @@ class StressModel
     // Destructor
     virtual ~StressModel() = default;
 
-    // Given a particle state calculate the particle stress.
+    // Given a particle state calculate the specific particle stress.
     virtual void calculateStress( ExaMPM::Particle& p ) const = 0;
 };
 

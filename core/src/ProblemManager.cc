@@ -372,16 +372,69 @@ void ProblemManager::updateParticleGradients(
 // Update particle strain and stress tensors.
 void ProblemManager::updateParticleStressStrain()
 {
+    // Compute the particle strain.
     for ( auto& p : d_particles )
     {
         assert( 0 <= p.matid && p.matid < d_materials.size() );
-
-        // Compute the particle strain.
         d_materials[p.matid].strain_model->calculateStrain( p );
+    }
 
-        // Compute the particle stress.
+    // // Compute cell strain smoothing parameter.
+    // int num_cells = d_mesh->totalNumCells();
+    // std::vector<double> alpha( num_cells, 0.0 );
+    // std::vector<double> cell_mass( num_cells, 0.0 );
+    // double strain_trace;
+    // for ( auto& p : d_particles )
+    // {
+    //     strain_trace = 0.0;
+    //     for ( int i = 0; i < 3; ++i )
+    //         strain_trace += p.strain[i][i];
+    //     alpha[ p.cell_id ] += p.m * strain_trace;
+    //     cell_mass[ p.cell_id ] += p.m;
+    // }
+    // for ( int c = 0; c < num_cells; ++c )
+    // {
+    //     if ( cell_mass[c] > 0.0 )
+    //         alpha[c] /= cell_mass[c];
+    // }
+
+    // // Compute the smoothed particle strain.
+    // for ( auto& p : d_particles )
+    // {
+    //     for ( int i = 0; i < 3; ++i )
+    //         p.strain[i][i] =
+    //             (2.0 * p.strain[i][i] + alpha[p.cell_id]) / 3.0;
+    // }
+
+    // Compute the particle stress.
+    for ( auto& p : d_particles )
+    {
         d_materials[p.matid].stress_model->calculateStress( p );
     }
+
+    // // Compute cell stress smoothing parameter.
+    // std::vector<double> beta( num_cells, 0.0 );
+    // double stress_trace;
+    // for ( auto& p : d_particles )
+    // {
+    //     stress_trace = 0.0;
+    //     for ( int i = 0; i < 3; ++i )
+    //         stress_trace += p.stress[i][i];
+    //     beta[ p.cell_id ] += p.m * stress_trace;
+    // }
+    // for ( int c = 0; c < num_cells; ++c )
+    // {
+    //     if ( cell_mass[c] > 0.0 )
+    //         beta[c] /= cell_mass[c];
+    // }
+
+    // // Compute the smoothed particle stress.
+    // for ( auto& p : d_particles )
+    // {
+    //     for ( int i = 0; i < 3; ++i )
+    //         p.stress[i][i] =
+    //             (2.0 * p.stress[i][i] + beta[p.cell_id]) / 3.0;
+    // }
 }
 
 //---------------------------------------------------------------------------//
@@ -443,7 +496,7 @@ void ProblemManager::calculateInternalNodalForces(
             for ( int i = 0; i < space_dim; ++i )
                 for ( int j = 0; j < space_dim; ++j )
                     node_f_int[node_id][i] -=
-                        p.volume * p.basis_gradients[n][j] * p.stress[j][i];
+                        p.m * p.basis_gradients[n][j] * p.stress[j][i];
         }
     }
 }
