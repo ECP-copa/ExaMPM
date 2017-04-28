@@ -27,15 +27,15 @@ void NewtonianViscousStress::calculateStress( ExaMPM::Particle& p ) const
         dilation += p.strain[i][i];
 
     // Calculate deviatoric stress.
+    double density = p.m / p.volume;
     for ( int i = 0; i < 3; ++i )
         for ( int j = 0; j < 3; ++j )
             p.stress[i][j] =
-                d_viscosity * ( p.grad_v[i][j] + p.grad_v[j][i] );
+                d_viscosity * ( p.grad_v[i][j] + p.grad_v[j][i] ) / density;
 
     // Add the volumetric stress.
-    double density = p.m / p.volume;
     for ( int i = 0; i < 3; ++i )
-        p.stress[i][i] += density * d_bulk_modulus * dilation;
+        p.stress[i][i] += d_bulk_modulus * dilation;
 }
 
 //---------------------------------------------------------------------------//

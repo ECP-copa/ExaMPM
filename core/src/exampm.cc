@@ -9,7 +9,7 @@
 #include "NeoHookeanStress.hh"
 #include "NewtonianViscousStress.hh"
 #include "LagrangianFiniteStrain.hh"
-#include "EulerianAlmansiFiniteStrain.hh"
+#include "InfinitesimalStrain.hh"
 #include "MaterialModel.hh"
 #include "BoundaryCondition.hh"
 #include "ProblemManager.hh"
@@ -51,19 +51,20 @@ int main( int argc, char *argv[] )
 
     // Setup a strain model.
     materials[0].strain_model =
-        std::make_shared<ExaMPM::LagrangianFiniteStrain>();
+        std::make_shared<ExaMPM::InfinitesimalStrain>();
 
     // Setup a stress model.
     // double viscosity = 1.0e-3;
     // double density = 997.5;
     // double bulk_modulus = 2.0e9;
+    // double shear_modulus = 0.0;
     // materials[0].stress_model =
     //     std::make_shared<ExaMPM::NewtonianViscousStress>(
     //         viscosity,bulk_modulus,density);
 
-    double youngs_modulus = 1.0e8;
-    double density = 1000;
-    double poisson_ratio = 0.4;
+    double youngs_modulus = 0.05e9;
+    double density = 1100.0;
+    double poisson_ratio = 0.49;
     materials[0].stress_model =
         std::make_shared<ExaMPM::NeoHookeanStress>(
             youngs_modulus,poisson_ratio,density);
@@ -74,7 +75,7 @@ int main( int argc, char *argv[] )
     // Set gravity.
     auto gravity = [](const std::array<double,3>& r,
                       std::array<double,3>& f)
-                   { f[0] = 0.0; f[1] = 0.0; f[2] = 0.0; };
+                   { f[0] = 0.0; f[1] = 0.0; f[2] = -9.81; };
     manager.setSpecificBodyForce( gravity );
 
     // Create geometries.
@@ -89,7 +90,7 @@ int main( int argc, char *argv[] )
     // geom[0]->setVelocityField( init_vf1 );
     // geom[0]->setDensity( density );
 
-    std::vector<std::shared_ptr<ExaMPM::Geometry> > geom( 2 );
+    std::vector<std::shared_ptr<ExaMPM::Geometry> > geom( 1 );
 
     std::array<double,6> bnds = {0.1,0.3,0.5,0.7,0.4,0.6};
     geom[0] = std::make_shared<ExaMPM::Box>(bnds);
@@ -100,24 +101,24 @@ int main( int argc, char *argv[] )
     geom[0]->setVelocityField( init_vf1 );
     geom[0]->setDensity( density );
 
-    bnds = {0.7,0.9,0.4,0.6,0.4,0.6};
-    geom[1] = std::make_shared<ExaMPM::Box>(bnds);
-    auto init_vf2 =
-        [](const std::array<double,3>& r,std::array<double,3>& v)
-        { v[0] = -0.2; v[1] = 0.0; v[2] = 0.0; };
-    geom[1]->setMatId( 0 );
-    geom[1]->setVelocityField( init_vf2 );
-    geom[1]->setDensity( density );
+    // bnds = {0.7,0.9,0.4,0.6,0.4,0.6};
+    // geom[1] = std::make_shared<ExaMPM::Box>(bnds);
+    // auto init_vf2 =
+    //     [](const std::array<double,3>& r,std::array<double,3>& v)
+    //     { v[0] = -0.2; v[1] = 0.0; v[2] = 0.0; };
+    // geom[1]->setMatId( 0 );
+    // geom[1]->setVelocityField( init_vf2 );
+    // geom[1]->setDensity( density );
 
     // Initialize the manager.
-    int order = 2;
+    int order = 3;
     manager.initialize( geom, order );
 
     // Solve the problem.
-    int num_steps = 2000;
-    double delta_t = 1.0e-3;
+    int num_steps = 10000;
+    double delta_t = 1.0e-4;
     std::string output_file( "particles.h5" );
-    int write_freq = 100;
+    int write_freq = 1000;
     manager.solve( num_steps, delta_t, output_file, write_freq );
 
     return 0;

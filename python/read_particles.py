@@ -70,6 +70,8 @@ def animate(i):
     setupFrame()
     step = "TIME_STEP_" + str(i)
     group = h5file.get( step )
+    time_dset = group.get("TIME");
+    time = time_dset[0];
     x0 = group.get("POS_0")
     x1 = group.get("POS_1")
     x2 = group.get("POS_2")
@@ -80,18 +82,23 @@ def animate(i):
     s0 = group.get("STRESS_0_0")
     s1 = group.get("STRESS_1_1")
     s2 = group.get("STRESS_2_2")
+    mass = group.get("MASS")
+    volume = group.get("VOLUME")
     pressure = np.zeros( len(v1) )
     v = np.zeros( len(v1) )
     for p in xrange(len(x1)):
-        pressure[p] = -(s0[p] + s1[p] + s2[p])/3.0
+        pressure[p] = -mass[p] * (s0[p] + s1[p] + s2[p])/(3.0*volume[p])
         v[p] = math.sqrt( v0[p]**2 + v1[p]**2 + v2[p]**2 )
     min_p = min(pressure)
     max_p = max(pressure)
     print min_p, max_p
     ax1.scatter(x0[:], x1[:], x2[:], c=pressure[:], cmap='rainbow', vmin=min_p, vmax=max_p)
     ax2.scatter(x0[:], x1[:], x2[:], c=pressure[:], cmap='rainbow', vmin=min_p, vmax=max_p)
-    ax3.scatter(x0[:], x1[:], x2[:], c=v[:], cmap='rainbow')
-    ax4.scatter(x0[:], x1[:], x2[:], c=v[:], cmap='rainbow')
+    ax3.scatter(x0[:], x1[:], x2[:], c=v[:], cmap='rainbow', vmin=0.0, vmax=13.5)
+    ax4.scatter(x0[:], x1[:], x2[:], c=v[:], cmap='rainbow', vmin=0.0, vmax=13.5)
+    # timestring = 'Time ' + str(time) + ' (s)'
+    # ax1.text(3, 8, timestring , style='italic',
+    #         bbox={'facecolor':'red', 'alpha':0.5, 'pad':10})
 
 # call the animator.  blit=True means only re-draw the parts that have changed.
 anim = animation.FuncAnimation(fig, animate, frames=num_frame)

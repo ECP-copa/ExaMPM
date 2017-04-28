@@ -282,7 +282,8 @@ void Mesh::locateParticle( Particle& particle,
                            std::array<int,3>& cell_id ) const
 {
     // Mesh spans (0.0,d_num_cells_x*cell_width) in x and
-    // (0.0,d_num_cells_y*cell_width) in y
+    // (0.0,d_num_cells_y*cell_width) in y and (0.0,d_num_cells_z*cell_width)
+    // in z
     cell_id[0] = std::floor( particle.r[0] / d_cell_width );
     cell_id[1] = std::floor( particle.r[1] / d_cell_width );
     cell_id[2] = std::floor( particle.r[2] / d_cell_width );

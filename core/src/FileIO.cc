@@ -81,6 +81,28 @@ void FileIO::writeTimeStep( const int time_step,
         }
     }
 
+    // Write the particle mass.
+    {
+        for ( int p = 0; p < num_p; ++p )
+        {
+            data[p] = particles[p].m;
+        }
+
+        std::string dset_name( "MASS" );
+        writeVector( group_handle, dset_name, data );
+    }
+
+    // Write the particle volume.
+    {
+        for ( int p = 0; p < num_p; ++p )
+        {
+            data[p] = particles[p].volume;
+        }
+
+        std::string dset_name( "VOLUME" );
+        writeVector( group_handle, dset_name, data );
+    }
+
     // Write the particle material ids.
     {
         std::vector<int> matids( num_p );

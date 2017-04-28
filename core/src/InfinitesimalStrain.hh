@@ -1,11 +1,11 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file EulerianAlmansiFiniteStrain.hh
+ * \file InfinitesimalStrain.hh
  */
 //---------------------------------------------------------------------------//
 
-#ifndef EXAMPM_EULERIANALMANSIFINITESTRAIN_HH
-#define EXAMPM_EULERIANALMANSIFINITESTRAIN_HH
+#ifndef EXAMPM_INFINITESIMALSTRAIN_HH
+#define EXAMPM_INFINITESIMALSTRAIN_HH
 
 #include "StrainModel.hh"
 #include "Particle.hh"
@@ -14,12 +14,12 @@ namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 /*
- * \class EulerianAlmansiFiniteStrain
- * \brief Implements a Eulerian-Almansi finite strain model:
+ * \class InfinitesimalStrain
+ * \brief Implements a small deformation theory strain.
  *
- * E = 0.5 * ( F*F^T - I )
+ * E = 0.5 * (F^T + F) - I
  */
-class EulerianAlmansiFiniteStrain : public StrainModel
+class InfinitesimalStrain : public StrainModel
 {
   public:
 
@@ -31,8 +31,8 @@ class EulerianAlmansiFiniteStrain : public StrainModel
 
 } // end namespace ExaMPM
 
-#endif // end EXAMPM_EULERIANALMANSIFINITESTRAIN_HH
+#endif // end EXAMPM_INFINITESIMALSTRAIN_HH
 
 //---------------------------------------------------------------------------//
-// end EulerianAlmansiFiniteStrain.hh
+// end InfinitesimalStrain.hh
 //---------------------------------------------------------------------------//

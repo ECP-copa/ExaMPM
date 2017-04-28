@@ -6,9 +6,9 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 APPEND_SET(HEADERS
   BoundaryCondition.hh
   Box.hh
-  EulerianAlmansiFiniteStrain.hh
   FileIO.hh
   Geometry.hh
+  InfinitesimalStrain.hh
   LagrangianFiniteStrain.hh
   MaterialModel.hh
   Mesh.hh
@@ -25,9 +25,9 @@ APPEND_SET(HEADERS
 APPEND_SET(SOURCES
   BoundaryCondition.cc
   Box.cc
-  EulerianAlmansiFiniteStrain.cc
   FileIO.cc
   Geometry.cc
+  InfinitesimalStrain.cc
   LagrangianFiniteStrain.cc
   Mesh.cc
   NewtonianViscousStress.cc
