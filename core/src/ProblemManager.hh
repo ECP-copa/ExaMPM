@@ -11,7 +11,7 @@
 #include "Geometry.hh"
 #include "Particle.hh"
 #include "BoundaryCondition.hh"
-#include "MaterialModel.hh"
+#include "StressModel.hh"
 
 #include <memory>
 #include <vector>
@@ -34,19 +34,15 @@ class ProblemManager
     ProblemManager( const int mesh_num_cells_x,
                     const int mesh_num_cells_y,
                     const int mesh_num_cells_z,
-                    const double mesh_cell_width );
+                    const double mesh_cell_width,
+                    const bool has_gravity );
 
     // Set boundary conditions.
     void setBoundaryConditions(
         const std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6>& bc );
 
-    // Set the specific body force.
-    void setSpecificBodyForce(
-        std::function<void(const std::array<double,3>& r,
-                           std::array<double,3>& f)> force_field );
-
     // Set material models.
-    void setMaterialModels( const std::vector<MaterialModel>& materials );
+    void setMaterialModels( const std::vector<std::shared_ptr<StressModel> >& materials );
 
     // Initialize the problem with a given order over a set of geometries.
     void initialize( const std::vector<std::shared_ptr<Geometry> >& geometry,
@@ -73,6 +69,7 @@ class ProblemManager
     // Calculate the nodal velocity.
     void calculateNodalVelocity(
         const std::vector<std::array<double,3> >& node_p,
+        const std::vector<std::array<double,3> >& node_imp,
         const std::vector<double>& node_m,
         std::vector<std::array<double,3> >& node_v );
 
@@ -84,10 +81,6 @@ class ProblemManager
     // Update particle strain and stress tensors.
     void updateParticleStressStrain();
 
-    // Calculate external forces at mesh nodes.
-    void calculateExternalNodalForces(
-        std::vector<std::array<double,3> >& node_f_ext );
-
     // Calculate internal forces at mesh nodes.
     void calculateInternalNodalForces(
         std::vector<std::array<double,3> >& node_f_int );
@@ -95,7 +88,6 @@ class ProblemManager
     // Calculate nodal impulse.
     void calculateNodalImpulse(
         const std::vector<std::array<double,3> >& node_f_int,
-        const std::vector<std::array<double,3> >& node_f_ext,
         const std::vector<double>& node_m,
         const double delta_t,
         std::vector<std::array<double,3> >& node_imp );
@@ -109,18 +101,17 @@ class ProblemManager
 
   private:
 
+    // Gravity boolean.
+    bool d_has_gravity;
+
     // Mesh
     std::shared_ptr<Mesh> d_mesh;
 
     // Boundary conditions.
     std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6> d_bc;
 
-    // Specific body force field.
-    std::function<void(
-        const std::array<double,3>& r,std::array<double,3>& f)> d_body_force;
-
     // Material models.
-    std::vector<MaterialModel> d_materials;
+    std::vector<std::shared_ptr<StressModel> > d_materials;
 
     // Particles.
     std::vector<Particle> d_particles;

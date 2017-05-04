@@ -64,13 +64,17 @@ void FreeSlipBoundaryCondition::evaluateMomentumCondition(
     // Determine if the boundary is on x, y, or z.
     int dim = std::floor( boundary / 2 );
 
+    // Determine if it is positive or negative.
+    int dir = (boundary % 2) ? 1 : -1;
+
     // Get the boundary nodes.
     const auto& nodes = mesh->getBoundaryNodes( boundary );
 
     // Apply the boundary condition. Free slip means the velocity component
     // normal to the grid boundary is zero and therefore so it the momentum.
     for ( auto n : nodes )
-        momentum[n][dim] = 0.0;
+//        if ( momentum[n][dim] * dir > 0.0 )
+                momentum[n][dim] = 0.0;
 }
 
 //---------------------------------------------------------------------------//
@@ -85,13 +89,17 @@ void FreeSlipBoundaryCondition::evaluateImpulseCondition(
     // Determine if the boundary is on x, y, or z.
     int dim = std::floor( boundary / 2 );
 
+    // Determine if it is positive or negative.
+    int dir = (boundary % 2) ? 1 : -1;
+
     // Get the boundary nodes.
     const auto& nodes = mesh->getBoundaryNodes( boundary );
 
     // Apply the boundary condition. Free slip means the velocity component
     // normal to the grid boundary is zero and therefore so is the impulse.
     for ( auto n : nodes )
-        impulse[n][dim] = 0.0;
+//        if ( impulse[n][dim] * dir > 0.0 )
+            impulse[n][dim] = 0.0;
 }
 
 //---------------------------------------------------------------------------//

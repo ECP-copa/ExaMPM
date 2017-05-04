@@ -18,17 +18,15 @@ namespace ExaMPM
 ProblemManager::ProblemManager( const int mesh_num_cells_x,
                                 const int mesh_num_cells_y,
                                 const int mesh_num_cells_z,
-                                const double mesh_cell_width )
+                                const double mesh_cell_width,
+                                const bool has_gravity )
+    : d_has_gravity( has_gravity )
 {
     // Create the mesh.
     d_mesh = std::make_shared<Mesh>( mesh_num_cells_x,
                                      mesh_num_cells_y,
                                      mesh_num_cells_z,
                                      mesh_cell_width );
-
-    // Create a zero specific body force.
-    d_body_force = []( const std::array<double,3>& r, std::array<double,3>& f )
-                   { std::fill( f.begin(), f.end(), 0.0 ); };
 }
 
 //---------------------------------------------------------------------------//
@@ -42,18 +40,9 @@ void ProblemManager::setBoundaryConditions(
 //---------------------------------------------------------------------------//
 // Set material models.
 void ProblemManager::setMaterialModels(
-        const std::vector<MaterialModel>& materials )
+    const std::vector<std::shared_ptr<StressModel> >& materials )
 {
     d_materials = materials;
-}
-
-//---------------------------------------------------------------------------//
-// Set the specific body force.
-void ProblemManager::setSpecificBodyForce(
-    std::function<void(const std::array<double,3>& r,
-                       std::array<double,3>& f)> force_field )
-{
-    d_body_force = force_field;
 }
 
 //---------------------------------------------------------------------------//
@@ -120,10 +109,6 @@ void ProblemManager::solve( const int num_time_steps,
     std::vector<std::array<double,3> > node_f_int(
         num_nodes, std::array<double,3>() );
 
-    // Nodal external force
-    std::vector<std::array<double,3> > node_f_ext(
-        num_nodes, std::array<double,3>() );
-
     // Setup an output writer.
     ExaMPM::FileIO file_io( output_file );
 
@@ -156,28 +141,25 @@ void ProblemManager::solve( const int num_time_steps,
         // 3) Calculate nodal momentum.
         calculateNodalMomentum( node_m, node_p );
 
+        // 7) Calculate internal forces.
+        calculateInternalNodalForces( node_f_int );
+
+        // 9) Calculate node impulse.
+        calculateNodalImpulse(
+            node_f_int, node_m, time_step_size, node_imp );
+
+        // 10) Update the particle position and velocity.
+        updateParticlePositionAndVelocity(
+            node_imp, node_p, node_m, time_step_size );
+
         // 4) Calculate nodal velocity.
-        calculateNodalVelocity( node_p, node_m, node_v );
+        calculateNodalVelocity( node_p, node_imp, node_m, node_v );
 
         // 5) Update the particle gradients.
         updateParticleGradients( node_v, time_step_size );
 
         // 6) Update the particle stress and strain.
         updateParticleStressStrain();
-
-        // 7) Calculate internal forces.
-        calculateInternalNodalForces( node_f_int );
-
-        // 8) Calculate external forces.
-        calculateExternalNodalForces( node_f_ext );
-
-        // 9) Calculate node impulse.
-        calculateNodalImpulse(
-            node_f_int, node_f_ext, node_m, time_step_size, node_imp );
-
-        // 10) Update the particle position and velocity.
-        updateParticlePositionAndVelocity(
-            node_imp, node_p, node_m, time_step_size );
 
         // Write the time step to file.
         if ( (step+1) % write_frequency == 0 )
@@ -278,13 +260,36 @@ void ProblemManager::calculateNodalMomentum(
 // Calculate the nodal velocity.
 void ProblemManager::calculateNodalVelocity(
     const std::vector<std::array<double,3> >& node_p,
+    const std::vector<std::array<double,3> >& node_imp,
     const std::vector<double>& node_m,
     std::vector<std::array<double,3> >& node_v )
 {
     int space_dim = d_mesh->spatialDimension();
     int num_nodes = d_mesh->totalNumNodes();
+    int nodes_per_cell = d_mesh->nodesPerCell();
+    int node_id = 0;
 
-    // Update the velocity
+    // Reset the velocity
+    for ( auto& vel : node_v )
+        std::fill( vel.begin(), vel.end(), 0.0 );
+
+    // Update the momentum
+    for ( auto& p : d_particles )
+    {
+        // Calculate momentum.
+        for ( int n = 0; n < nodes_per_cell; ++n )
+        {
+            node_id = p.node_ids[n];
+
+            for ( int d = 0; d < space_dim; ++d )
+            {
+                node_v[node_id][d] +=
+                    p.m * p.v[d] * p.basis_values[n];
+            }
+        }
+    }
+
+    // Divide by the mass to get the velocity
     for ( int n = 0; n < num_nodes; ++n )
     {
         // If we have nodal mass do the update.
@@ -292,7 +297,7 @@ void ProblemManager::calculateNodalVelocity(
         {
             for ( int d = 0; d < space_dim; ++d )
             {
-                node_v[n][d] = node_p[n][d] / node_m[n];
+                node_v[n][d] /= node_m[n];
             }
         }
 
@@ -305,6 +310,10 @@ void ProblemManager::calculateNodalVelocity(
             }
         }
     }
+
+    // Boundary conditions.
+    for ( int b = 0; b < 6; ++b )
+        d_bc[b]->evaluateMomentumCondition( d_mesh, b, node_m, node_v );
 }
 
 //---------------------------------------------------------------------------//
@@ -372,49 +381,10 @@ void ProblemManager::updateParticleGradients(
 // Update particle strain and stress tensors.
 void ProblemManager::updateParticleStressStrain()
 {
-    // Compute the particle strain.
-    for ( auto& p : d_particles )
-    {
-        assert( 0 <= p.matid && p.matid < d_materials.size() );
-        d_materials[p.matid].strain_model->calculateStrain( p );
-    }
-
     // Compute the particle stress.
     for ( auto& p : d_particles )
     {
-        d_materials[p.matid].stress_model->calculateStress( p );
-    }
-}
-
-//---------------------------------------------------------------------------//
-// Calculate external forces at mesh nodes.
-void ProblemManager::calculateExternalNodalForces(
-    std::vector<std::array<double,3> >& node_f_ext )
-{
-    int space_dim = d_mesh->spatialDimension();
-    int nodes_per_cell = d_mesh->nodesPerCell();
-    std::array<double,3> local_acceleration;
-    int node_id = 0;
-
-    // Reset the forces.
-    for ( auto& f_ext : node_f_ext )
-        std::fill( f_ext.begin(), f_ext.end(), 0.0 );
-
-    // Calculate forces.
-    for ( auto& p : d_particles )
-    {
-        // Calculate force.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            d_body_force( p.r, local_acceleration );
-
-            node_id = p.node_ids[n];
-            for ( int d = 0; d < space_dim; ++d )
-            {
-                node_f_ext[node_id][d] +=
-                    p.m * local_acceleration[d] * p.basis_values[n];
-            }
-        }
+        d_materials[p.matid]->calculateStress( p );
     }
 }
 
@@ -445,7 +415,7 @@ void ProblemManager::calculateInternalNodalForces(
             for ( int i = 0; i < space_dim; ++i )
                 for ( int j = 0; j < space_dim; ++j )
                     node_f_int[node_id][i] -=
-                        p.m * p.basis_gradients[n][j] * p.stress[j][i];
+                        p.volume * p.basis_gradients[n][j] * p.stress[j][i];
         }
     }
 }
@@ -454,7 +424,6 @@ void ProblemManager::calculateInternalNodalForces(
 // Calculate nodal impulse.
 void ProblemManager::calculateNodalImpulse(
     const std::vector<std::array<double,3> >& node_f_int,
-    const std::vector<std::array<double,3> >& node_f_ext,
     const std::vector<double>& node_m,
     const double delta_t,
     std::vector<std::array<double,3> >& node_imp )
@@ -465,7 +434,12 @@ void ProblemManager::calculateNodalImpulse(
     // Calculate impulse.
     for ( int n = 0; n < num_nodes; ++n )
         for ( int d = 0; d < space_dim; ++d )
-            node_imp[n][d] = delta_t * (node_f_int[n][d] + node_f_ext[n][d]);
+            node_imp[n][d] = delta_t * node_f_int[n][d];
+
+    // Add gravity if needed.
+    if ( d_has_gravity )
+        for ( int n = 0; n < num_nodes; ++n )
+            node_imp[n][2] -= delta_t * node_m[n] * 9.81;
 
     // Boundary conditions.
     for ( int b = 0; b < 6; ++b )

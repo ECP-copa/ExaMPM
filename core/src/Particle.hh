@@ -36,9 +36,6 @@ class Particle
     //! Velocity gradient.
     std::array<std::array<double,3>,3> grad_v;
 
-    //! Strain.
-    std::array<std::array<double,3>,3> strain;
-
     //! Stress.
     std::array<std::array<double,3>,3> stress;
 

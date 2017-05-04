@@ -10,46 +10,51 @@
 #include <array>
 #include <cmath>
 #include <cassert>
-#include <iostream>
+
 namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 // Constructor.
 NeoHookeanStress::NeoHookeanStress( const double youngs_modulus,
-                                    const double poisson_ratio,
-                                    const double initial_density )
+                                    const double poisson_ratio )
 {
-    // Bulk modulus.
-    d_K = youngs_modulus / (3 * (1 - 2*poisson_ratio) );
-    d_K /= initial_density;
+    // First parameter.
+    d_lambda = youngs_modulus * poisson_ratio /
+               ( (1 + poisson_ratio)*(1 - 2*poisson_ratio) );
 
-    // Shear modulus.
-    d_G = youngs_modulus / (2 * (1+poisson_ratio) );
-    d_G /= initial_density;
+    // Second parameter.
+    d_mu = youngs_modulus / ( 2 * (1 + poisson_ratio) );
 }
 
 //---------------------------------------------------------------------------//
 // Given a particle state calculate the stress.
 void NeoHookeanStress::calculateStress( ExaMPM::Particle& p ) const
 {
-    // Calculate the volumetric dilation.
-    double dilation = 0.0;
-    for ( int i = 0; i < 3; ++i )
-        dilation += p.strain[i][i];
+    // Reset the stress.
+    for ( auto& s : p.stress )
+        std::fill( s.begin(), s.end(), 0.0 );
 
-    // Calculate the deviatoric stress.
+    // Compute the determinant of F.
+    double J = TensorTools::determinant( p.F );
+
+    // Compute constants.
+    double c1 = d_lambda * std::log(J) / J;
+    double c2 = d_mu / J;
+
+    // Compute F*F^T
     for ( int i = 0; i < 3; ++i )
         for ( int j = 0; j < 3; ++j )
-            p.stress[i][j] = p.strain[i][j];
-    for ( int i = 0; i < 3; ++i )
-        p.stress[i][i] -= dilation / 3.0;
+            for ( int k = 0; k < 3; ++k )
+                p.stress[i][j] += p.F[i][k] * p.F[j][k];
+
+    // Scale F*F^T
     for ( int i = 0; i < 3; ++i )
         for ( int j = 0; j < 3; ++j )
-            p.stress[i][j] *= 2 * d_G;
+            p.stress[i][j] *= c2;
 
-    // Add the volumetric stress.
+    // Add the scaled identity.
     for ( int i = 0; i < 3; ++i )
-        p.stress[i][i] += d_K * dilation;
+        p.stress[i][i] += c1 - c2;
 }
 
 //---------------------------------------------------------------------------//

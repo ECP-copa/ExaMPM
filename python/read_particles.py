@@ -22,9 +22,9 @@ num_frame = len(h5file.keys())
 fig = plt.figure()
 
 # bounds
-xbnds = [0.0,1.0];
-ybnds = [0.0,1.0];
-zbnds = [0.0,1.0];
+xbnds = [0.0,0.1];
+ybnds = [0.0,0.1];
+zbnds = [0.0,0.1];
 
 def setupFrame():
     fig.clf()
@@ -87,7 +87,7 @@ def animate(i):
     pressure = np.zeros( len(v1) )
     v = np.zeros( len(v1) )
     for p in xrange(len(x1)):
-        pressure[p] = -mass[p] * (s0[p] + s1[p] + s2[p])/(3.0*volume[p])
+        pressure[p] = -(s0[p] + s1[p] + s2[p])/3.0
         v[p] = math.sqrt( v0[p]**2 + v1[p]**2 + v2[p]**2 )
     min_p = min(pressure)
     max_p = max(pressure)
