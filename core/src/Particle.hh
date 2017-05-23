@@ -47,6 +47,9 @@ class Particle
 
     //! Material id.
     int matid;
+
+    //! Color.
+    int color;
     //@}
 
     //@{

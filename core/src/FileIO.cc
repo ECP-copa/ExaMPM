@@ -114,6 +114,17 @@ void FileIO::writeTimeStep( const int time_step,
         writeVector( group_handle, dset_name, matids );
     }
 
+    // Write the particle colors.
+    {
+        std::vector<int> colors( num_p );
+        for ( int p = 0; p < num_p; ++p )
+        {
+            colors[p] = particles[p].color;
+        }
+        std::string dset_name( "COLOR" );
+        writeVector( group_handle, dset_name, colors );
+    }
+
     // Write the patricle deformation gradients.
     {
         for ( int j = 0; j < space_dim; ++j )

@@ -19,6 +19,13 @@ void Geometry::setMatId( const int matid )
 }
 
 //---------------------------------------------------------------------------//
+// Set the color of the geometry.
+void Geometry::setColor( const int color )
+{
+    d_color = color;
+}
+
+//---------------------------------------------------------------------------//
 // Set the initial velocity field of the geometry.
 void Geometry::setVelocityField( VelocityField&& velocity_field )
 {
@@ -46,6 +53,9 @@ void Geometry::initializeParticle( Particle& p ) const
 
     // Assign the material id.
     p.matid = d_matid;
+
+    // Assign the color
+    p.color = d_color;
 
     // Assign the mass
     p.m = d_density * p.volume;

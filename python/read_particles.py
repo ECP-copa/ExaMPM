@@ -75,7 +75,7 @@ def animate(i):
     x0 = group.get("POS_0")
     x1 = group.get("POS_1")
     x2 = group.get("POS_2")
-    matid = group.get("MATID")
+    color = group.get("COLOR")
     v0 = group.get("VEL_0")
     v1 = group.get("VEL_1")
     v2 = group.get("VEL_2")
@@ -92,10 +92,12 @@ def animate(i):
     min_p = min(pressure)
     max_p = max(pressure)
     print min_p, max_p
-    ax1.scatter(x0[:], x1[:], x2[:], c=pressure[:], cmap='rainbow', vmin=min_p, vmax=max_p)
-    ax2.scatter(x0[:], x1[:], x2[:], c=pressure[:], cmap='rainbow', vmin=min_p, vmax=max_p)
-    ax3.scatter(x0[:], x1[:], x2[:], c=v[:], cmap='rainbow', vmin=0.0, vmax=13.5)
-    ax4.scatter(x0[:], x1[:], x2[:], c=v[:], cmap='rainbow', vmin=0.0, vmax=13.5)
+    # ax1.scatter(x0[:], x1[:], x2[:], c=pressure[:], cmap='rainbow', vmin=min_p, vmax=max_p)
+    # ax2.scatter(x0[:], x1[:], x2[:], c=pressure[:], cmap='rainbow', vmin=min_p, vmax=max_p)
+    ax1.scatter(x0[:], x1[:], x2[:], c=color[:] )
+    ax2.scatter(x0[:], x1[:], x2[:], c=color[:] )
+    ax3.scatter(x0[:], x1[:], x2[:], c=v[:], cmap='rainbow', vmin=0.0, vmax=1.0)
+    ax4.scatter(x0[:], x1[:], x2[:], c=v[:], cmap='rainbow', vmin=0.0, vmax=1.0)
     # timestring = 'Time ' + str(time) + ' (s)'
     # ax1.text(3, 8, timestring , style='italic',
     #         bbox={'facecolor':'red', 'alpha':0.5, 'pad':10})

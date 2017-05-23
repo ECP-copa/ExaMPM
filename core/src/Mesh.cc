@@ -354,7 +354,6 @@ void Mesh::mapPhysicalToReferenceFrame(
     assert( -1.0 <= ref_coords[2] && ref_coords[2] <= 1.0 );
 }
 
-
 //---------------------------------------------------------------------------//
 // Given reference coordinates in a cell get the value of the shape
 // function at those coordinates.

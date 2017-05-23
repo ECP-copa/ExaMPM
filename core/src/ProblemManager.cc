@@ -141,24 +141,24 @@ void ProblemManager::solve( const int num_time_steps,
         // 3) Calculate nodal momentum.
         calculateNodalMomentum( node_m, node_p );
 
-        // 7) Calculate internal forces.
+        // 4) Calculate internal forces.
         calculateInternalNodalForces( node_f_int );
 
-        // 9) Calculate node impulse.
+        // 5) Calculate node impulse.
         calculateNodalImpulse(
             node_f_int, node_m, time_step_size, node_imp );
 
-        // 10) Update the particle position and velocity.
+        // 6) Update the particle position and velocity.
         updateParticlePositionAndVelocity(
             node_imp, node_p, node_m, time_step_size );
 
-        // 4) Calculate nodal velocity.
+        // 7) Calculate nodal velocity.
         calculateNodalVelocity( node_p, node_imp, node_m, node_v );
 
-        // 5) Update the particle gradients.
+        // 8) Update the particle gradients.
         updateParticleGradients( node_v, time_step_size );
 
-        // 6) Update the particle stress and strain.
+        // 9) Update the particle stress and strain.
         updateParticleStressStrain();
 
         // Write the time step to file.

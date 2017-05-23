@@ -73,8 +73,7 @@ void FreeSlipBoundaryCondition::evaluateMomentumCondition(
     // Apply the boundary condition. Free slip means the velocity component
     // normal to the grid boundary is zero and therefore so it the momentum.
     for ( auto n : nodes )
-//        if ( momentum[n][dim] * dir > 0.0 )
-                momentum[n][dim] = 0.0;
+        momentum[n][dim] = 0.0;
 }
 
 //---------------------------------------------------------------------------//
@@ -98,8 +97,7 @@ void FreeSlipBoundaryCondition::evaluateImpulseCondition(
     // Apply the boundary condition. Free slip means the velocity component
     // normal to the grid boundary is zero and therefore so is the impulse.
     for ( auto n : nodes )
-//        if ( impulse[n][dim] * dir > 0.0 )
-            impulse[n][dim] = 0.0;
+        impulse[n][dim] = 0.0;
 }
 
 //---------------------------------------------------------------------------//

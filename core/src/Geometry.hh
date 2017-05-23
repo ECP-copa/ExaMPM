@@ -37,6 +37,9 @@ class Geometry
     // Set the initial material id of the geometry.
     void setMatId( const int matid );
 
+    // Set the color of the geometry.
+    void setColor( const int color );
+
     // Set the initial velocity field of the geometry.
     void setVelocityField( VelocityField&& velocity_field );
 
@@ -51,6 +54,9 @@ class Geometry
 
     // Material id.
     int d_matid;
+
+    // Color
+    int d_color;
 
     // Velocity field.
     VelocityField d_velocity_field;
