@@ -22,9 +22,9 @@ num_frame = len(h5file.keys())
 fig = plt.figure()
 
 # bounds
-xbnds = [0.0,0.1];
-ybnds = [0.0,0.1];
-zbnds = [0.0,0.1];
+xbnds = [0.0,6.0];
+ybnds = [0.0,1.0];
+zbnds = [0.0,6.0];
 
 def setupFrame():
     fig.clf()
@@ -75,27 +75,22 @@ def animate(i):
     x0 = group.get("POS_0")
     x1 = group.get("POS_1")
     x2 = group.get("POS_2")
-    color = group.get("COLOR")
     v0 = group.get("VEL_0")
     v1 = group.get("VEL_1")
     v2 = group.get("VEL_2")
-    s0 = group.get("STRESS_0_0")
-    s1 = group.get("STRESS_1_1")
-    s2 = group.get("STRESS_2_2")
-    mass = group.get("MASS")
-    volume = group.get("VOLUME")
-    pressure = np.zeros( len(v1) )
+    # s0 = group.get("STRESS_0_0")
+    # s1 = group.get("STRESS_1_1")
+    # s2 = group.get("STRESS_2_2")
+    # pressure = np.zeros( len(v1) )
     v = np.zeros( len(v1) )
     for p in xrange(len(x1)):
-        pressure[p] = -(s0[p] + s1[p] + s2[p])/3.0
+        # pressure[p] = -(s0[p] + s1[p] + s2[p])/3.0
         v[p] = math.sqrt( v0[p]**2 + v1[p]**2 + v2[p]**2 )
-    min_p = min(pressure)
-    max_p = max(pressure)
-    print min_p, max_p
+    # min_p = min(pressure)
+    # max_p = max(pressure)
+    # print min_p, max_p
     # ax1.scatter(x0[:], x1[:], x2[:], c=pressure[:], cmap='rainbow', vmin=min_p, vmax=max_p)
     # ax2.scatter(x0[:], x1[:], x2[:], c=pressure[:], cmap='rainbow', vmin=min_p, vmax=max_p)
-    ax1.scatter(x0[:], x1[:], x2[:], c=color[:] )
-    ax2.scatter(x0[:], x1[:], x2[:], c=color[:] )
     ax3.scatter(x0[:], x1[:], x2[:], c=v[:], cmap='rainbow', vmin=0.0, vmax=1.0)
     ax4.scatter(x0[:], x1[:], x2[:], c=v[:], cmap='rainbow', vmin=0.0, vmax=1.0)
     # timestring = 'Time ' + str(time) + ' (s)'

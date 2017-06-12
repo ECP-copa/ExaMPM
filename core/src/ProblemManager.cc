@@ -124,7 +124,7 @@ void ProblemManager::solve( const int num_time_steps,
     {
         // Increment time.
         time += time_step_size;
-
+        std::cout << "STEP " << step << std::endl;
         // Print time step info.
         if ( (step+1) % write_frequency == 0 )
         {
@@ -180,6 +180,7 @@ void ProblemManager::locateParticles()
     std::array<int,3> cell_id;
     std::array<double,3> ref_coords;
 
+    // Locate the particles
     for ( auto& p : d_particles )
     {
         // Locate the particle.

@@ -10,6 +10,15 @@
 
 namespace ExaMPM
 {
+//---------------------------------------------------------------------------//
+// Constructor.
+Geometry::Geometry()
+{
+    // Geometry is initially not in motion by default.
+    d_velocity_field =
+        []( const std::array<double,3>& r, std::array<double,3>& v )
+        { std::fill(v.begin(),v.end(),0.0); };
+}
 
 //---------------------------------------------------------------------------//
 // Set the initial material id of the geometry.

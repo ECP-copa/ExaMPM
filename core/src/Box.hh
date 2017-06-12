@@ -24,7 +24,6 @@ class Box : public Geometry
 
     // Type aliases.
     using Base = Geometry;
-    using VelocityField = typename Base::VelocityField;
 
     // Constructor. Bounds give (-x,+x,-y,+y,-z,+z).
     Box( const std::array<double,6>& bounds );

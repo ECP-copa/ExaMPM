@@ -28,6 +28,9 @@ class Geometry
     using VelocityField = std::function<
       void(const std::array<double,3>& r,std::array<double,3>& v)>;
 
+    // Constructor.
+    Geometry();
+
     // Destructor.
     virtual ~Geometry() = default;
 

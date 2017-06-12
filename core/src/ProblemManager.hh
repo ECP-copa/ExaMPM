@@ -42,7 +42,8 @@ class ProblemManager
         const std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6>& bc );
 
     // Set material models.
-    void setMaterialModels( const std::vector<std::shared_ptr<StressModel> >& materials );
+    void setMaterialModels(
+        const std::vector<std::shared_ptr<StressModel> >& materials );
 
     // Initialize the problem with a given order over a set of geometries.
     void initialize( const std::vector<std::shared_ptr<Geometry> >& geometry,

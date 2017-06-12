@@ -17,9 +17,10 @@ namespace ExaMPM
 //---------------------------------------------------------------------------//
 /*!
  * \class NewtonianViscousStress
- * \brief Stress model for a viscous nearly-compressible newtonian fluid.
+ * \brief Stress model for a viscous nearly-incompressible newtonian fluid.
  *
- * Implements a stress model for viscous nearly-compressible newtonian fluids:
+ * Implements a stress model for viscous nearly-incompressible newtonian
+ * fluids:
  *
  * sigma = (rho * k / rho_0) * theta * I + mu * ( grad V + grad V^T )
  *
@@ -42,7 +43,7 @@ class NewtonianViscousStress : public StressModel
 
   private:
 
-    // Fluid dynamic viscosity scaled by the initial density.
+    // Fluid dynamic viscosity
     double d_viscosity;
 
     // Fluid bulk modulus scaled by the initial density.

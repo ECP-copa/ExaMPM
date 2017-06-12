@@ -1,35 +1,44 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file exampm.cc
- * \brief driver
+ * \file test/tstBouncingBall.cc
  */
 //---------------------------------------------------------------------------//
 
-#include "Box.hh"
 #include "Sphere.hh"
 #include "NeoHookeanStress.hh"
-#include "NewtonianViscousStress.hh"
 #include "StressModel.hh"
 #include "BoundaryCondition.hh"
 #include "ProblemManager.hh"
 
-#include <iostream>
 #include <memory>
 #include <vector>
 #include <array>
 #include <functional>
 #include <cmath>
 
+#include "gtest_main.hh"
+
 //---------------------------------------------------------------------------//
-int main( int argc, char *argv[] )
+class BouncingBallTest : public ::testing::Test
+{
+  protected:
+    void SetUp()
+    { /* ... */ }
+};
+
+//---------------------------------------------------------------------------//
+// TESTS
+//---------------------------------------------------------------------------//
+TEST_F(BouncingBallTest, bouncing_ball_test)
 {
     // Create the problem manager.
-    int num_cells_x = 25;
-    int num_cells_y = 25;
-    int num_cells_z = 25;
-    double cell_width = 0.004;
+    int num_cells_x = 20;
+    int num_cells_y = 20;
+    int num_cells_z = 20;
+    double cell_width = 0.05;
+    bool has_gravity = true;
     ExaMPM::ProblemManager manager(
-        num_cells_x, num_cells_y, num_cells_z, cell_width, true );
+        num_cells_x, num_cells_y, num_cells_z, cell_width, has_gravity );
 
     // Create boundary conditions.
     std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6> bc;
@@ -47,6 +56,7 @@ int main( int argc, char *argv[] )
     std::vector<std::shared_ptr<ExaMPM::StressModel> > materials( 1 );
 
     // Setup a stress model.
+    double density = 1000.0;
     double youngs_modulus = 1.0e9;
     double poisson_ratio = 0.3;
     materials[0] = std::make_shared<ExaMPM::NeoHookeanStress>(
@@ -55,52 +65,39 @@ int main( int argc, char *argv[] )
     // Set the materials with the manager.
     manager.setMaterialModels( materials );
 
-    // Create geometries.
-    std::vector<std::shared_ptr<ExaMPM::Geometry> > geom( 2 );
-
-    double density = 1000.0;
-    std::array<double,3> center = { 0.04, 0.04, 0.05 };
-    double radius = 0.01;
+    // Create the ball
+    std::vector<std::shared_ptr<ExaMPM::Geometry> > geom( 1 );
+    std::array<double,3> center = { 0.25, 0.5, 0.75 };
+    double radius = 0.1;
     geom[0] = std::make_shared<ExaMPM::Sphere>(center,radius);
-    auto init_vf1 =
-        [](const std::array<double,3>& r,std::array<double,3>& v)
-        { v[0] = 1.0; v[1] = 0.0; v[2] = 0.0; };
     geom[0]->setMatId( 0 );
     geom[0]->setColor( 0 );
-    geom[0]->setVelocityField( init_vf1 );
     geom[0]->setDensity( density );
 
-    std::array<double,6> bnds = {0.07,0.09,0.03,0.05,0.04,0.06};
-    geom[1] = std::make_shared<ExaMPM::Box>(bnds);
-    auto init_vf2 =
+    // Set the ball moving to the right in X.
+    auto init_vf1 =
         [](const std::array<double,3>& r,std::array<double,3>& v)
-        { v[0] = -0.1; v[1] = 0.0; v[2] = 0.0; };
-    geom[1]->setMatId( 0 );
-    geom[1]->setColor( 1 );
-    geom[1]->setVelocityField( init_vf2 );
-    geom[1]->setDensity( density );
+        { v[0] = 3.0; v[1] = 0.0; v[2] = 0.0; };
+    geom[0]->setVelocityField( init_vf1 );
 
     // Initialize the manager.
     int order = 3;
     manager.initialize( geom, order );
 
     // Calculate the time step paramters.
-    double wave_speed = std::sqrt( youngs_modulus / density );
-    double delta_t = cell_width / wave_speed;
-    double final_time = 1.0;
+    double delta_t = 1.0e-5;
+    double final_time = 2.0;
     int num_steps = std::ceil( final_time / delta_t );
     std::cout << "Time step size: " << delta_t << std::endl;
     std::cout << "Num steps: " << num_steps << std::endl;
 
     // Solve the problem.
-    std::string output_file( "particles.h5" );
+    std::string output_file( "bouncing_ball_particles.h5" );
     int num_write = 40;
     int write_freq = num_steps / num_write;
     manager.solve( num_steps, delta_t, output_file, write_freq );
-
-    return 0;
 }
 
 //---------------------------------------------------------------------------//
-// end exampm.cc
+// end of test/tstBouncingBall.cc
 //---------------------------------------------------------------------------//
