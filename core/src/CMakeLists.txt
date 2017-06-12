@@ -6,7 +6,6 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 APPEND_SET(HEADERS
   BoundaryCondition.hh
   Box.hh
-  FileIO.hh
   Geometry.hh
   Mesh.hh
   NeoHookeanStress.hh
@@ -21,7 +20,6 @@ APPEND_SET(HEADERS
 APPEND_SET(SOURCES
   BoundaryCondition.cc
   Box.cc
-  FileIO.cc
   Geometry.cc
   Mesh.cc
   NewtonianViscousStress.cc

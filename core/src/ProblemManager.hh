@@ -100,6 +100,10 @@ class ProblemManager
         const std::vector<double>& node_m,
         const double delta_t );
 
+    // Write a time step to file.
+    void writeTimeStepToFile(
+        const std::string& output_file, const int step ) const;
+
   private:
 
     // Gravity boolean.

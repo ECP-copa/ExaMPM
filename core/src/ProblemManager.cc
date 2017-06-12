@@ -5,10 +5,11 @@
 //---------------------------------------------------------------------------//
 
 #include "ProblemManager.hh"
-#include "FileIO.hh"
 #include "TensorTools.hh"
 
 #include <iostream>
+#include <fstream>
+#include <cmath>
 #include <cassert>
 
 namespace ExaMPM
@@ -109,22 +110,19 @@ void ProblemManager::solve( const int num_time_steps,
     std::vector<std::array<double,3> > node_f_int(
         num_nodes, std::array<double,3>() );
 
-    // Setup an output writer.
-    ExaMPM::FileIO file_io( output_file );
-
     // Time step parameters
     double time = 0.0;
 
     // Write the initial state.
     int write_step = 0;
-    file_io.writeTimeStep( write_step, time, d_particles );
+    writeTimeStepToFile( output_file, write_step );
 
     // Time step
     for ( int step = 0; step < num_time_steps; ++step )
     {
         // Increment time.
         time += time_step_size;
-        std::cout << "STEP " << step << std::endl;
+
         // Print time step info.
         if ( (step+1) % write_frequency == 0 )
         {
@@ -165,12 +163,12 @@ void ProblemManager::solve( const int num_time_steps,
         if ( (step+1) % write_frequency == 0 )
         {
             ++write_step;
-            file_io.writeTimeStep( write_step, time, d_particles );
+            writeTimeStepToFile( output_file, write_step );
         }
     }
 
     // Write the end state.
-    file_io.writeTimeStep( write_step+1, time, d_particles );
+    writeTimeStepToFile( output_file, write_step+1 );
 }
 
 //---------------------------------------------------------------------------//
@@ -484,6 +482,33 @@ void ProblemManager::updateParticlePositionAndVelocity(
             }
         }
     }
+}
+
+//---------------------------------------------------------------------------//
+// Write a time step to file.
+void ProblemManager::writeTimeStepToFile(
+    const std::string& output_file, const int step ) const
+{
+    // Open the time step file.
+    std::string filename = output_file + ".csv." + std::to_string(step);
+    std::ofstream file( filename );
+
+    // Write the data header.
+    file << "x, y, z, velocity magnitude" << std::endl;
+
+    // Write the particle data.
+    double vmag = 0.0;
+    for ( auto& p : d_particles )
+    {
+        vmag = std::sqrt( p.v[0]*p.v[0] + p.v[1]*p.v[1] + p.v[2]*p.v[2] );
+        file << p.r[0] << ", "
+             << p.r[1] << ", "
+             << p.r[2] << ", "
+             << vmag << std::endl;
+    }
+
+    // Close the time step file
+    file.close();
 }
 
 //---------------------------------------------------------------------------//

@@ -1,3 +1,2 @@
 SET(ExaMPM_TPLS_FINDMODS_CLASSIFICATIONS
-  HDF5    "cmake/TPLs/"    SS
   )

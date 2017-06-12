@@ -85,7 +85,7 @@ TEST_F(DamBreakTest, dam_break_test)
     std::cout << "Num steps: " << num_steps << std::endl;
 
     // Solve the problem.
-    std::string output_file( "dam_break_particles.h5" );
+    std::string output_file( "dam_break_particles" );
     int num_write = 40;
     int write_freq = num_steps / num_write;
     manager.solve( num_steps, delta_t, output_file, write_freq );

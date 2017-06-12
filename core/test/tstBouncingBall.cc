@@ -92,7 +92,7 @@ TEST_F(BouncingBallTest, bouncing_ball_test)
     std::cout << "Num steps: " << num_steps << std::endl;
 
     // Solve the problem.
-    std::string output_file( "bouncing_ball_particles.h5" );
+    std::string output_file( "bouncing_ball_particles" );
     int num_write = 40;
     int write_freq = num_steps / num_write;
     manager.solve( num_steps, delta_t, output_file, write_freq );
