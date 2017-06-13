@@ -4,4 +4,4 @@ ADD_UTILS_TEST(tstBouncingBall.cc)
 
 ADD_UTILS_TEST(tstDamBreak.cc)
 
-ADD_UTILS_TEST(tstWaterDroplet.cc)
+ADD_UTILS_TEST(tstWorthingtonJet.cc)

@@ -22,11 +22,14 @@ NewtonianViscousStress::NewtonianViscousStress( const double dynamic_viscosity,
 void NewtonianViscousStress::calculateStress( ExaMPM::Particle& p ) const
 {
     // Calculate the volumetric dilation. The dilation is the trace of the
-    // particle strain. Strain = 0.5*( F^T + F ) - I for small deformation
-    // theory.
+    // particle strain. Strain = 0.5*( F^T * F  - I ) for large deformation
+    // theory with lagrangian finite strain tensor.
     double dilation = 0.0;
     for ( int i = 0; i < 3; ++i )
-        dilation += p.F[i][i] - 1.0;
+        for ( int j = 0; j < 3; ++j )
+            dilation += p.F[j][i] * p.F[j][i];
+    dilation -= 3.0;
+    dilation *= 0.5;
 
     // Calculate deviatoric stress.
     for ( int i = 0; i < 3; ++i )

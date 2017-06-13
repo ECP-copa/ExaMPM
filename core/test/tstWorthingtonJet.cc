@@ -1,6 +1,6 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file test/tstWaterDroplet.cc
+ * \file test/tstWorthingtonJet.cc
  */
 //---------------------------------------------------------------------------//
 
@@ -20,7 +20,7 @@
 #include "gtest_main.hh"
 
 //---------------------------------------------------------------------------//
-class WaterDropletTest : public ::testing::Test
+class WorthingtonJetTest : public ::testing::Test
 {
   protected:
     void SetUp()
@@ -30,7 +30,7 @@ class WaterDropletTest : public ::testing::Test
 //---------------------------------------------------------------------------//
 // TESTS
 //---------------------------------------------------------------------------//
-TEST_F(WaterDropletTest, water_droplet_test)
+TEST_F(WorthingtonJetTest, worthington_jet_test)
 {
     // Create the problem manager.
     int num_cells_x = 100;
@@ -96,18 +96,18 @@ TEST_F(WaterDropletTest, water_droplet_test)
 
     // Calculate the time step paramters.
     double delta_t = 1.0e-5;
-    double final_time = 5.0e-3;
+    double final_time = 110.0e-3;
     int num_steps = std::ceil( final_time / delta_t );
     std::cout << "Time step size: " << delta_t << std::endl;
     std::cout << "Num steps: " << num_steps << std::endl;
 
     // Solve the problem.
-    std::string output_file( "water_droplet_particles" );
-    int num_write = 20;
+    std::string output_file( "worthington_jet_particles" );
+    int num_write = 50;
     int write_freq = num_steps / num_write;
     manager.solve( num_steps, delta_t, output_file, write_freq );
 }
 
 //---------------------------------------------------------------------------//
-// end of test/tstWaterDroplet.cc
+// end of test/tstWorthingtonJet.cc
 //---------------------------------------------------------------------------//
