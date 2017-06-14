@@ -1,4 +1,7 @@
 INCLUDE(UtilsTest)
 
-ADD_UTILS_TEST(tstMesh.cc)
-ADD_UTILS_TEST(tstGeometry.cc)
+ADD_UTILS_TEST(tstBouncingBall.cc)
+
+ADD_UTILS_TEST(tstDamBreak.cc)
+
+ADD_UTILS_TEST(tstWorthingtonJet.cc)

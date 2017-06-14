@@ -7,7 +7,7 @@
 #ifndef EXAMPM_PARTICLE_HH
 #define EXAMPM_PARTICLE_HH
 
-#include <vector>
+#include <array>
 
 namespace ExaMPM
 {
@@ -15,33 +15,76 @@ namespace ExaMPM
 //---------------------------------------------------------------------------//
 /*!
  * \class Particle
+ * \brief 3d Particle
  */
 class Particle
 {
   public:
 
-    // Physical location
-    std::vector<double> r;
+    //@{
+    //! Particle State.
 
-    // Velocity
-    std::vector<double> v;
+    //! Physical location.
+    std::array<double,3> r;
 
-    // Mass
+    //! Velocity.
+    std::array<double,3> v;
+
+    //! Deformation gradient.
+    std::array<std::array<double,3>,3> F;
+
+    //! Velocity gradient.
+    std::array<std::array<double,3>,3> grad_v;
+
+    //! Stress.
+    std::array<std::array<double,3>,3> stress;
+
+    //! Mass.
     double m;
 
-    // Material id
+    //! Volume.
+    double volume;
+
+    //! Material id.
     int matid;
 
-  public:
+    //! Color.
+    int color;
+    //@}
 
-    // Default constructor.
-    Particle() = default;
+    //@{
+    //! Grid state of particle.
 
-    // Spatial dimension constructor.
-    Particle( const int space_dim )
-        : r( space_dim )
-        , v( space_dim )
-    { /* ... */ }
+    //! Cardinal cell id.
+    int cell_id;
+
+    //! Adjacent node ids.
+    std::array<int,8> node_ids;
+
+    //! Node basis functions.
+    std::array<double,8> basis_values;
+
+    //! Node basis gradients.
+    std::array<std::array<double,3>,8> basis_gradients;
+
+    //@}
+
+    // Constructor.
+    Particle()
+    {
+        // The initial deformation gradient is the identity.
+        F[0][0] = 1.0;
+        F[0][1] = 0.0;
+        F[0][2] = 0.0;
+
+        F[1][0] = 0.0;
+        F[1][1] = 1.0;
+        F[1][2] = 0.0;
+
+        F[2][0] = 0.0;
+        F[2][1] = 0.0;
+        F[2][2] = 1.0;
+    }
 };
 
 //---------------------------------------------------------------------------//

@@ -9,7 +9,7 @@
 
 #include "Particle.hh"
 
-#include <vector>
+#include <array>
 #include <functional>
 
 namespace ExaMPM
@@ -26,28 +26,46 @@ class Geometry
 
     // Velocity field function.
     using VelocityField = std::function<
-      void(const std::vector<double>& r,std::vector<double>& v)>;
+      void(const std::array<double,3>& r,std::array<double,3>& v)>;
+
+    // Constructor.
+    Geometry();
 
     // Destructor.
     virtual ~Geometry() = default;
 
+    // Determine if a particle is in the geometry.
+    virtual bool particleInGeometry( const Particle& p ) const = 0;
+
     // Set the initial material id of the geometry.
-    virtual void setMatId( const int matid ) = 0;
+    void setMatId( const int matid );
+
+    // Set the color of the geometry.
+    void setColor( const int color );
 
     // Set the initial velocity field of the geometry.
-    virtual void setVelocityField( VelocityField&& velocity_field ) = 0;
+    void setVelocityField( VelocityField&& velocity_field );
 
-    // Set the initial total mass of the geometry.
-    virtual void setMass( const double total_mass ) = 0;
+    // Set the density.
+    void setDensity( const double density );
 
-    // Determine if a particle is in the geometry. If it is, keep track of it
-    // so we know how many total particles there are.
-    virtual bool particleInGeometry( const Particle& p ) = 0;
+    // Initialize the state of a particle in the geometry. The given particle
+    // will be in the geometry.
+    void initializeParticle( Particle& p ) const;
 
-    // Initialize the state of a particle in the geometry. This will be called
-    // after we have counted how many particles are in the geometry with
-    // particleInGeometry(). The given particle will be in the geometry.
-    virtual void initializeParticle( Particle& p ) const = 0;
+  private:
+
+    // Material id.
+    int d_matid;
+
+    // Color
+    int d_color;
+
+    // Velocity field.
+    VelocityField d_velocity_field;
+
+    // Density.
+    double d_density;
 };
 
 //---------------------------------------------------------------------------//
