@@ -77,7 +77,7 @@ TEST_F(BouncingBallTest, bouncing_ball_test)
     // Set the ball moving to the right in X.
     auto init_vf1 =
         [](const std::array<double,3>& r,std::array<double,3>& v)
-        { v[0] = 3.0; v[1] = 0.0; v[2] = 0.0; };
+        { v[0] = 2.0; v[1] = 0.0; v[2] = 0.0; };
     geom[0]->setVelocityField( init_vf1 );
 
     // Initialize the manager.
@@ -86,14 +86,14 @@ TEST_F(BouncingBallTest, bouncing_ball_test)
 
     // Calculate the time step paramters.
     double delta_t = 1.0e-5;
-    double final_time = 2.0;
+    double final_time = 5.0;
     int num_steps = std::ceil( final_time / delta_t );
     std::cout << "Time step size: " << delta_t << std::endl;
     std::cout << "Num steps: " << num_steps << std::endl;
 
     // Solve the problem.
     std::string output_file( "bouncing_ball_particles" );
-    int num_write = 40;
+    int num_write = 100;
     int write_freq = num_steps / num_write;
     manager.solve( num_steps, delta_t, output_file, write_freq );
 }

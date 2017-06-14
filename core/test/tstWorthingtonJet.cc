@@ -60,8 +60,9 @@ TEST_F(WorthingtonJetTest, worthington_jet_test)
     double dynamic_viscosity = 3.5e-3;
     double density = 1100.0;
     double bulk_modulus = 2.0e9;
+    double gamma = 7.0;
     materials[0] = std::make_shared<ExaMPM::NewtonianViscousStress>(
-        dynamic_viscosity,bulk_modulus,density);
+        dynamic_viscosity,bulk_modulus,density,gamma);
 
     // Set the materials with the manager.
     manager.setMaterialModels( materials );
@@ -69,7 +70,7 @@ TEST_F(WorthingtonJetTest, worthington_jet_test)
     // Geometry
     std::vector<std::shared_ptr<ExaMPM::Geometry> > geom( 2 );
 
-    // Create the initial water pool.
+    // Create the initial fluid pool.
     std::array<double,6> bnds = {0.0,0.04,0.0,0.04,0.0,0.01};
     geom[0] = std::make_shared<ExaMPM::Box>(bnds);
     geom[0]->setMatId( 0 );
@@ -77,8 +78,8 @@ TEST_F(WorthingtonJetTest, worthington_jet_test)
     geom[0]->setDensity( density );
 
     // Create the droplet.
-    std::array<double,3> center = { 0.02, 0.02, 0.014 };
-    double radius = 0.004;
+    std::array<double,3> center = { 0.02, 0.02, 0.012 };
+    double radius = 0.002;
     geom[1] = std::make_shared<ExaMPM::Sphere>(center,radius);
     geom[1]->setMatId( 0 );
     geom[1]->setColor( 2 );

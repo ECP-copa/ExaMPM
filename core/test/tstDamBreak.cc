@@ -59,8 +59,9 @@ TEST_F(DamBreakTest, dam_break_test)
     double dynamic_viscosity = 1.0e-3;
     double density = 1000.0;
     double bulk_modulus = 2.0e9;
+    double gamma = 7.0;
     materials[0] = std::make_shared<ExaMPM::NewtonianViscousStress>(
-        dynamic_viscosity,bulk_modulus,density);
+        dynamic_viscosity,bulk_modulus,density,gamma);
 
     // Set the materials with the manager.
     manager.setMaterialModels( materials );
@@ -79,14 +80,14 @@ TEST_F(DamBreakTest, dam_break_test)
 
     // Calculate the time step paramters.
     double delta_t = 1.0e-5;
-    double final_time = 1.3;
+    double final_time = 2.0;
     int num_steps = std::ceil( final_time / delta_t );
     std::cout << "Time step size: " << delta_t << std::endl;
     std::cout << "Num steps: " << num_steps << std::endl;
 
     // Solve the problem.
     std::string output_file( "dam_break_particles" );
-    int num_write = 40;
+    int num_write = 50;
     int write_freq = num_steps / num_write;
     manager.solve( num_steps, delta_t, output_file, write_freq );
 }

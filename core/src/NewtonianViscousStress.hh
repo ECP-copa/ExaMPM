@@ -17,17 +17,23 @@ namespace ExaMPM
 //---------------------------------------------------------------------------//
 /*!
  * \class NewtonianViscousStress
- * \brief Stress model for a viscous nearly-incompressible newtonian fluid.
  *
- * Implements a stress model for viscous nearly-incompressible newtonian
- * fluids:
+ * \brief Stress model for a viscous nearly-incompressible viscous newtonian
+ * fluid.
  *
- * sigma = (rho * k / rho_0) * theta * I + mu * ( grad V + grad V^T )
+ * Implements a stress model for viscous nearly-incompressible viscous
+ * newtonian fluids based on Monaghan SPH model:
  *
- * where mu is the fluid dynamic viscosity, grad V the velocity gradient, rho
- * the fluid density, rho_0 the initial fluid density, k the fluid bulk
- * viscosity, theta the volumetric dilation, I the idenity, and sigma is the
- * resulting stress.
+ * sigma = -p * I + 2 * mu * d'
+ *
+ * where p is the fluid pressure, mu is the fluid dynamic viscosity, and d'
+ * the deviatoric component of the rate of deformation tensor. Pressure is
+ * calculated with an equation of state:
+ *
+ * p = K * ( (rho/rho_0)^gamma - 1 )
+ *
+ * where K is the bulk modulus of the fluid, rho the current fluid density,
+ * rho_0 the initial fluid density, and gamma a constant.
  */
 class NewtonianViscousStress : public StressModel
 {
@@ -36,7 +42,8 @@ class NewtonianViscousStress : public StressModel
     // Constructor.
     NewtonianViscousStress( const double dynamic_viscosity,
                             const double bulk_modulus,
-                            const double initial_density );
+                            const double initial_density,
+                            const double gamma );
 
     // Given a particle state calculate the particle stress.
     void calculateStress( ExaMPM::Particle& p ) const override;
@@ -46,8 +53,14 @@ class NewtonianViscousStress : public StressModel
     // Fluid dynamic viscosity
     double d_viscosity;
 
-    // Fluid bulk modulus scaled by the initial density.
+    // Fluid bulk modulus.
     double d_bulk_modulus;
+
+    // Fluid initial density.
+    double d_init_density;
+
+    // Gamma constant.
+    double d_gamma;
 };
 
 //---------------------------------------------------------------------------//
