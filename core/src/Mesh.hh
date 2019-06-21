@@ -54,6 +54,9 @@ class Mesh
     // Get the number of particles in a cell for a given order.
     int particlesPerCell( const int order ) const;
 
+    // Get the number of cells in each direction.
+    double getDimensionLength( const int dim ) const;
+
     // Given a cardinal cell id intitalize a number of particles in that cell.
     void initializeParticles(
         const int cell_id,

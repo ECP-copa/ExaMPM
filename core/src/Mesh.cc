@@ -189,6 +189,21 @@ int Mesh::particlesPerCell( const int order ) const
 }
 
 //---------------------------------------------------------------------------//
+// Get the number of cells in each direction 
+double Mesh::getDimensionLength( const int dim ) const
+{
+    double length;
+    if ( dim == 0 ){
+        length = d_num_cells_x * d_cell_width;
+    } else if ( dim == 1 ){
+	length = d_num_cells_y * d_cell_width;
+    } else {
+	length = d_num_cells_z * d_cell_width;
+    }
+    return length;
+}
+
+//---------------------------------------------------------------------------//
 // Given a cardinal cell id intitalize a number of particles in that cell.
 void Mesh::initializeParticles(
     const int cell_id,
