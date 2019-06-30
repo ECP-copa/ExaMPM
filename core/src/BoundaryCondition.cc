@@ -51,6 +51,27 @@ void NoSlipBoundaryCondition::evaluateImpulseCondition(
 }
 
 //---------------------------------------------------------------------------//
+// Evaluate the new particle positions on the boundary.
+// Does not do anything unless periodic boundary conditions.
+void NoSlipBoundaryCondition::evaluateBoundaryPosition(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<Particle>& particles ) const {}
+
+//---------------------------------------------------------------------------//
+//
+// Does not do anything unless periodic boundary conditions.
+void NoSlipBoundaryCondition::completeBoundarySum(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<double>& field ) const {}
+
+//---------------------------------------------------------------------------//
+// 
+// Does not do anything unless periodic boundary conditions.
+void NoSlipBoundaryCondition::completeBoundarySum(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<std::array<double,3> >& field ) const {}
+
+//---------------------------------------------------------------------------//
 // Free slip condition
 //---------------------------------------------------------------------------//
 // Evaluate the boundary condition for momentum.
@@ -99,6 +120,27 @@ void FreeSlipBoundaryCondition::evaluateImpulseCondition(
     for ( auto n : nodes )
         impulse[n][dim] = 0.0;
 }
+
+//---------------------------------------------------------------------------//
+// Evaluate the new particle positions on the boundary.
+// Does not do anything unless periodic boundary conditions.
+void FreeSlipBoundaryCondition::evaluateBoundaryPosition(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<Particle>& particles ) const {}
+
+//---------------------------------------------------------------------------//
+//
+// Does not do anything unless periodic boundary conditions.
+void FreeSlipBoundaryCondition::completeBoundarySum(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<double>& field ) const {}
+
+//---------------------------------------------------------------------------//
+// 
+// Does not do anything unless periodic boundary conditions.
+void FreeSlipBoundaryCondition::completeBoundarySum(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<std::array<double,3> >& field ) const {}
 
 //---------------------------------------------------------------------------//
 // Velocity condition
@@ -154,6 +196,146 @@ void VelocityBoundaryCondition::evaluateImpulseCondition(
         impulse[n][dim] = 0.0;
 }
 
+//---------------------------------------------------------------------------//
+// Evaluate the new particle positions on the boundary.
+// Does not do anything unless periodic boundary conditions.
+void VelocityBoundaryCondition::evaluateBoundaryPosition(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<Particle>& particles ) const {}
+
+//---------------------------------------------------------------------------//
+//
+// Does not do anything unless periodic boundary conditions.
+void VelocityBoundaryCondition::completeBoundarySum(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<double>& field ) const {}
+
+//---------------------------------------------------------------------------//
+// 
+// Does not do anything unless periodic boundary conditions.
+void VelocityBoundaryCondition::completeBoundarySum(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<std::array<double,3> >& field ) const {}
+
+//---------------------------------------------------------------------------//
+// Periodic condition
+//---------------------------------------------------------------------------//
+// Evaluate the boundary condition for momentum.
+// (-x = 0, +x = 1, -y = 2, +y = 3, -z = 4, +z = 5)
+void PeriodicBoundaryCondition::evaluateMomentumCondition(
+    const std::shared_ptr<Mesh>& mesh,
+    const int boundary,
+    const std::vector<double>& mass,
+    std::vector<std::array<double,3> >& momentum ) const
+{
+}
+
+//---------------------------------------------------------------------------//
+// Evaluate the boundary condition for impulse.
+// (-x = 0, +x = 1, -y = 2, +y = 3, -z = 4, +z = 5)
+void PeriodicBoundaryCondition::evaluateImpulseCondition(
+    const std::shared_ptr<Mesh>& mesh,
+    const int boundary,
+    const std::vector<double>& mass,
+    std::vector<std::array<double,3> >& impulse ) const
+{
+}
+
+//---------------------------------------------------------------------------//
+// Evaluate the new particle positions on the boundary.
+// (-x = 0, +x = 1, -y = 2, +y = 3, -z = 4, +z = 5)
+void PeriodicBoundaryCondition::evaluateBoundaryPosition(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<Particle>& particles ) const
+{
+    // Determine if boundary is on x, y, or z.
+    int dim = std::floor( boundary / 2 );
+
+    // Get the length of the mesh in the current dimension.
+    double length = mesh->getDimensionLength( dim );
+
+    // If left boundary, move particles to right side.
+    if ( boundary % 2 == 0 )
+    {
+        for ( auto& p : particles )
+            if ( p.r[dim] < 0.0 )
+		p.r[dim] += length;
+    }
+    // If right boundary, move particles to left side. 
+    else
+    {
+	for ( auto& p : particles )
+	    if ( p.r[dim] > length )
+	        p.r[dim] -= length;
+    }	
+}
+
+//---------------------------------------------------------------------------//
+// Complete Boundary sum
+// (-x = 0, +x = 1, -y = 2, +y = 3, -z = 4, +z = 5)
+void PeriodicBoundaryCondition::completeBoundarySum(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<double>& field ) const
+{
+    // Update left and right boundaries to be their sum.
+    if ( boundary % 2 == 0 )
+    {
+        // Get the boundary nodes.
+        const auto& nodes_left = mesh->getBoundaryNodes( boundary );
+        const auto& nodes_right = mesh->getBoundaryNodes( boundary+1 );
+
+	assert( nodes_left.size() == nodes_right.size() );
+
+        // Apply the boundary condition. Periodic means that the boundaries
+	// are the sum of the left and right side. 
+	for ( std::size_t i = 0; i < nodes_right.size(); ++i )
+	{
+            int right_id = nodes_right[i];
+	    int left_id = nodes_left[i];
+	    double val_left = field[left_id];
+	    double val_right = field[right_id];
+	    field[left_id] += val_right;
+	    field[right_id] += val_left;
+	}
+    }
+}
+
+//---------------------------------------------------------------------------//
+// Complete Boundary sum
+// (-x = 0, +x = 1, -y = 2, +y = 3, -z = 4, +z = 5)
+void PeriodicBoundaryCondition::completeBoundarySum(
+    const std::shared_ptr<Mesh>& mesh, const int boundary,
+    std::vector<std::array<double,3> >& field ) const
+{
+    // Determine if the boundary is on x, y, or z.
+    //int dim = std::floor( boundary / 2 );
+
+    // Update left and right boundaries to be their sum.
+    if ( boundary % 2 == 0 )
+    {
+        // Get the boundary nodes.
+        const auto& nodes_left = mesh->getBoundaryNodes( boundary );
+        const auto& nodes_right = mesh->getBoundaryNodes( boundary+1 );
+
+	assert( nodes_left.size() == nodes_right.size() );
+
+        // Apply the boundary condition. Periodic means that the boundaries
+	// are the sum of the left and right side. 
+	for ( std::size_t i = 0; i < nodes_right.size(); ++i )
+	{
+            int right = nodes_right[i];
+	    int left = nodes_left[i];
+
+            for ( int dim = 0; dim < 3; ++dim )
+	    {
+	        double val_left = field[left][dim];
+	        double val_right = field[right][dim];
+	        field[left][dim] += val_right;
+	        field[right][dim] += val_left;
+	    }
+	}
+    }
+}
 //---------------------------------------------------------------------------//
 
 } // end namespace ExaMPM

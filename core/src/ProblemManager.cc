@@ -218,6 +218,10 @@ void ProblemManager::calculateNodalMass( std::vector<double>& node_m )
             node_m[ node_id ] += p.basis_values[n] * p.m;
         }
     }
+    // Boundary conditions.
+    for ( int b = 0; b < 6; ++b )
+        d_bc[b]->completeBoundarySum( d_mesh, b, node_m );
+
 }
 
 //---------------------------------------------------------------------------//
@@ -249,6 +253,9 @@ void ProblemManager::calculateNodalMomentum(
             }
         }
     }
+    // Boundary conditions.
+    for ( int b = 0; b < 6; ++b )
+        d_bc[b]->completeBoundarySum( d_mesh, b, node_p );
 
     // Boundary conditions.
     for ( int b = 0; b < 6; ++b )
@@ -309,6 +316,9 @@ void ProblemManager::calculateNodalVelocity(
             }
         }
     }
+    // Boundary conditions.
+    for ( int b = 0; b < 6; ++b )
+        d_bc[b]->completeBoundarySum( d_mesh, b, node_v );
 
     // Boundary conditions.
     for ( int b = 0; b < 6; ++b )
@@ -417,6 +427,9 @@ void ProblemManager::calculateInternalNodalForces(
                         p.volume * p.basis_gradients[n][j] * p.stress[j][i];
         }
     }
+    // Boundary conditions.
+    for ( int b = 0; b < 6; ++b )
+        d_bc[b]->completeBoundarySum( d_mesh, b, node_f_int );
 }
 
 //---------------------------------------------------------------------------//
@@ -439,7 +452,7 @@ void ProblemManager::calculateNodalImpulse(
     if ( d_has_gravity )
         for ( int n = 0; n < num_nodes; ++n )
             node_imp[n][2] -= delta_t * node_m[n] * 9.81;
-
+    
     // Boundary conditions.
     for ( int b = 0; b < 6; ++b )
         d_bc[b]->evaluateImpulseCondition( d_mesh, b, node_m, node_imp );
@@ -482,6 +495,9 @@ void ProblemManager::updateParticlePositionAndVelocity(
             }
         }
     }
+    // Boundary conditions.
+    for ( int b = 0; b < 6; ++b )
+        d_bc[b]->evaluateBoundaryPosition( d_mesh, b, d_particles );
 }
 
 //---------------------------------------------------------------------------//

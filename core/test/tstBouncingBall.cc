@@ -42,12 +42,12 @@ TEST_F(BouncingBallTest, bouncing_ball_test)
 
     // Create boundary conditions.
     std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6> bc;
-    bc[0] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
-    bc[1] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
-    bc[2] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
-    bc[3] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
-    bc[4] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
-    bc[5] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
+    bc[0] = std::make_shared<ExaMPM::PeriodicBoundaryCondition>();
+    bc[1] = std::make_shared<ExaMPM::PeriodicBoundaryCondition>();
+    bc[2] = std::make_shared<ExaMPM::PeriodicBoundaryCondition>();
+    bc[3] = std::make_shared<ExaMPM::PeriodicBoundaryCondition>();
+    bc[4] = std::make_shared<ExaMPM::PeriodicBoundaryCondition>();
+    bc[5] = std::make_shared<ExaMPM::PeriodicBoundaryCondition>();
 
     // Set boundary conditions with the manager.
     manager.setBoundaryConditions( bc );
