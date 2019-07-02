@@ -18,6 +18,7 @@
 #include <array>
 #include <functional>
 #include <string>
+#include <chrono>
 
 namespace ExaMPM
 {
@@ -35,7 +36,8 @@ class ProblemManager
                     const int mesh_num_cells_y,
                     const int mesh_num_cells_z,
                     const double mesh_cell_width,
-                    const bool has_gravity );
+                    const bool has_gravity,
+                    const int thread_count );
 
     // Set boundary conditions.
     void setBoundaryConditions(
@@ -84,7 +86,7 @@ class ProblemManager
 
     // Calculate internal forces at mesh nodes.
     void calculateInternalNodalForces(
-        std::vector<std::array<double,3> >& node_f_int );
+        std::vector<std::array<double,3> >& node_f_int	);
 
     // Calculate nodal impulse.
     void calculateNodalImpulse(
@@ -102,7 +104,12 @@ class ProblemManager
 
     // Write a time step to file.
     void writeTimeStepToFile(
-        const std::string& output_file, const int step ) const;
+        const std::string& output_file, const int step	) const;
+
+    // Write runtime results to file.
+    void writeRuntimeToFile(
+        const std::string& output_file, const std::vector<double> step_times,
+	std::chrono::duration<double> runtime ) const;
 
   private:
 
@@ -120,6 +127,9 @@ class ProblemManager
 
     // Particles.
     std::vector<Particle> d_particles;
+
+    // OpenMP Threads.
+    int d_thread_count;
 };
 
 //---------------------------------------------------------------------------//

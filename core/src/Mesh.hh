@@ -29,7 +29,8 @@ class Mesh
     Mesh( const int num_cells_x,
           const int num_cells_y,
           const int num_cells_z,
-          const double cell_width );
+          const double cell_width,
+          const int thread_count );
 
     // Get the spatial dimension of the mesh.
     int spatialDimension() const;
@@ -124,6 +125,9 @@ class Mesh
     // Boundary node ids.
     // (-x = 0, +x = 1, -y = 2, +y = 3, -z = 4, +z = 5)
     std::array<std::vector<int>,6> d_boundary_nodes;
+
+    // Number of threads used.
+    int d_thread_count;
 };
 
 } // end namespace ExaMPM
