@@ -12,10 +12,17 @@
 namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
+static int test_argc;
+static char** test_argv;
+
 int gtest_main(int argc, char *argv[])
 {
     // Initialize google test
     ::testing::InitGoogleTest(&argc, argv);
+
+    // Capture command line args.
+    test_argc = argc;
+    test_argv = argv;
 
     // Run everything
     int failed = RUN_ALL_TESTS();
@@ -36,6 +43,8 @@ int gtest_main(int argc, char *argv[])
 } // end namespace ExaMPM
 
 //---------------------------------------------------------------------------//
+
+
 int main(int argc, char *argv[])
 {
     ExaMPM::gtest_main(argc, argv);

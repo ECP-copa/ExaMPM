@@ -37,8 +37,10 @@ TEST_F(BouncingBallTest, bouncing_ball_test)
     int num_cells_z = 20;
     double cell_width = 0.05;
     bool has_gravity = true;
+    int thread_count = ( ExaMPM::test_argc == 2 ) ? std::atoi(ExaMPM::test_argv[1]) : 1;
+
     ExaMPM::ProblemManager manager(
-        num_cells_x, num_cells_y, num_cells_z, cell_width, has_gravity );
+        num_cells_x, num_cells_y, num_cells_z, cell_width, has_gravity, thread_count );
 
     // Create boundary conditions.
     std::array<std::shared_ptr<ExaMPM::BoundaryCondition>,6> bc;
