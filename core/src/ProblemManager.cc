@@ -303,9 +303,6 @@ void ProblemManager::calculateNodalMomentum(
             }
         }
     }
-    // Boundary conditions.
-    for ( int b = 0; b < 6; ++b )
-        d_bc[b]->completeBoundarySum( d_mesh, b, node_p );
 
     // Combine thread results.
     #pragma omp parallel for num_threads(d_thread_count)
@@ -319,6 +316,10 @@ void ProblemManager::calculateNodalMomentum(
 	    }
 	}
     }
+
+    // Boundary conditions.
+    for ( int b = 0; b < 6; ++b )
+        d_bc[b]->completeBoundarySum( d_mesh, b, node_p );
 
     // Boundary conditions.
     for ( int b = 0; b < 6; ++b )
