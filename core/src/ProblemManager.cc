@@ -180,7 +180,7 @@ void ProblemManager::solve( const int num_time_steps,
     }
     auto stop_time = std::chrono::system_clock::now();
     std::chrono::duration<double> runtime_full = stop_time-start_time;
-    writeRuntimeToFile( output_file, step_times, runtime_full );
+    displayRuntime( step_times, runtime_full );
 
     // Write the end state.
     writeTimeStepToFile( output_file, write_step+1 );
@@ -648,8 +648,8 @@ void ProblemManager::writeTimeStepToFile(
 
 //---------------------------------------------------------------------------//
 // Write runtimes to file.
-void ProblemManager::writeRuntimeToFile(
-    const std::string& output_file, const std::vector<double> step_times,
+void ProblemManager::displayRuntime(
+    const std::vector<double> step_times,
     std::chrono::duration<double> runtime ) const
 {
 
@@ -664,19 +664,10 @@ void ProblemManager::writeRuntimeToFile(
     }
     step_time = step_time / step_times.size();
 
-
-    // Open output file.
-    std::string filename = "omp_" + output_file + ".csv";
-    std::ofstream file;
-    file.open(filename, std::ios_base::app);
-    
-    // Store runtime in file.
-    file << num_particles << ", " << d_thread_count << ", " 
-	    << step_time <<  ", " 
-	    << runtime.count() << std::endl;
-
-    // Close the file.
-    file.close();
+    // Print out runtime details.
+    std::cout << "Average time per step: " << step_time
+            << std::endl << "Total runtime: " 
+            << runtime.count() << std::endl;
 }
 
 //---------------------------------------------------------------------------//

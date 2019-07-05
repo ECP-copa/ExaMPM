@@ -107,8 +107,8 @@ class ProblemManager
         const std::string& output_file, const int step	) const;
 
     // Write runtime results to file.
-    void writeRuntimeToFile(
-        const std::string& output_file, const std::vector<double> step_times,
+    void displayRuntime(
+        const std::vector<double> step_times,
 	std::chrono::duration<double> runtime ) const;
 
   private:
