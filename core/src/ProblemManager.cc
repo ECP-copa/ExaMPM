@@ -118,7 +118,6 @@ void ProblemManager::solve( const int num_time_steps,
     // Time step parameters
     double time = 0.0;
 
-    auto start_time = std::chrono::system_clock::now();
     std::vector<double> step_times( num_time_steps, 0.0 );
 
     // Write the initial state.
@@ -178,9 +177,7 @@ void ProblemManager::solve( const int num_time_steps,
         }
         step_times[step] = runtime.count();
     }
-    auto stop_time = std::chrono::system_clock::now();
-    std::chrono::duration<double> runtime_full = stop_time-start_time;
-    displayRuntime( step_times, runtime_full );
+    displayRuntime( step_times );
 
     // Write the end state.
     writeTimeStepToFile( output_file, write_step+1 );
@@ -649,12 +646,10 @@ void ProblemManager::writeTimeStepToFile(
 //---------------------------------------------------------------------------//
 // Write runtimes to file.
 void ProblemManager::displayRuntime(
-    const std::vector<double> step_times,
-    std::chrono::duration<double> runtime ) const
+    const std::vector<double> step_times ) const
 {
 
     double step_time = 0.0;
-    std::size_t num_particles = d_particles.size();
 
     // Compute average time for one time step.
     #pragma omp parallel for reduction(+: step_time)
@@ -666,8 +661,7 @@ void ProblemManager::displayRuntime(
 
     // Print out runtime details.
     std::cout << "Average time per step: " << step_time
-            << std::endl << "Total runtime: " 
-            << runtime.count() << std::endl;
+            << std::endl;
 }
 
 //---------------------------------------------------------------------------//
