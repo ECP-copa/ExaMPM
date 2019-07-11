@@ -88,7 +88,7 @@ TEST_F(BouncingBallTest, bouncing_ball_test)
 
     // Initialize the manager.
     int order = 3;
-    manager.initialize( geom, order, vel );
+    manager.initialize( geom, order );
 
     // Calculate the time step paramters.
     double delta_t = 1.0e-5;
