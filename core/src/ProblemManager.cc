@@ -578,9 +578,7 @@ void ProblemManager::updateParticlePositionAndVelocity(
                 for ( int d = 0; d < space_dim; ++d )
                 {
                     // Increment the position.
-                    p.r[d] += delta_t *
-                              (node_p[node_id][d] + node_imp[node_id][d]) *
-                              p.basis_values[n] / node_m[node_id];
+                    p.r[d] += delta_t * node_v[node_id][d] * p.basis_values[n];
 
                     // Increment the velocity. (PolyPIC Update)
                     p.c[0][d] += p.basis_values[n] * node_v[node_id][d];
@@ -628,7 +626,7 @@ void ProblemManager::writeTimeStepToFile(
     double vmag = 0.0;
     for ( auto& p : d_particles )
     {
-        vmag = std::sqrt( p.ci[0][0]*p.c[0][0] + p.c[0][1]*p.c[0][1] + p.c[0][2]*p.c[0][2] );
+        vmag = std::sqrt( p.c[0][0]*p.c[0][0] + p.c[0][1]*p.c[0][1] + p.c[0][2]*p.c[0][2] );
         file << p.r[0] << ", "
              << p.r[1] << ", "
              << p.r[2] << ", "
