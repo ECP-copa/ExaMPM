@@ -16,8 +16,11 @@ Geometry::Geometry()
 {
     // Geometry is initially not in motion by default.
     d_velocity_field =
-        []( const std::array<double,3>& r, std::array<double,3>& v )
-        { std::fill(v.begin(),v.end(),0.0); };
+        []( const std::array<double,3>& r, std::array<std::array<double,3>,8>& c )
+        { 
+            for ( auto& mode : c )
+                std::fill(mode.begin(),mode.end(),0.0); 
+        };
 }
 
 //---------------------------------------------------------------------------//
@@ -58,7 +61,7 @@ void Geometry::initializeParticle( Particle& p ) const
     assert( this->particleInGeometry(p) );
 
     // Assign the velocity.
-    d_velocity_field( p.r, p.v );
+    d_velocity_field( p.r, p.c );
 
     // Assign the material id.
     p.matid = d_matid;

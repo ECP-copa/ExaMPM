@@ -26,7 +26,7 @@ class Geometry
 
     // Velocity field function.
     using VelocityField = std::function<
-      void(const std::array<double,3>& r,std::array<double,3>& v)>;
+      void(const std::array<double,3>& r,std::array<std::array<double,3>,8>& c)>;
 
     // Constructor.
     Geometry();
@@ -61,7 +61,7 @@ class Geometry
     // Color
     int d_color;
 
-    // Velocity field.
+    // Velocity coefficients.
     VelocityField d_velocity_field;
 
     // Density.

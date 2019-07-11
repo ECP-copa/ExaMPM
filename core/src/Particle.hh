@@ -28,7 +28,7 @@ class Particle
     std::array<double,3> r;
 
     //! Velocity.
-    std::array<double,3> v;
+    std::array<double,3> c;
 
     //! Deformation gradient.
     std::array<std::array<double,3>,3> F;

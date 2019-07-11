@@ -78,13 +78,17 @@ TEST_F(BouncingBallTest, bouncing_ball_test)
 
     // Set the ball moving to the right in X.
     auto init_vf1 =
-        [](const std::array<double,3>& r,std::array<double,3>& v)
-        { v[0] = 2.0; v[1] = 0.0; v[2] = 0.0; };
+        [](const std::array<double,3>& r,std::array<std::array<double,3>,8>& c)
+        { 
+            for ( auto& mode : c )
+                std::fill(mode.begin(),mode.end(),0.0);
+            c[0][0] = 2.0; c[0][1] = 0.0; c[0][2] = 0.0; 
+        };
     geom[0]->setVelocityField( init_vf1 );
 
     // Initialize the manager.
     int order = 3;
-    manager.initialize( geom, order );
+    manager.initialize( geom, order, vel );
 
     // Calculate the time step paramters.
     double delta_t = 1.0e-5;

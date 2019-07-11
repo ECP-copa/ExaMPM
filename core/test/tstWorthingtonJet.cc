@@ -89,8 +89,12 @@ TEST_F(WorthingtonJetTest, worthington_jet_test)
 
     // Give the droplet a downward velocity equal to a 300mm free fall
     auto init_vf1 =
-        [](const std::array<double,3>& r,std::array<double,3>& v)
-        { v[0] = 0.0; v[1] = 0.0; v[2] = -2.42; };
+        [](const std::array<double,3>& r,std::array<std::array<double,3>,8>& c)
+        {
+            for ( auto& mode : c )
+                std::fill(mode.begin(),mode.end(),0.0);
+            c[0][0] = 0.0; c[0][1] = 0.0; c[0][2] = -2.42;
+        };
     geom[1]->setVelocityField( init_vf1 );
 
     // Initialize the manager.

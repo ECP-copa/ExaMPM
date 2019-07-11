@@ -18,7 +18,7 @@ Mesh::Mesh( const int num_cells_x,
             const int num_cells_y,
             const int num_cells_z,
             const double cell_width,
-	    const int thread_count )
+    	    const int thread_count )
     : d_num_cells_x( num_cells_x )
     , d_num_cells_y( num_cells_y )
     , d_num_cells_z( num_cells_z )
@@ -205,9 +205,9 @@ double Mesh::getDimensionLength( const int dim ) const
     if ( dim == 0 ){
         length = d_num_cells_x * d_cell_width;
     } else if ( dim == 1 ){
-	length = d_num_cells_y * d_cell_width;
+	    length = d_num_cells_y * d_cell_width;
     } else {
-	length = d_num_cells_z * d_cell_width;
+	    length = d_num_cells_z * d_cell_width;
     }
     return length;
 }
