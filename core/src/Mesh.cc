@@ -160,6 +160,13 @@ int Mesh::totalNumNodes() const
 }
 
 //---------------------------------------------------------------------------//
+// Get cell width.
+double Mesh::cellWidth() const
+{
+    return d_cell_width;
+}
+
+//---------------------------------------------------------------------------//
 // Given a node id get its coordinates.
 void Mesh::nodeCoordinates( const int node_id,
                             std::array<double,3>& coords ) const

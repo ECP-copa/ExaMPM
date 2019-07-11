@@ -44,6 +44,9 @@ class Mesh
     // Get the total number of nodes in the mesh.
     int totalNumNodes() const;
 
+    // Get cell width.
+    double cellWidth() const;
+
     // Given a node id get its coordinates.
     void nodeCoordinates( const int node_id,
                           std::array<double,3>& coords ) const;

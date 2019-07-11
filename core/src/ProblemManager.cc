@@ -156,7 +156,7 @@ void ProblemManager::solve( const int num_time_steps,
 	
         // 6) Update the particle position and velocity.
         updateParticlePositionAndVelocity(
-            node_imp, node_p, node_m, time_step_size );
+            node_imp, node_p, node_v, node_m, time_step_size );
 
         // 7) Calculate nodal velocity.
         calculateNodalVelocity( node_p, node_imp, node_m, node_v );
@@ -266,7 +266,7 @@ void ProblemManager::calculateNodalMomentum(
 
     std::vector<std::vector<std::array<double,3> > > node_p_local(
         d_thread_count, std::vector<std::array<double,3> > (
-	num_nodes, std::array<double,3>() ) );
+        num_nodes, std::array<double,3>() ) );
 
     // Initialize local storage to zero.
     for ( auto& thread : node_p_local )
@@ -285,7 +285,7 @@ void ProblemManager::calculateNodalMomentum(
         int th = omp_get_thread_num();
 
         std::array<double,8> s;
-        std::array<double,space_dim> coords;
+        std::array<double,3> coords;
 
         // Calculate momentum.
         for ( int n = 0; n < nodes_per_cell; ++n )
@@ -550,12 +550,14 @@ void ProblemManager::calculateNodalImpulse(
 void ProblemManager::updateParticlePositionAndVelocity(
     const std::vector<std::array<double,3> >& node_imp,
     const std::vector<std::array<double,3> >& node_p,
+    const std::vector<std::array<double,3> >& node_v,
     const std::vector<double>& node_m,
     const double delta_t )
 {
     int space_dim = d_mesh->spatialDimension();
     int nodes_per_cell = d_mesh->nodesPerCell();
     int node_id = 0;
+    double width = d_mesh->cellWidth();
 
     // Update the particles.
     #pragma omp parallel for num_threads(d_thread_count)
@@ -626,7 +628,7 @@ void ProblemManager::writeTimeStepToFile(
     double vmag = 0.0;
     for ( auto& p : d_particles )
     {
-        vmag = std::sqrt( p.c[0]*p.c[0] + p.c[1]*p.c[1] + p.c[2]*p.c[2] );
+        vmag = std::sqrt( p.ci[0][0]*p.c[0][0] + p.c[0][1]*p.c[0][1] + p.c[0][2]*p.c[0][2] );
         file << p.r[0] << ", "
              << p.r[1] << ", "
              << p.r[2] << ", "

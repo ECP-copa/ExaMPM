@@ -99,6 +99,7 @@ class ProblemManager
     void updateParticlePositionAndVelocity(
         const std::vector<std::array<double,3> >& node_imp,
         const std::vector<std::array<double,3> >& node_p,
+        const std::vector<std::array<double,3> >& node_v,
         const std::vector<double>& node_m,
         const double delta_t );
 
