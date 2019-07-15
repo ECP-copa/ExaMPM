@@ -95,10 +95,15 @@ class ProblemManager
         const double delta_t,
         std::vector<std::array<double,3> >& node_imp );
 
-    // Update particle position and velocity.
-    void updateParticlePositionAndVelocity(
+    // Update grid node velocity.
+    void updateGridVelocity(
         const std::vector<std::array<double,3> >& node_imp,
         const std::vector<std::array<double,3> >& node_p,
+        const std::vector<double>& node_m,
+        std::vector<std::array<double,3> >& node_v );
+
+    // Update particle position and velocity.
+    void updateParticlePositionAndVelocity(
         const std::vector<std::array<double,3> >& node_v,
         const std::vector<double>& node_m,
         const double delta_t );

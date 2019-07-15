@@ -138,34 +138,36 @@ void ProblemManager::solve( const int num_time_steps,
         }
 
         auto start = std::chrono::system_clock::now();
-        // 1) Locate particles and evaluate basis functions.
+        //  1) Locate particles and evaluate basis functions.
         locateParticles();
 
-        // 2) Calculate the nodal masses.
+        //  2) Calculate the nodal masses.
         calculateNodalMass( node_m );
 	
-        // 3) Calculate nodal momentum.
+        //  3) Calculate nodal momentum.
         calculateNodalMomentum( node_m, node_p );
 
-        // 4) Calculate internal forces.
+        //  4) Calculate internal forces.
         calculateInternalNodalForces( node_f_int );
 
-        // 5) Calculate node impulse.
+        //  5) Calculate node impulse.
         calculateNodalImpulse(
             node_f_int, node_m, time_step_size, node_imp );
 	
-        // 6) Update the particle position and velocity.
-        updateParticlePositionAndVelocity(
-            node_imp, node_p, node_v, node_m, time_step_size );
+        //  6) Update the particle position and velocity.
+        updateParticlePositionAndVelocity( node_v, node_m, time_step_size );
 
-        // 7) Calculate nodal velocity.
+        //  7) Calculate nodal velocity.
         calculateNodalVelocity( node_p, node_imp, node_m, node_v );
 	
-        // 8) Update the particle gradients.
+        //  8) Update the particle gradients.
         updateParticleGradients( node_v, time_step_size );
 
-        // 9) Update the particle stress and strain.
+        //  9) Update the particle stress and strain.
         updateParticleStressStrain();
+
+        // 10) Update the grid node velocities.
+        updateGridVelocity( node_imp, node_p, node_m, node_v );
 
         auto stop = std::chrono::system_clock::now();
         std::chrono::duration<double> runtime = stop-start;
@@ -415,6 +417,7 @@ void ProblemManager::updateParticleGradients(
                         p.basis_gradients[n][i] * node_v[node_id][j];
             }
         }
+                
 
         // Scale the velocity gradient.
         for ( int i = 0; i < space_dim; ++i )
@@ -546,12 +549,29 @@ void ProblemManager::calculateNodalImpulse(
 }
 
 //---------------------------------------------------------------------------//
-// Update particle position and velocity.
-void ProblemManager::updateParticlePositionAndVelocity(
+// Update grid node velocity.
+void ProblemManager::updateGridVelocity(
     const std::vector<std::array<double,3> >& node_imp,
     const std::vector<std::array<double,3> >& node_p,
+    const std::vector<double>& node_m ,
+    std::vector<std::array<double,3> >& node_v )
+{
+    int num_nodes = d_mesh->totalNumNodes();
+    int space_dim = d_mesh->spatialDimension();
+
+    // Update the grid node velocities.
+    #pragma omp parallel for num_threads(d_thread_count)
+    for ( int n = 0; n < num_nodes; ++n )
+        if ( node_m[n] > 0 )
+            for ( int d = 0; d < space_dim; ++d )
+                node_v[n][d] = ( node_p[n][d] + node_imp[n][d] ) / node_m[n];
+}
+
+//---------------------------------------------------------------------------//
+// Update particle position and velocity.
+void ProblemManager::updateParticlePositionAndVelocity(
     const std::vector<std::array<double,3> >& node_v,
-    const std::vector<double>& node_m,
+    const std::vector<double>& node_m ,
     const double delta_t )
 {
     int space_dim = d_mesh->spatialDimension();
@@ -566,6 +586,9 @@ void ProblemManager::updateParticlePositionAndVelocity(
         auto& p = d_particles.at(i);
         std::array<double,3> coords;
 
+        for ( auto& mode : p.c )
+            std::fill(mode.begin(),mode.end(),0.0);
+
         // Loop over adjacent nodes.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
@@ -577,9 +600,6 @@ void ProblemManager::updateParticlePositionAndVelocity(
             {
                 for ( int d = 0; d < space_dim; ++d )
                 {
-                    // Increment the position.
-                    p.r[d] += delta_t * node_v[node_id][d] * p.basis_values[n];
-
                     // Increment the velocity. (PolyPIC Update)
                     p.c[0][d] += p.basis_values[n] * node_v[node_id][d];
                     p.c[1][d] += p.basis_values[n] * ( coords[0] - p.r[0] ) *
@@ -603,7 +623,19 @@ void ProblemManager::updateParticlePositionAndVelocity(
                 }
             }
         }
+        for ( int d = 0; d < space_dim; ++d )
+        {
+            // Increment the position.
+            p.r[d] +=  delta_t * p.c[0][d];
+        }
+//        for ( int i = 0; i < 3; ++i )
+//            for ( int j = 0; j < 3; ++j )
+//                std::cout << p.grad_v[i][j] << "\t" << p.c[i+1][j] <<std::endl;
+//        std::cout << std::endl;
     }
+
+
+
     // Boundary conditions.
     for ( int b = 0; b < 6; ++b )
         d_bc[b]->evaluateBoundaryPosition( d_mesh, b, d_particles );
@@ -665,3 +697,4 @@ void ProblemManager::displayRuntime(
 //---------------------------------------------------------------------------//
 // end ProblemManager.cc
 //---------------------------------------------------------------------------//
+
