@@ -33,8 +33,8 @@ class VortexSheetTest : public ::testing::Test
 TEST_F(VortexSheetTest, vortex_sheet_test)
 {
     // Create the problem manager.
-    int num_cells_x = 100;
-    int num_cells_y = 100;
+    int num_cells_x = 10;
+    int num_cells_y = 10;
     int num_cells_z = 10;
     double cell_width = 0.04;
     bool has_gravity = false;
@@ -74,14 +74,14 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
 
     // Create the initial fluid pool.
     std::array<double,6> bnds = {0.0,4.0,0.0,4.0,0.0,0.4};
+    std::array<double,3> center = { 2.0, 2.0, 0.2 };
     double radius = 1.0;
-    geom[0] = std::make_shared<ExaMPM::Sheet>(bnds, radius);
+    geom[0] = std::make_shared<ExaMPM::Sheet>(bnds, center, radius);
     geom[0]->setMatId( 0 );
     geom[0]->setColor( 1 );
     geom[0]->setDensity( density );
 
     // Create the droplet.
-    std::array<double,3> center = { 2.0, 2.0, 0.2 };
     geom[1] = std::make_shared<ExaMPM::Ring>(center,radius);
     geom[1]->setMatId( 0 );
     geom[1]->setColor( 2 );
@@ -93,6 +93,7 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
         {
             for ( auto& mode : c )
                 std::fill(mode.begin(),mode.end(),0.0);
+            std::array<double,3> center = { 2.0, 2.0, 0.2 };
             double x = r[0] - center[0];
             double y = r[1] - center[1];
 
@@ -102,7 +103,7 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
             }
             else
             {
-                double den = sqrt(1 + pow( x/y , 2 );
+                double den = sqrt(1 + pow( x/y , 2 ) );
                 double sign = abs(y) / y;
 
                 c[0][0] = - 1.0 * sign / den;

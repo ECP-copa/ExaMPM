@@ -12,8 +12,11 @@ namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 // Constructor. Bounds give (-x,+x,-y,+y,-z,+z).
-Sheet::Sheet( const std::array<double,6>& bounds, const double radius )
+Sheet::Sheet( const std::array<double,6>& bounds, 
+	      const std::array<double,3>& center,
+              const double radius )
     : d_bounds( bounds )
+    , d_center( center )
     , d_radius( radius )
 { /* ... */ }
 

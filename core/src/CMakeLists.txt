@@ -12,6 +12,8 @@ APPEND_SET(HEADERS
   NewtonianViscousStress.hh
   Particle.hh
   ProblemManager.hh
+  Ring.hh
+  Sheet.hh
   Sphere.hh
   StressModel.hh
   TensorTools.hh
@@ -25,6 +27,8 @@ APPEND_SET(SOURCES
   NewtonianViscousStress.cc
   NeoHookeanStress.cc
   ProblemManager.cc
+  Ring.cc
+  Sheet.cc
   Sphere.cc
   )
 

@@ -26,7 +26,9 @@ class Sheet : public Geometry
     using Base = Geometry;
 
     // Constructor. Bounds give (-x,+x,-y,+y,-z,+z).
-    Sheet( const std::array<double,6>& bounds, const double radius );
+    Sheet( const std::array<double,6>& bounds, 
+           const std::array<double,3>& center,
+	   const double radius );
 
     // Determine if a particle is in the geometry.
     bool particleInGeometry( const Particle& p ) const override;
@@ -35,6 +37,9 @@ class Sheet : public Geometry
 
     // Bounds.
     std::array<double,6> d_bounds;
+
+    // Center.
+    std::array<double,3> d_center;
 
     // Radius.
     double d_radius;
