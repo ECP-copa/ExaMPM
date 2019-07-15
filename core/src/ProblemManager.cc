@@ -234,7 +234,7 @@ void ProblemManager::calculateNodalMass( std::vector<double>& node_m )
     for ( std::size_t i=0; i < d_particles.size(); ++i )
     {
         auto& p = d_particles.at(i);
-        int th = omp_get_thread_num();
+        int th = 0;//omp_get_thread_num();
 
         // Assemble the nodal mass.
         for ( int n = 0; n < nodes_per_cell; ++n )
@@ -284,7 +284,7 @@ void ProblemManager::calculateNodalMomentum(
     for ( std::size_t i = 0; i < d_particles.size(); ++i )
     {
         auto& p = d_particles.at(i);
-        int th = omp_get_thread_num();
+        int th = 0;//omp_get_thread_num();
 
         std::array<double,8> s;
         std::array<double,3> coords;
@@ -485,7 +485,7 @@ void ProblemManager::calculateInternalNodalForces(
     for ( std::size_t i = 0; i < d_particles.size(); ++i )
     {
         auto& p = d_particles.at(i);
-        int th = omp_get_thread_num();
+        int th = 0;//omp_get_thread_num();
 
         assert( 0 <= p.matid && p.matid < d_materials.size() );
 
