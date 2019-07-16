@@ -33,10 +33,10 @@ class VortexSheetTest : public ::testing::Test
 TEST_F(VortexSheetTest, vortex_sheet_test)
 {
     // Create the problem manager.
-    int num_cells_x = 10;
-    int num_cells_y = 10;
-    int num_cells_z = 10;
-    double cell_width = 0.04;
+    int num_cells_x = 20;
+    int num_cells_y = 20;
+    int num_cells_z = 2;
+    double cell_width = 0.02;
     bool has_gravity = false;
     int thread_count = ( ExaMPM::test_argc == 2 ) ? std::atoi(ExaMPM::test_argv[1]) : 1;
 
@@ -59,7 +59,7 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
     std::vector<std::shared_ptr<ExaMPM::StressModel> > materials( 1 );
 
     // Setup a stress model.
-    double dynamic_viscosity = 1.0e-3;
+    double dynamic_viscosity = 0;//1.0e-3;
     double density = 1000.0;
     double bulk_modulus = 2.0e9;
     double gamma = 7.0;
@@ -73,9 +73,9 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
     std::vector<std::shared_ptr<ExaMPM::Geometry> > geom( 2 );
 
     // Create the initial fluid pool.
-    std::array<double,6> bnds = {0.0,4.0,0.0,4.0,0.0,0.4};
-    std::array<double,3> center = { 2.0, 2.0, 0.2 };
-    double radius = 1.0;
+    std::array<double,6> bnds = {0.0,0.4,0.0,0.4,0.0,0.04};
+    std::array<double,3> center = { 0.2, 0.2, 0.02 };
+    double radius = 0.1;
     geom[0] = std::make_shared<ExaMPM::Sheet>(bnds, center, radius);
     geom[0]->setMatId( 0 );
     geom[0]->setColor( 1 );
@@ -93,7 +93,7 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
         {
             for ( auto& mode : c )
                 std::fill(mode.begin(),mode.end(),0.0);
-            std::array<double,3> center = { 2.0, 2.0, 0.2 };
+            std::array<double,3> center = { 0.2, 0.2, 0.02 };
             double x = r[0] - center[0];
             double y = r[1] - center[1];
 
@@ -103,11 +103,11 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
             }
             else
             {
-                double den = sqrt(1 + pow( x/y , 2 ) );
+                double den = sqrt(1.0 + pow( x/y , 2 ) );
                 double sign = abs(y) / y;
 
-                c[0][0] = - 1.0 * sign / den;
-                c[0][1] = x * sign / ( y * den );
+                c[0][0] = - 5.0 * sign / den;
+                c[0][1] = 5.0 * x * sign / ( y * den );
             }
         };
     geom[1]->setVelocityField( init_vf1 );

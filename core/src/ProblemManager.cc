@@ -11,7 +11,7 @@
 #include <fstream>
 #include <cmath>
 #include <cassert>
-
+#include <iomanip>
 #include <omp.h>
 #include <chrono>
 namespace ExaMPM
@@ -124,6 +124,7 @@ void ProblemManager::solve( const int num_time_steps,
     int write_step = 0;
     writeTimeStepToFile( output_file, write_step );
    
+
     // Time step
     for ( int step = 0; step < num_time_steps; ++step )
     {
@@ -147,16 +148,6 @@ void ProblemManager::solve( const int num_time_steps,
         //  3) Calculate nodal momentum.
         calculateNodalMomentum( node_m, node_p );
 
-        //  4) Calculate internal forces.
-        calculateInternalNodalForces( node_f_int );
-
-        //  5) Calculate node impulse.
-        calculateNodalImpulse(
-            node_f_int, node_m, time_step_size, node_imp );
-	
-        //  6) Update the particle position and velocity.
-        updateParticlePositionAndVelocity( node_v, node_m, time_step_size );
-
         //  7) Calculate nodal velocity.
         calculateNodalVelocity( node_p, node_imp, node_m, node_v );
 	
@@ -168,6 +159,9 @@ void ProblemManager::solve( const int num_time_steps,
 
         // 10) Update the grid node velocities.
         updateGridVelocity( node_imp, node_p, node_m, node_v );
+
+        //  6) Update the particle position and velocity.
+        updateParticlePositionAndVelocity( node_v, node_m, time_step_size );
 
         auto stop = std::chrono::system_clock::now();
         std::chrono::duration<double> runtime = stop-start;
@@ -628,10 +622,6 @@ void ProblemManager::updateParticlePositionAndVelocity(
             // Increment the position.
             p.r[d] +=  delta_t * p.c[0][d];
         }
-//        for ( int i = 0; i < 3; ++i )
-//            for ( int j = 0; j < 3; ++j )
-//                std::cout << p.grad_v[i][j] << "\t" << p.c[i+1][j] <<std::endl;
-//        std::cout << std::endl;
     }
 
 
