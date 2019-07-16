@@ -11,7 +11,7 @@
 #include <fstream>
 #include <cmath>
 #include <cassert>
-#include <iomanip>
+
 #include <omp.h>
 #include <chrono>
 namespace ExaMPM
@@ -147,6 +147,13 @@ void ProblemManager::solve( const int num_time_steps,
 	
         //  3) Calculate nodal momentum.
         calculateNodalMomentum( node_m, node_p );
+
+        //  4) Calculate internal forces.
+        calculateInternalNodalForces( node_f_int );
+
+        //  5) Calculate node impulse.
+        calculateNodalImpulse(
+            node_f_int, node_m, time_step_size, node_imp );
 
         //  7) Calculate nodal velocity.
         calculateNodalVelocity( node_p, node_imp, node_m, node_v );
