@@ -25,10 +25,9 @@ bool Ring::particleInGeometry( const Particle& p ) const
                                    p.r[1] - d_center[1] };
 
     double dist = ref_p[0]*ref_p[0] + ref_p[1]*ref_p[1];
-    double r1 = ( d_radius - 0.02 ) * ( d_radius - 0.02 );
-    double r2 = d_radius * d_radius;
+    double r = d_radius * d_radius;
     return
-        dist <= r2 && dist >= r1;
+        dist <= r;
 }
 
 //---------------------------------------------------------------------------//

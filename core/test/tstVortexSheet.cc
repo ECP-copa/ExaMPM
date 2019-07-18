@@ -96,18 +96,19 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
             std::array<double,3> center = { 0.2, 0.2, 0.02 };
             double x = r[0] - center[0];
             double y = r[1] - center[1];
+            double rad = x*x + y*y;
 
             if ( y == 0 )
             {
-                c[0][1] = ( x > 0 ) ? 1.0 : -1.0;
+                c[0][1] = ( x > 0 ) ? rad : -1.0*rad;
             }
             else
             {
                 double den = sqrt(1.0 + pow( x/y , 2 ) );
                 double sign = abs(y) / y;
 
-                c[0][0] = - 5.0 * sign / den;
-                c[0][1] = 5.0 * x * sign / ( y * den );
+                c[0][0] = -1.0 * rad * sign / den;
+                c[0][1] = rad * x * sign / ( y * den );
             }
         };
     geom[1]->setVelocityField( init_vf1 );
