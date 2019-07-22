@@ -1,11 +1,11 @@
 //---------------------------------------------------------------------------//
 /*!
- * \file Ring.hh
+ * \file Disc.hh
  */
 //---------------------------------------------------------------------------//
 
-#ifndef EXAMPM_RING_HH
-#define EXAMPM_RING_HH
+#ifndef EXAMPM_DISC_HH
+#define EXAMPM_DISC_HH
 
 #include "Geometry.hh"
 #include "Particle.hh"
@@ -16,9 +16,9 @@ namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 /*!
- * \class Ring
+ * \class Disc
  */
-class Ring : public Geometry
+class Disc : public Geometry
 {
   public:
 
@@ -27,7 +27,7 @@ class Ring : public Geometry
     using VelocityField = typename Base::VelocityField;
 
     // Constructor.
-    Ring( const std::array<double,3>& center, const double radius );
+    Disc( const std::array<double,3>& center, const double radius );
 
     // Determine if a particle is in the geometry.
     bool particleInGeometry( const Particle& p ) const override;
@@ -45,8 +45,8 @@ class Ring : public Geometry
 
 } // end namespace ExaMPM
 
-#endif // end EXAMPM_RING_HH
+#endif // end EXAMPM_DISC_HH
 
 //---------------------------------------------------------------------------//
-// end Ring.hh
+// end Disc.hh
 //---------------------------------------------------------------------------//

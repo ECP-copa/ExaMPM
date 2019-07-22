@@ -5,7 +5,7 @@
 //---------------------------------------------------------------------------//
 
 #include "Sheet.hh"
-#include "Ring.hh"
+#include "Disc.hh"
 #include "NewtonianViscousStress.hh"
 #include "StressModel.hh"
 #include "BoundaryCondition.hh"
@@ -82,7 +82,7 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
     geom[0]->setDensity( density );
 
     // Create the droplet.
-    geom[1] = std::make_shared<ExaMPM::Ring>(center,radius);
+    geom[1] = std::make_shared<ExaMPM::Disc>(center,radius);
     geom[1]->setMatId( 0 );
     geom[1]->setColor( 2 );
     geom[1]->setDensity( density );
