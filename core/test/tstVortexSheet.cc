@@ -35,7 +35,7 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
     // Create the problem manager.
     int num_cells_x = 20;
     int num_cells_y = 20;
-    int num_cells_z = 2;
+    int num_cells_z = 1;
     double cell_width = 0.02;
     bool has_gravity = false;
     int thread_count = ( ExaMPM::test_argc == 2 ) ? std::atoi(ExaMPM::test_argv[1]) : 1;
@@ -73,8 +73,8 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
     std::vector<std::shared_ptr<ExaMPM::Geometry> > geom( 2 );
 
     // Create the initial fluid pool.
-    std::array<double,6> bnds = {0.0,0.4,0.0,0.4,0.0,0.04};
-    std::array<double,3> center = { 0.2, 0.2, 0.02 };
+    std::array<double,6> bnds = {0.0,0.4,0.0,0.4,0.0,0.02};
+    std::array<double,3> center = { 0.2, 0.2, 0.01 };
     double radius = 0.1;
     geom[0] = std::make_shared<ExaMPM::Sheet>(bnds, center, radius);
     geom[0]->setMatId( 0 );
@@ -93,7 +93,7 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
         {
             for ( auto& mode : c )
                 std::fill(mode.begin(),mode.end(),0.0);
-            std::array<double,3> center = { 0.2, 0.2, 0.02 };
+            std::array<double,3> center = { 0.2, 0.2, 0.01 };
             double x = r[0] - center[0];
             double y = r[1] - center[1];
             double rad = x*x + y*y;

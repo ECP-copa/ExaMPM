@@ -629,9 +629,9 @@ void ProblemManager::updateParticlePositionAndVelocity(
             // Increment the position.
             p.r[d] +=  delta_t * p.c[0][d];
         }
-        double temp = p.c[0][0]*p.c[0][0] + p.c[0][1]*p.c[0][1];
-        if ( temp > .1 ) 
-            std::cout << p.c[0][0] << "\t" << p.c[0][1] << std::endl;
+    //    double temp = p.c[0][0]*p.c[0][0] + p.c[0][1]*p.c[0][1];
+    //    if ( temp > .1 ) 
+    //        std::cout << p.c[0][0] << "\t" << p.c[0][1] << std::endl;
     }
 
 
