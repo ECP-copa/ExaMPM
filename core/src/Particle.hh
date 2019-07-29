@@ -84,6 +84,19 @@ class Particle
         F[2][0] = 0.0;
         F[2][1] = 0.0;
         F[2][2] = 1.0;
+
+        // The initial deformation stress is zero.
+        stress[0][0] = 0.0;
+        stress[0][1] = 0.0;
+        stress[0][2] = 0.0;
+
+        stress[1][0] = 0.0;
+        stress[1][1] = 0.0;
+        stress[1][2] = 0.0;
+
+        stress[2][0] = 0.0;
+        stress[2][1] = 0.0;
+        stress[2][2] = 0.0;
     }
 };
 
