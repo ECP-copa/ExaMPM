@@ -95,6 +95,7 @@ void ProblemManager::solve( const int num_time_steps,
 {
     // Allocate mesh fields.
     int num_nodes = d_mesh->totalNumNodes();
+    int num_cells = d_mesh->totalNumCells();
 
     // Nodal mass
     std::vector<double> node_m( num_nodes, 0.0 );
@@ -114,6 +115,17 @@ void ProblemManager::solve( const int num_time_steps,
     // Nodal internal force.
     std::vector<std::array<double,3> > node_f_int(
         num_nodes, std::array<double,3>() );
+
+    // Cell geometric center basis values.
+    std::vector<std::array<double,8> > cell_basis(
+        num_cells, std::array<double,8>() );
+
+    // Cell geometric center basis gradients.
+    std::vector<std::array<std::array<double,3>,8> > cell_grads(
+        num_cells, std::array<std::array<double,3>,8>() );
+
+    // Cell deformation gradient increment determinants.
+    std::vector<double> cell_def_grad_det( num_cells, 0.0 );
 
     // Time step parameters
     double time = 0.0;
@@ -140,7 +152,7 @@ void ProblemManager::solve( const int num_time_steps,
 
         auto start = std::chrono::system_clock::now();
         //  1) Locate particles and evaluate basis functions.
-        locateParticles();
+        locateParticles( cell_basis, cell_grads );
 
         //  2) Calculate the nodal masses.
         calculateNodalMass( node_m );
@@ -158,8 +170,12 @@ void ProblemManager::solve( const int num_time_steps,
         //  7) Calculate nodal velocity.
         calculateNodalVelocity( node_p, node_imp, node_m, node_v );
 	
+        //   ) Calculate the cell gradients.
+        updateCellGradients( 
+             node_v, cell_basis, cell_grads, cell_def_grad_det, time_step_size );
+
         //  8) Update the particle gradients.
-        updateParticleGradients( node_v, time_step_size );
+        updateParticleGradients( node_v, cell_def_grad_det, time_step_size );
 
         //  9) Update the particle stress and strain.
         updateParticleStressStrain();
@@ -188,8 +204,15 @@ void ProblemManager::solve( const int num_time_steps,
 
 //---------------------------------------------------------------------------//
 // Locate the particles and compute grid values.
-void ProblemManager::locateParticles()
+void ProblemManager::locateParticles(
+    std::vector<std::array<double,8> >& cell_basis,
+    std::vector<std::array<std::array<double,3>,8> >& cell_grads )
 {
+    int space_dim = d_mesh->spatialDimension();
+    int num_cells = d_mesh->totalNumCells();
+    std::vector<std::array<double,3> > cell_centers(
+        num_cells, std::array<double,3>() );
+    std::vector<double> cell_population( num_cells, 0.0 );
 
     // Locate the particles
     #pragma omp parallel for num_threads(d_thread_count)
@@ -214,6 +237,25 @@ void ProblemManager::locateParticles()
 
         // Evaluate the cell basis function gradient at the particle location.
         d_mesh->shapeFunctionGradient( ref_coords, p.basis_gradients );
+
+        // Add particle lacation to cell geometric center.
+        cell_population[ p.cell_id ] += 1.0;
+        for ( int d = 0; d < space_dim; ++d )
+            cell_centers[ p.cell_id ][d] += ref_coords[d];
+    }
+
+    // Evaluate basis values and gradients for geometric cell centers
+    for ( int i = 0; i < num_cells; ++i )
+    {
+        // Scale to get correct geometric centers.
+        for ( int d = 0; d < space_dim; ++d )
+            cell_centers[i][d] /= cell_population[i];
+
+        // Evaluate cell basis function at geometric center.
+        d_mesh->shapeFunctionValue( cell_centers[i], cell_basis[i] );
+
+        // Evaluate cell basis function gradient at geometric center.
+        d_mesh->shapeFunctionGradient( cell_centers[i], cell_grads[i] );
     }
 }
 
@@ -384,12 +426,14 @@ void ProblemManager::calculateNodalVelocity(
 // Update the particle deformation gradient and velocity gradient.
 void ProblemManager::updateParticleGradients(
     const std::vector<std::array<double,3> >& node_v,
+    const std::vector<double>& cell_def_grad_det,
     const double delta_t )
 {
     int space_dim = d_mesh->spatialDimension();
     int nodes_per_cell = d_mesh->nodesPerCell();
     int node_id = 0;
-
+    double det_F0 = 0.0;
+   
     // Update the particles.
     #pragma omp parallel for num_threads(d_thread_count)
     for ( std::size_t index = 0; index < d_particles.size(); ++index )
@@ -441,7 +485,69 @@ void ProblemManager::updateParticleGradients(
             work[i][i] += 1.0;
 
         // Update the particle volume.
-        p.volume *= TensorTools::determinant( work );
+        det_F0 = cell_def_grad_det[ p.cell_id ];
+        p.volume *= det_F0;
+    }
+}
+
+//---------------------------------------------------------------------------//
+// Update the cell deformation gradient and velocity gradient.
+void ProblemManager::updateCellGradients(
+    const std::vector<std::array<double,3> >& node_v,
+    const std::vector<std::array<double,8> >& cell_basis,
+    const std::vector<std::array<std::array<double,3>,8> >& cell_grads,
+    std::vector<double>& cell_def_grad_det,
+    const double delta_t )
+{
+    int space_dim = d_mesh->spatialDimension();
+    int nodes_per_cell = d_mesh->nodesPerCell();
+    int node_id = 0;
+    int num_cells = d_mesh->totalNumCells();
+
+    #pragma omp parallel for num_threads(d_thread_count)
+    for ( std::size_t index = 0; index < num_cells; ++index)
+    {
+        std::array<std::array<double,3>,3> delta_F;
+        std::array<std::array<double,3>,3> work;
+        std::array<std::array<double,3>,3> cell_grad_v;
+        std::array<int,3> coords;
+        std::array<int,8> nodes;
+
+        // Get ids for 8 cell nodes.
+        d_mesh->cellCoordinates( index, coords );
+        d_mesh->cellNodeIds( coords, nodes );
+
+        // Reset the deformation gradient increment and velocity gradient.
+        for ( int d = 0; d < space_dim; ++d )
+        {
+            std::fill( cell_grad_v[d].begin(), cell_grad_v[d].end(), 0.0 );
+            std::fill( delta_F[d].begin(), delta_F[d].end(), 0.0 );
+            std::fill( work[d].begin(), work[d].end(), 0.0 );
+        }
+
+        // Compute the velocity gradient at the particle.
+        for ( int n = 0; n < nodes_per_cell; ++n )
+        {
+            node_id = nodes[n];
+
+            for ( int i = 0; i < space_dim; ++i )
+                for ( int j = 0; j < space_dim; ++j )
+                    cell_grad_v[i][j] +=
+                        cell_grads[index][n][i] * node_v[node_id][j];
+        }
+                
+
+        // Scale the velocity gradient.
+        for ( int i = 0; i < space_dim; ++i )
+            for ( int j = 0; j < space_dim; ++j )
+                work[i][j] = cell_grad_v[i][j] * delta_t;
+
+        // Add the scaled velocity gradient to the identity.
+        for ( int i = 0; i < space_dim; ++i )
+            work[i][i] += 1.0;
+
+        // Update the cell deformation gradient determinant.
+        cell_def_grad_det[index] = TensorTools::determinant( work );
     }
 }
 

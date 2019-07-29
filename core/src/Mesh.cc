@@ -189,6 +189,28 @@ void Mesh::nodeCoordinates( const int node_id,
 }
 
 //---------------------------------------------------------------------------//
+// Given a cell id get its coordinates.
+void Mesh::cellCoordinates( const int cell_id,
+                            std::array<int,3>& coords ) const
+{
+
+    assert( cell_id < d_num_cells_x * d_num_cells_y * d_num_cells_z );
+
+    // Get the ijk cell indices.
+    int ck = std::floor( cell_id / (d_num_cells_x*d_num_cells_y) );
+    int cj = std::floor(
+        (cell_id - d_num_cells_x*d_num_cells_y*ck) / d_num_cells_x );
+    int ci = cell_id - d_num_cells_x*d_num_cells_y*ck -
+             d_num_cells_x * cj;
+    assert( cell_id ==
+            d_num_cells_x*d_num_cells_y*ck + d_num_cells_x*cj + ci );
+
+    coords[0] = ci;
+    coords[1] = cj;
+    coords[2] = ck;
+}  
+
+//---------------------------------------------------------------------------//
 // Given a boundary id get the ids of the nodes on that boundary.
 const std::vector<int>&
 Mesh::getBoundaryNodes( const int boundary_id ) const

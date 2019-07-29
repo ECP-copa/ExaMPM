@@ -58,7 +58,7 @@ TEST_F(DamBreakTest, dam_break_test)
     std::vector<std::shared_ptr<ExaMPM::StressModel> > materials( 1 );
 
     // Setup a stress model.
-    double dynamic_viscosity = 1.0e-3;
+    double dynamic_viscosity = 0.0;//1.0e-3;
     double density = 1000.0;
     double bulk_modulus = 2.0e9;
     double gamma = 7.0;

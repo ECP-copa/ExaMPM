@@ -50,6 +50,10 @@ class Mesh
     // Given a node id get its coordinates.
     void nodeCoordinates( const int node_id,
                           std::array<double,3>& coords ) const;
+    
+    // Given a cell id get its coordinates.
+    void cellCoordinates( const int cell_id,
+                          std::array<int,3>& coords ) const;
 
     // Given a boundary id get the ids of the nodes on that boundary.
     const std::vector<int>&

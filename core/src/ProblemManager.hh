@@ -60,7 +60,9 @@ class ProblemManager
   private:
 
     // Locate the particles and compute grid values.
-    void locateParticles();
+    void locateParticles( 
+        std::vector<std::array<double,8> >& cell_basis,
+        std::vector<std::array<std::array<double,3>,8> >& cell_grads);
 
     // Calculate the mass at the mesh nodes.
     void calculateNodalMass( std::vector<double>& node_m );
@@ -79,6 +81,15 @@ class ProblemManager
     // Update the particle deformation gradient and velocity gradient.
     void updateParticleGradients(
         const std::vector<std::array<double,3> >& node_v,
+        const std::vector<double>& cell_def_grad_det,
+        const double delta_t );
+
+    // Update the cell deformation gradient and velocity gradient.
+    void updateCellGradients(
+        const std::vector<std::array<double,3> >& node_v,
+        const std::vector<std::array<double,8> >& cell_basis,
+        const std::vector<std::array<std::array<double,3>,8> >& cell_grads,
+        std::vector<double>& cell_def_grad_det,
         const double delta_t );
 
     // Update particle strain and stress tensors.
