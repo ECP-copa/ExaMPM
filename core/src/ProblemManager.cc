@@ -23,7 +23,7 @@ ProblemManager::ProblemManager( const int mesh_num_cells_x,
                                 const int mesh_num_cells_z,
                                 const double mesh_cell_width,
                                 const bool has_gravity,
-	                        const int thread_count )
+                                const int thread_count )
     : d_has_gravity( has_gravity )
     , d_thread_count( thread_count )
 {
@@ -103,6 +103,10 @@ void ProblemManager::solve( const int num_time_steps,
     std::vector<std::array<double,3> > node_v(
         num_nodes, std::array<double,3>() );
 
+    // Nodal Acceleration
+    std::vector<std::array<double,3> > node_a(
+        num_nodes, std::array<double,3>() );
+
     // Nodal momentum
     std::vector<std::array<double,3> > node_p(
         num_nodes, std::array<double,3>() );
@@ -123,13 +127,13 @@ void ProblemManager::solve( const int num_time_steps,
     // Write the initial state.
     int write_step = 0;
     writeTimeStepToFile( output_file, write_step );
-   
+
     // Time step
     for ( int step = 0; step < num_time_steps; ++step )
     {
         // Increment time.
         time += time_step_size;
-     
+
         // Print time step info.
         if ( (step+1) % write_frequency == 0 )
         {
@@ -137,38 +141,19 @@ void ProblemManager::solve( const int num_time_steps,
                       <<  time <<  " (s)" << std::endl;
         }
 
-	auto start = std::chrono::system_clock::now();
+        auto start = std::chrono::system_clock::now();
+
         // 1) Locate particles and evaluate basis functions.
         locateParticles();
 
-        // 2) Calculate the nodal masses.
-        calculateNodalMass( node_m );
-	
-        // 3) Calculate nodal momentum.
-        calculateNodalMomentum( node_m, node_p );
+        // 2) Update the grid state.
+        updateGrid( time_step_size, node_m, node_v, node_a );
 
-        // 4) Calculate internal forces.
-        calculateInternalNodalForces( node_f_int );
+        // 3) Update the particles.
+        updateParticles( time_step_size, node_v, node_a );
 
-        // 5) Calculate node impulse.
-        calculateNodalImpulse(
-            node_f_int, node_m, time_step_size, node_imp );
-	
-        // 6) Update the particle position and velocity.
-        updateParticlePositionAndVelocity(
-            node_imp, node_p, node_m, time_step_size );
-
-        // 7) Calculate nodal velocity.
-        calculateNodalVelocity( node_p, node_imp, node_m, node_v );
-	
-        // 8) Update the particle gradients.
-        updateParticleGradients( node_v, time_step_size );
-
-        // 9) Update the particle stress and strain.
-        updateParticleStressStrain();
-
-	auto stop = std::chrono::system_clock::now();
-	std::chrono::duration<double> runtime = stop-start;
+        auto stop = std::chrono::system_clock::now();
+        std::chrono::duration<double> runtime = stop-start;
         // Write the time step to file.
         if ( (step+1) % write_frequency == 0 )
         {
@@ -189,14 +174,14 @@ void ProblemManager::locateParticles()
 {
 
     // Locate the particles
-    #pragma omp parallel for num_threads(d_thread_count)
+#pragma omp parallel for num_threads(d_thread_count)
     for ( std::size_t i = 0; i < d_particles.size(); ++i )
     {
-	auto& p = d_particles.at(i);
+        auto& p = d_particles.at(i);
 
         std::array<int,3> cell_id;
         std::array<double,3> ref_coords;
-	
+
         // Locate the particle.
         d_mesh->locateParticle( p, cell_id );
 
@@ -215,208 +200,146 @@ void ProblemManager::locateParticles()
 }
 
 //---------------------------------------------------------------------------//
-// Calculate the mass at the mesh nodes.
-void ProblemManager::calculateNodalMass( std::vector<double>& node_m )
+// Update the grid state.
+void ProblemManager::updateGrid( const double delta_t,
+                                 std::vector<double>& node_m,
+                                 std::vector<std::array<double,3> >& node_v,
+                                 std::vector<std::array<double,3> >& node_a )
 {
+    int space_dim = d_mesh->spatialDimension();
     int nodes_per_cell = d_mesh->nodesPerCell();
     int node_id = 0;
     int num_nodes = d_mesh->totalNumNodes();
     std::vector<std::vector<double> > node_m_local(
-	d_thread_count, std::vector<double>(num_nodes, 0.0) );
-
-    // Reset the nodal mass.
-    std::fill( node_m.begin(), node_m.end(), 0.0 );
-
-    // Compute the nodal mass.
-    #pragma omp parallel for num_threads(d_thread_count)
-    for ( std::size_t i=0; i < d_particles.size(); ++i )
-    {
-        auto& p = d_particles.at(i);
-        int th = omp_get_thread_num();
-
-        // Assemble the nodal mass.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = p.node_ids[n];
-            node_m_local[th][ node_id ] += p.basis_values[n] * p.m;
-        }
-    }
-
-    // Combine thread results.
-    #pragma omp parallel for num_threads(d_thread_count)
-    for ( int n = 0; n < num_nodes; ++n )
-    {
-	for ( int th = 0; th < d_thread_count; ++th )
-        {
-	    node_m[ n ] += node_m_local[th][n];
-	}
-    }
-
-    // Boundary conditions.
-    for ( int b = 0; b < 6; ++b )
-        d_bc[b]->completeBoundarySum( d_mesh, b, node_m );
-}
-
-//---------------------------------------------------------------------------//
-// Calculate the nodal momentum.
-void ProblemManager::calculateNodalMomentum(
-    const std::vector<double>& node_m,
-    std::vector<std::array<double,3> >& node_p )
-{
-    int space_dim = d_mesh->spatialDimension();
-    int nodes_per_cell = d_mesh->nodesPerCell();
-    int node_id = 0;
-    int num_nodes = d_mesh->totalNumNodes();
-
-    std::vector<std::vector<std::array<double,3> > > node_p_local(
-        d_thread_count, std::vector<std::array<double,3> > (
-	num_nodes, std::array<double,3>() ) );
-
-    // Initialize local storage to zero.
-    for ( auto& thread : node_p_local )
-	for ( auto& node_mom : thread )
-            std::fill( node_mom.begin(), node_mom.end(), 0.0 );
-    
-    // Reset the momentum.
-    for ( auto& mom : node_p )
-        std::fill( mom.begin(), mom.end(), 0.0 );
-  
-    // Update the momentum.
-    #pragma omp parallel for num_threads(d_thread_count)
-    for ( std::size_t i = 0; i < d_particles.size(); ++i )
-    {
-	auto& p = d_particles.at(i);
-	int th = omp_get_thread_num();
-
-        // Calculate momentum.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = p.node_ids[n];
-
-            for ( int d = 0; d < space_dim; ++d )
-            {
-                node_p_local[th][node_id][d] +=
-                    p.m * p.v[d] * p.basis_values[n];
-            }
-        }
-    }
-
-    // Combine thread results.
-    #pragma omp parallel for num_threads(d_thread_count)
-    for ( int n = 0; n < num_nodes; ++n )
-    {
-	for ( int th = 0; th < d_thread_count; ++th )
-	{
-	    for ( int d = 0; d < space_dim; ++d )
-	    {
-		node_p[n][d] += node_p_local[th][n][d];
-	    }
-	}
-    }
-
-    // Boundary conditions.
-    for ( int b = 0; b < 6; ++b )
-        d_bc[b]->completeBoundarySum( d_mesh, b, node_p );
-
-    // Boundary conditions.
-    for ( int b = 0; b < 6; ++b )
-        d_bc[b]->evaluateMomentumCondition( d_mesh, b, node_m, node_p );
-}
-
-//---------------------------------------------------------------------------//
-// Calculate the nodal velocity.
-void ProblemManager::calculateNodalVelocity(
-    const std::vector<std::array<double,3> >& node_p,
-    const std::vector<std::array<double,3> >& node_imp,
-    const std::vector<double>& node_m,
-    std::vector<std::array<double,3> >& node_v )
-{
-    int space_dim = d_mesh->spatialDimension();
-    int num_nodes = d_mesh->totalNumNodes();
-    int nodes_per_cell = d_mesh->nodesPerCell();
-    int node_id = 0;
-
+        d_thread_count, std::vector<double>(num_nodes, 0.0) );
     std::vector<std::vector<std::array<double,3> > > node_v_local(
         d_thread_count, std::vector<std::array<double,3> > (
-	num_nodes, std::array<double,3>() ) );
+            num_nodes, std::array<double,3>() ) );
+    std::vector<std::vector<std::array<double,3> > > node_a_local(
+        d_thread_count, std::vector<std::array<double,3> > (
+            num_nodes, std::array<double,3>() ) );
+
+    // Reset grid data.
+    std::fill( node_m.begin(), node_m.end(), 0.0 );
+    for ( auto& vel : node_v )
+        std::fill( vel.begin(), vel.end(), 0.0 );
+    for ( auto& acc : node_a )
+        std::fill( acc.begin(), acc.end(), 0.0 );
 
     // Initialize local storage to zero.
     for ( auto& thread : node_v_local )
-	for ( auto& node_vel : thread )
+        for ( auto& node_vel : thread )
             std::fill( node_vel.begin(), node_vel.end(), 0.0 );
+    for ( auto& thread : node_a_local )
+        for ( auto& node_acc : thread )
+            std::fill( node_acc.begin(), node_acc.end(), 0.0 );
 
-    // Reset the velocity
-    for ( auto& vel : node_v )
-        std::fill( vel.begin(), vel.end(), 0.0 );
-
-    // Update the momentum
-    #pragma omp parallel for num_threads(d_thread_count)
-    for ( std::size_t i = 0; i < d_particles.size(); ++i )
+    // Project mass and momentum to grid.
+#pragma omp parallel for num_threads(d_thread_count)
+    for ( std::size_t i=0; i < d_particles.size(); ++i )
     {
-	auto& p = d_particles.at(i);
-	int th = omp_get_thread_num();
+        // Get the particle
+        const auto& p = d_particles.at(i);
 
-        // Calculate momentum.
+        // Get the thread id.
+        int th = omp_get_thread_num();
+
+        // Project to each node.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
+            // Get the node id.
             node_id = p.node_ids[n];
 
-	    if ( node_m[node_id] > 0.0 )
-	    {
-                for ( int d = 0; d < space_dim; ++d )
-                {
-                    node_v_local[th][node_id][d] +=
-                        p.m * p.v[d] * p.basis_values[n] / node_m[node_id];
-                }
-	    }
-	    
-	    // Otherwise no mass or momentum so no velocity.
-	    else
-	    {
-		for ( int d = 0; d < space_dim; ++d )
-		{
-		    node_v_local[th][node_id][d] = 0.0;
-		}
-            }
+            // Deposit particle mass
+            node_m_local[th][node_id] += p.basis_values[n] * p.m;
+
+            // Deposit particle momentum.
+            for ( int d = 0; d < space_dim; ++d )
+                node_v_local[th][node_id][d] +=
+                    p.m * p.v[d] * p.basis_values[n];
+
+            // Add impulse from particle stress to acceleration.
+            for ( int i = 0; i < space_dim; ++i )
+                for ( int j = 0; j < space_dim; ++j )
+                    node_a_local[th][node_id][i] -=
+                        p.volume * p.basis_gradients[n][j] * p.stress[j][i];
+
+            // Add gravity if needed to acceleration. Gravity is in the Z direction.
+            if ( d_has_gravity )
+                node_a_local[th][node_id][2] -= p.m * p.basis_values[n] * 9.81;
         }
     }
 
     // Combine thread results.
-    #pragma omp parallel for num_threads(d_thread_count)
+#pragma omp parallel for num_threads(d_thread_count)
     for ( int n = 0; n < num_nodes; ++n )
     {
-	for ( int th = 0; th < d_thread_count; ++th )
-	{
-	    for ( int d = 0; d < space_dim; ++d )
-	    {
-		node_v[n][d] += node_v_local[th][n][d];
-	    }
-	}
+        for ( int th = 0; th < d_thread_count; ++th )
+        {
+            node_m[n] += node_m_local[th][n];
+
+            for ( int d = 0; d < space_dim; ++d )
+                node_v[n][d] += node_v_local[th][n][d];
+
+            for ( int d = 0; d < space_dim; ++d )
+                node_a[n][d] += node_a_local[th][n][d];
+        }
     }
-    // Boundary conditions.
+
+    // Complete the boundary sum.
     for ( int b = 0; b < 6; ++b )
+    {
+        d_bc[b]->completeBoundarySum( d_mesh, b, node_m );
         d_bc[b]->completeBoundarySum( d_mesh, b, node_v );
+        d_bc[b]->completeBoundarySum( d_mesh, b, node_a );
+    }
+
+    // Compute grid velocity and acceleration from momentum.
+#pragma omp parallel for num_threads(d_thread_count)
+    for ( int n = 0; n < num_nodes; ++n )
+    {
+        if ( node_m[n] > 0.0 )
+        {
+            for ( int d = 0; d < space_dim; ++d )
+                node_v[n][d] = (node_v[n][d] + delta_t * node_a[n][d]) / node_m[n];
+            for ( int d = 0; d < space_dim; ++d )
+                node_a[n][d] /= node_m[n];
+        }
+        else
+        {
+            for ( int d = 0; d < space_dim; ++d )
+                node_v[n][d] = 0.0;
+            for ( int d = 0; d < space_dim; ++d )
+                node_a[n][d] = 0.0;
+        }
+    }
 
     // Boundary conditions.
     for ( int b = 0; b < 6; ++b )
+    {
         d_bc[b]->evaluateMomentumCondition( d_mesh, b, node_m, node_v );
+        d_bc[b]->evaluateImpulseCondition( d_mesh, b, node_m, node_a );
+    }
 }
 
 //---------------------------------------------------------------------------//
-// Update the particle deformation gradient and velocity gradient.
-void ProblemManager::updateParticleGradients(
-    const std::vector<std::array<double,3> >& node_v,
-    const double delta_t )
+// Update the particles state.
+void ProblemManager::updateParticles( const double delta_t,
+                                      const std::vector<std::array<double,3> >& node_v,
+                                      const std::vector<std::array<double,3> >& node_a )
 {
     int space_dim = d_mesh->spatialDimension();
     int nodes_per_cell = d_mesh->nodesPerCell();
     int node_id = 0;
 
     // Update the particles.
-    #pragma omp parallel for num_threads(d_thread_count)
-    for ( std::size_t index = 0; index < d_particles.size(); ++index )
+#pragma omp parallel for num_threads(d_thread_count)
+    for ( std::size_t i = 0; i < d_particles.size(); ++i )
     {
-	auto& p = d_particles.at(index);
+        // Get the particle.
+        auto& p = d_particles.at(i);
+
+        // Gradient work vectors.
         std::array<std::array<double,3>,3> delta_F;
         std::array<std::array<double,3>,3> work;
 
@@ -424,21 +347,29 @@ void ProblemManager::updateParticleGradients(
         for ( int d = 0; d < space_dim; ++d )
         {
             std::fill( p.grad_v[d].begin(), p.grad_v[d].end(), 0.0 );
-	    std::fill( delta_F[d].begin(), delta_F[d].end(), 0.0 );
-	    std::fill( work[d].begin(), work[d].end(), 0.0 );
+            std::fill( delta_F[d].begin(), delta_F[d].end(), 0.0 );
+            std::fill( work[d].begin(), work[d].end(), 0.0 );
         }
 
-        // Compute the velocity gradient at the particle.
+        // Gather from each node.
         for ( int n = 0; n < nodes_per_cell; ++n )
         {
+            // Get the node id.
             node_id = p.node_ids[n];
 
+            // Increment the position.
+            for ( int d = 0; d < space_dim; ++d )
+                p.r[d] += delta_t * node_v[node_id][d] * p.basis_values[n];
+
+            // Increment the velocity. (FLIP Update)
+            for ( int d = 0; d < space_dim; ++d )
+                p.v[d] += delta_t * node_a[node_id][d] * p.basis_values[n];
+
+            // Update velocity gradient.
             for ( int i = 0; i < space_dim; ++i )
-            {
                 for ( int j = 0; j < space_dim; ++j )
                     p.grad_v[i][j] +=
                         p.basis_gradients[n][i] * node_v[node_id][j];
-            }
         }
 
         // Scale the velocity gradient.
@@ -463,153 +394,11 @@ void ProblemManager::updateParticleGradients(
 
         // Update the particle volume.
         p.volume *= TensorTools::determinant( work );
-    }
-}
 
-//---------------------------------------------------------------------------//
-// Update particle strain and stress tensors.
-void ProblemManager::updateParticleStressStrain()
-{
-    // Compute the particle stress.
-    #pragma omp parallel for num_threads(d_thread_count)
-    for ( std::size_t i = 0; i < d_particles.size(); ++i )
-    {
-	auto& p = d_particles.at(i);
+        // Compute the particle stress.
         d_materials[p.matid]->calculateStress( p );
     }
-}
 
-//---------------------------------------------------------------------------//
-// Calculate internal forces at mesh nodes.
-void ProblemManager::calculateInternalNodalForces(
-    std::vector<std::array<double,3> >& node_f_int )
-{
-    int space_dim = d_mesh->spatialDimension();
-    int nodes_per_cell = d_mesh->nodesPerCell();
-    int node_id = 0;
-    int num_nodes = d_mesh->totalNumNodes();
-
-    std::vector<std::vector<std::array<double,3> > > node_f_local(
-        d_thread_count, std::vector<std::array<double,3> > (
-	num_nodes, std::array<double,3>() ) );
-
-    // Initialize local storage to zero.
-    for ( auto& thread : node_f_local )
-	for ( auto& node_f : thread )
-            std::fill( node_f.begin(), node_f.end(), 0.0 );
-
-   // Reset the forces.
-    for ( auto& f_int : node_f_int )
-        std::fill( f_int.begin(), f_int.end(), 0.0 );
-
-    // Compute forces.
-    #pragma omp parallel for num_threads(d_thread_count)
-    for ( std::size_t i = 0; i < d_particles.size(); ++i )
-    {
-	auto& p = d_particles.at(i);
-	int th = omp_get_thread_num();
-
-        assert( 0 <= p.matid && p.matid < d_materials.size() );
-
-        // Project the particle stress gradients.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = p.node_ids[n];
-
-            // Compute the force via the stress divergence.
-            for ( int i = 0; i < space_dim; ++i )
-                for ( int j = 0; j < space_dim; ++j )
-                    node_f_local[th][node_id][i] -=
-                        p.volume * p.basis_gradients[n][j] * p.stress[j][i];
-        }
-    }
-
-    // Combine thread results.
-    #pragma omp parallel for num_threads(d_thread_count)
-    for ( int n = 0; n < num_nodes; ++n )
-    {
-	for ( int th = 0; th < d_thread_count; ++th )
-	{
-	    for ( int d = 0; d < space_dim; ++d )
-	    {
-		node_f_int[n][d] += node_f_local[th][n][d];
-	    }
-	}
-    }
-
-    // Boundary conditions.
-    for ( int b = 0; b < 6; ++b )
-        d_bc[b]->completeBoundarySum( d_mesh, b, node_f_int );
-}
-
-//---------------------------------------------------------------------------//
-// Calculate nodal impulse.
-void ProblemManager::calculateNodalImpulse(
-    const std::vector<std::array<double,3> >& node_f_int,
-    const std::vector<double>& node_m,
-    const double delta_t,
-    std::vector<std::array<double,3> >& node_imp )
-{
-    int space_dim = d_mesh->spatialDimension();
-    int num_nodes = d_mesh->totalNumNodes();
-
-    // Calculate impulse.
-    #pragma omp parallel for num_threads(d_thread_count)
-    for ( int n = 0; n < num_nodes; ++n )
-        for ( int d = 0; d < space_dim; ++d )
-            node_imp[n][d] = delta_t * node_f_int[n][d];
-
-    // Add gravity if needed.
-    if ( d_has_gravity )
-	#pragma omp parallel for num_threads(d_thread_count)
-        for ( int n = 0; n < num_nodes; ++n )
-            node_imp[n][2] -= delta_t * node_m[n] * 9.81;
-    
-    // Boundary conditions.
-    for ( int b = 0; b < 6; ++b )
-        d_bc[b]->evaluateImpulseCondition( d_mesh, b, node_m, node_imp );
-}
-
-//---------------------------------------------------------------------------//
-// Update particle position and velocity.
-void ProblemManager::updateParticlePositionAndVelocity(
-    const std::vector<std::array<double,3> >& node_imp,
-    const std::vector<std::array<double,3> >& node_p,
-    const std::vector<double>& node_m,
-    const double delta_t )
-{
-    int space_dim = d_mesh->spatialDimension();
-    int nodes_per_cell = d_mesh->nodesPerCell();
-    int node_id = 0;
-
-    // Update the particles.
-    #pragma omp parallel for num_threads(d_thread_count)
-    for ( std::size_t i = 0; i < d_particles.size(); ++i )
-    {
-	auto& p = d_particles.at(i);
-
-        // Loop over adjacent nodes.
-        for ( int n = 0; n < nodes_per_cell; ++n )
-        {
-            node_id = p.node_ids[n];
-
-            // Only add a contribution from an adjacent node if it has mass.
-            if ( node_m[node_id] > 0.0 )
-            {
-                for ( int d = 0; d < space_dim; ++d )
-                {
-                    // Increment the position.
-                    p.r[d] += delta_t *
-                              (node_p[node_id][d] + node_imp[node_id][d]) *
-                              p.basis_values[n] / node_m[node_id];
-
-                    // Increment the velocity. (FLIP Update)
-                    p.v[d] += node_imp[node_id][d] * p.basis_values[n] /
-                              node_m[node_id];
-                }
-            }
-        }
-    }
     // Boundary conditions.
     for ( int b = 0; b < 6; ++b )
         d_bc[b]->evaluateBoundaryPosition( d_mesh, b, d_particles );
@@ -620,7 +409,7 @@ void ProblemManager::updateParticlePositionAndVelocity(
 void ProblemManager::writeTimeStepToFile(
     const std::string& output_file, const int step ) const
 {
-	
+
     // Open the time step file.
     std::string filename = output_file + ".csv." + std::to_string(step);
     std::ofstream file( filename );
@@ -652,16 +441,16 @@ void ProblemManager::displayRuntime(
     double step_time = 0.0;
 
     // Compute average time for one time step.
-    #pragma omp parallel for reduction(+: step_time)
+#pragma omp parallel for reduction(+: step_time)
     for ( std::size_t i = 0; i < step_times.size(); ++i )
     {
-	step_time += step_times[i];
+        step_time += step_times[i];
     }
     step_time = step_time / step_times.size();
 
     // Print out runtime details.
     std::cout << "Average time per step: " << step_time
-            << std::endl;
+              << std::endl;
 }
 
 //---------------------------------------------------------------------------//
