@@ -62,18 +62,17 @@ class ProblemManager
     // Locate the particles and compute grid values.
     void locateParticles();
 
-    // Calculate the mass at the mesh nodes.
-    void calculateNodalMass( std::vector<double>& node_m );
+    // Particle to grid.
+    void particleToGrid( std::vector<double>& node_m,
+                                 std::vector<std::array<double,3> >& node_p,
+        			std::vector<std::array<double,3> >& node_a,
+    			    const double delta_t );
 
-    // Calculate the nodal momentum.
-    void calculateNodalMomentum( const std::vector<double>& node_m,
-                                 std::vector<std::array<double,3> >& node_p );
 
     // Calculate the nodal velocity.
     void calculateNodalVelocity(
-        const std::vector<std::array<double,3> >& node_p,
-        const std::vector<std::array<double,3> >& node_imp,
         const std::vector<double>& node_m,
+        const std::vector<std::array<double,3> >& node_p,
         std::vector<std::array<double,3> >& node_v );
 
     // Update the particle deformation gradient and velocity gradient.
@@ -81,23 +80,9 @@ class ProblemManager
         const std::vector<std::array<double,3> >& node_v,
         const double delta_t );
 
-    // Update particle strain and stress tensors.
-    void updateParticleStressStrain();
-
-    // Calculate internal forces at mesh nodes.
-    void calculateInternalNodalForces(
-        std::vector<std::array<double,3> >& node_f_int	);
-
-    // Calculate nodal impulse.
-    void calculateNodalImpulse(
-        const std::vector<std::array<double,3> >& node_f_int,
-        const std::vector<double>& node_m,
-        const double delta_t,
-        std::vector<std::array<double,3> >& node_imp );
-
     // Update particle position and velocity.
     void updateParticlePositionAndVelocity(
-        const std::vector<std::array<double,3> >& node_imp,
+        const std::vector<std::array<double,3> >& node_a,
         const std::vector<std::array<double,3> >& node_p,
         const std::vector<double>& node_m,
         const double delta_t );
