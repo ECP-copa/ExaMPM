@@ -63,11 +63,11 @@ class ProblemManager
     void locateParticles();
 
     // Particle to grid.
-    void particleToGrid( std::vector<double>& node_m,
-                                 std::vector<std::array<double,3> >& node_p,
-        			std::vector<std::array<double,3> >& node_a,
-    			    const double delta_t );
-
+    void particleToGrid( 
+	std::vector<double>& node_m,
+        std::vector<std::array<double,3> >& node_p,
+        std::vector<std::array<double,3> >& node_a,
+        const double delta_t );
 
     // Calculate the nodal velocity.
     void calculateNodalVelocity(
