@@ -85,9 +85,6 @@ void FreeSlipBoundaryCondition::evaluateMomentumCondition(
     // Determine if the boundary is on x, y, or z.
     int dim = std::floor( boundary / 2 );
 
-    // Determine if it is positive or negative.
-    int dir = (boundary % 2) ? 1 : -1;
-
     // Get the boundary nodes.
     const auto& nodes = mesh->getBoundaryNodes( boundary );
 
@@ -108,9 +105,6 @@ void FreeSlipBoundaryCondition::evaluateImpulseCondition(
 {
     // Determine if the boundary is on x, y, or z.
     int dim = std::floor( boundary / 2 );
-
-    // Determine if it is positive or negative.
-    int dir = (boundary % 2) ? 1 : -1;
 
     // Get the boundary nodes.
     const auto& nodes = mesh->getBoundaryNodes( boundary );

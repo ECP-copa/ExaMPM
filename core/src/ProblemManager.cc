@@ -208,7 +208,6 @@ void ProblemManager::updateGrid( const double delta_t,
 {
     int space_dim = d_mesh->spatialDimension();
     int nodes_per_cell = d_mesh->nodesPerCell();
-    int node_id = 0;
     int num_nodes = d_mesh->totalNumNodes();
     std::vector<std::vector<double> > node_m_local(
         d_thread_count, std::vector<double>(num_nodes, 0.0) );
@@ -243,6 +242,8 @@ void ProblemManager::updateGrid( const double delta_t,
 
         // Get the thread id.
         int th = omp_get_thread_num();
+    
+	int node_id = 0;
 
         // Project to each node.
         for ( int n = 0; n < nodes_per_cell; ++n )
@@ -330,7 +331,6 @@ void ProblemManager::updateParticles( const double delta_t,
 {
     int space_dim = d_mesh->spatialDimension();
     int nodes_per_cell = d_mesh->nodesPerCell();
-    int node_id = 0;
 
     // Update the particles.
 #pragma omp parallel for num_threads(d_thread_count)
@@ -338,6 +338,7 @@ void ProblemManager::updateParticles( const double delta_t,
     {
         // Get the particle.
         auto& p = d_particles.at(i);
+        int node_id = 0;
 
         // Gradient work vectors.
         std::array<std::array<double,3>,3> delta_F;
