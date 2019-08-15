@@ -242,8 +242,8 @@ void ProblemManager::updateGrid( const double delta_t,
 
         // Get the thread id.
         int th = omp_get_thread_num();
-    
-	int node_id = 0;
+
+    int node_id = 0;
 
         // Project to each node.
         for ( int n = 0; n < nodes_per_cell; ++n )
@@ -295,6 +295,13 @@ void ProblemManager::updateGrid( const double delta_t,
         d_bc[b]->completeBoundarySum( d_mesh, b, node_a );
     }
 
+    // Apply boundary conditions.
+    for ( int b = 0; b < 6; ++b )
+    {
+        d_bc[b]->evaluateMomentumCondition( d_mesh, b, node_m, node_v );
+        d_bc[b]->evaluateMomentumCondition( d_mesh, b, node_m, node_a );
+    }
+
     // Compute grid velocity and acceleration from momentum.
 #pragma omp parallel for num_threads(d_thread_count)
     for ( int n = 0; n < num_nodes; ++n )
@@ -313,13 +320,6 @@ void ProblemManager::updateGrid( const double delta_t,
             for ( int d = 0; d < space_dim; ++d )
                 node_a[n][d] = 0.0;
         }
-    }
-
-    // Boundary conditions.
-    for ( int b = 0; b < 6; ++b )
-    {
-        d_bc[b]->evaluateMomentumCondition( d_mesh, b, node_m, node_v );
-        d_bc[b]->evaluateImpulseCondition( d_mesh, b, node_m, node_a );
     }
 }
 
@@ -416,7 +416,7 @@ void ProblemManager::writeTimeStepToFile(
     std::ofstream file( filename );
 
     // Write the data header.
-    file << "x, y, z, velocity magnitude" << std::endl;
+    file << "x, y, z, velocity magnitude, J" << std::endl;
 
     // Write the particle data.
     double vmag = 0.0;
@@ -426,7 +426,8 @@ void ProblemManager::writeTimeStepToFile(
         file << p.r[0] << ", "
              << p.r[1] << ", "
              << p.r[2] << ", "
-             << vmag << std::endl;
+             << vmag << ", "
+             << TensorTools::determinant( p.F ) << std::endl;
     }
 
     // Close the time step file
