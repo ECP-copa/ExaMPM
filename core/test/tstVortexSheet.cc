@@ -49,8 +49,8 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
     bc[1] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
     bc[2] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
     bc[3] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
-    bc[4] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
-    bc[5] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
+    bc[4] = std::make_shared<ExaMPM::PeriodicBoundaryCondition>();
+    bc[5] = std::make_shared<ExaMPM::PeriodicBoundaryCondition>();
 
     // Set boundary conditions with the manager.
     manager.setBoundaryConditions( bc );
@@ -117,15 +117,15 @@ TEST_F(VortexSheetTest, vortex_sheet_test)
     manager.initialize( geom, order );
 
     // Calculate the time step paramters.
-    double delta_t = 1.0e-6;
-    double final_time = 0.1;
+    double delta_t = 1.0e-5;
+    double final_time = 1.0;
     int num_steps = std::ceil( final_time / delta_t );
     std::cout << "Time step size: " << delta_t << std::endl;
     std::cout << "Num steps: " << num_steps << std::endl;
 
     // Solve the problem.
     std::string output_file( "vortex_sheet_particles" );
-    int num_write = 150;
+    int num_write = 50;
     int write_freq = num_steps / num_write;
     manager.solve( num_steps, delta_t, output_file, write_freq );
 }
