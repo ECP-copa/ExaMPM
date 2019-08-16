@@ -5,6 +5,7 @@
 //---------------------------------------------------------------------------//
 
 #include "NewtonianViscousStress.hh"
+#include "TensorTools.hh"
 
 #include <cmath>
 
@@ -54,6 +55,18 @@ void NewtonianViscousStress::calculateStress( ExaMPM::Particle& p ) const
     // Add stress from the pressure.
     for ( int i = 0; i < 3; ++i )
         p.stress[i][i] -= pressure;
+
+    // Don't penalize stretching.
+    auto def_grad_det = std::min( 1.0, TensorTools::determinant(p.F) );
+
+    // Clear the deviatoric part of the fluid deformation gradient.
+    auto j_inv_cube = std::pow( def_grad_det, 1.0 / 3.0 );
+    for ( int i = 0; i < 3; ++i )
+        for ( int j = 0; j < 3; ++j )
+        {
+            if ( i == j ) p.F[i][j] = j_inv_cube;
+            else p.F[i][j] = 0.0;
+        }
 }
 
 //---------------------------------------------------------------------------//
