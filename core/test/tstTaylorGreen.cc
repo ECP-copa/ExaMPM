@@ -37,7 +37,7 @@ TEST_F(TaylorGreenTest, taylor_green_test)
     int num_cells_y = 20;
     int num_cells_z = 1;
     double cell_width = 0.314159;
-    bool has_gravity = true;
+    bool has_gravity = false;
     int thread_count = ( ExaMPM::test_argc == 2 ) ? std::atoi(ExaMPM::test_argv[1]) : 1;
 
     ExaMPM::ProblemManager manager(
@@ -48,8 +48,8 @@ TEST_F(TaylorGreenTest, taylor_green_test)
     bc[0] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
     bc[1] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
     bc[2] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
-    bc[3] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
-    bc[4] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
+    bc[3] = std::make_shared<ExaMPM::PeriodicBoundaryCondition>();
+    bc[4] = std::make_shared<ExaMPM::PeriodicBoundaryCondition>();
     bc[5] = std::make_shared<ExaMPM::FreeSlipBoundaryCondition>();
 
     // Set boundary conditions with the manager.
@@ -82,9 +82,9 @@ TEST_F(TaylorGreenTest, taylor_green_test)
     // Give the droplet a downward velocity equal to a 300mm free fall
     auto init_vf1 =
         [](const std::array<double,3>& r,std::array<std::array<double,3>,8>& c)
-        { 
+        {
             for ( auto& mode : c )
-                std::fill(mode.begin(), mode.end(), 0.0);
+                std::fill(mode.begin(),mode.end(),0.0);
             c[0][0] = cos(r[0]) * sin(r[1]); 
             c[0][1] = -1.0 * sin(r[0]) * cos(r[1]); 
         };
