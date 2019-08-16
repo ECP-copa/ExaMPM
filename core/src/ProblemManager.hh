@@ -60,9 +60,9 @@ class ProblemManager
   private:
 
     // Locate the particles and compute grid values.
-    void locateParticles( 
-        std::vector<std::array<double,8> >& cell_basis,
-        std::vector<std::array<std::array<double,3>,8> >& cell_grads);
+    void locateParticles();
+//        std::vector<std::array<double,8> >& cell_basis,
+//        std::vector<std::array<std::array<double,3>,8> >& cell_grads);
 
     // Update the grid state.
     void updateGrid( const double delta_t,

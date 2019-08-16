@@ -182,15 +182,15 @@ void ProblemManager::solve( const int num_time_steps,
 
 //---------------------------------------------------------------------------//
 // Locate the particles and compute grid values.
-void ProblemManager::locateParticles(
-    std::vector<std::array<double,8> >& cell_basis,
-    std::vector<std::array<std::array<double,3>,8> >& cell_grads )
+void ProblemManager::locateParticles()
+//    std::vector<std::array<double,8> >& cell_basis,
+//    std::vector<std::array<std::array<double,3>,8> >& cell_grads )
 {
     int space_dim = d_mesh->spatialDimension();
-    int num_cells = d_mesh->totalNumCells();
-    std::vector<std::array<double,3> > cell_centers(
-        num_cells, std::array<double,3>() );
-    std::vector<double> cell_population( num_cells, 0.0 );
+//    int num_cells = d_mesh->totalNumCells();
+//    std::vector<std::array<double,3> > cell_centers(
+//        num_cells, std::array<double,3>() );
+//    std::vector<double> cell_population( num_cells, 0.0 );
 
     // Locate the particles
 #pragma omp parallel for num_threads(d_thread_count)
@@ -216,12 +216,12 @@ void ProblemManager::locateParticles(
         // Evaluate the cell basis function gradient at the particle location.
         d_mesh->shapeFunctionGradient( ref_coords, p.basis_gradients );
 
-        // Add particle lacation to cell geometric center.
-        cell_population[ p.cell_id ] += 1.0;
-        for ( int d = 0; d < space_dim; ++d )
-            cell_centers[ p.cell_id ][d] += ref_coords[d];
+//        // Add particle lacation to cell geometric center.
+//        cell_population[ p.cell_id ] += 1.0;
+//        for ( int d = 0; d < space_dim; ++d )
+//            cell_centers[ p.cell_id ][d] += ref_coords[d];
     }
-
+/*
     // Evaluate basis values and gradients for geometric cell centers
     for ( int i = 0; i < num_cells; ++i )
     {
@@ -235,6 +235,7 @@ void ProblemManager::locateParticles(
         // Evaluate cell basis function gradient at geometric center.
         d_mesh->shapeFunctionGradient( cell_centers[i], cell_grads[i] );
     }
+*/
 }
 
 //---------------------------------------------------------------------------//
@@ -279,7 +280,7 @@ void ProblemManager::updateGrid( const double delta_t,
         const auto& p = d_particles.at(i);
 
         // Get the thread id.
-        int th = omp_get_thread_num();
+        int th = 0;//et_thread_num();
 
         int node_id = 0;
         std::array<double,8> s;
@@ -392,6 +393,8 @@ void ProblemManager::updateParticles( const double delta_t,
 {
     int space_dim = d_mesh->spatialDimension();
     int nodes_per_cell = d_mesh->nodesPerCell();
+    double width = d_mesh->cellWidth();
+
 
     // Update the particles.
 #pragma omp parallel for num_threads(d_thread_count)
@@ -406,6 +409,8 @@ void ProblemManager::updateParticles( const double delta_t,
         std::array<std::array<double,3>,3> delta_F;
         std::array<std::array<double,3>,3> work;
         std::array<double,3> coords;
+        std::array<double,8> s;
+        std::array<double,8> den;
 
         // Clear velocity.
         for ( auto& mode : p.c )
@@ -437,32 +442,29 @@ void ProblemManager::updateParticles( const double delta_t,
             s[7] = s[1] * s[2] * s[3];
 
             den[0] = 1.0;
-            den[1] = pow(width, 2) / 4. 
-            den[2] = pow(width, 2) / 4. 
-            den[3] = pow(width, 2) / 4.
-            den[4] = pow(width, 4) / 16.
-            den[5] = pow(width, 4) / 16.
-            den[6] = pow(width, 4) / 16.
-            den[7] = pow(width, 6) / 64.
+            den[1] = pow(width, 2) / 4.;
+            den[2] = pow(width, 2) / 4.;
+            den[3] = pow(width, 2) / 4.;
+            den[4] = pow(width, 4) / 16.;
+            den[5] = pow(width, 4) / 16.;
+            den[6] = pow(width, 4) / 16.;
+            den[7] = pow(width, 6) / 64.;
 
             // Only add a contribution from an adjacent node if it has mass.
-            if ( node_m[node_id] > 0.0 )
+            for ( int d = 0; d < space_dim; ++d )
             {
-                for ( int d = 0; d < space_dim; ++d )
-                {
-                    scaled_vel = p.basis_values[n] * node_v[node_id][d]
+                scaled_vel = p.basis_values[n] * node_v[node_id][d];
 
-                    // Increment the velocity. (PolyPIC Update)
-                    p.c[0][d] += scaled_vel * s[0] / den[0];
-                    p.c[1][d] += scaled_vel * s[1] / den[1];
-                    p.c[2][d] += scaled_vel * s[2] / den[2];
-                    p.c[3][d] += scaled_vel * s[3] / den[3];
-                    p.c[4][d] += scaled_vel * s[4] / den[4];
-                    p.c[5][d] += scaled_vel * s[5] / den[5];
-                    p.c[6][d] += scaled_vel * s[6] / den[6];
-                    p.c[7][d] += scaled_vel * s[7] / den[7];
+                // Increment the velocity. (PolyPIC Update)
+                p.c[0][d] += scaled_vel * s[0] / den[0];
+                p.c[1][d] += scaled_vel * s[1] / den[1];
+                p.c[2][d] += scaled_vel * s[2] / den[2];
+                p.c[3][d] += scaled_vel * s[3] / den[3];
+                p.c[4][d] += scaled_vel * s[4] / den[4];
+                p.c[5][d] += scaled_vel * s[5] / den[5];
+                p.c[6][d] += scaled_vel * s[6] / den[6];
+                p.c[7][d] += scaled_vel * s[7] / den[7];
 
-                }
             }
 
 //            // Increment the position.
