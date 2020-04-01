@@ -1,1 +1,1 @@
-Exascale Material Point Method (MPM) Mini-App
+ExaMPM - CoPA proxy-application for MPM
