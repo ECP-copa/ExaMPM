@@ -46,7 +46,7 @@ int communicationCount( const LocalGridType& local_grid,
     // Locate the particles in the local mesh and count how many have left the
     // halo region.
     auto local_mesh = Cajita::createLocalMesh<Kokkos::HostSpace>( local_grid );
-    auto dx = local_grid.globalGrid().globalMesh().uniformCellSize();
+    auto dx = local_grid.globalGrid().globalMesh().cellSize(0);
     const Kokkos::Array<double,3> local_low =
         { local_mesh.lowCorner(Cajita::Ghost(),Dim::I) + minimum_halo_width*dx,
           local_mesh.lowCorner(Cajita::Ghost(),Dim::J) + minimum_halo_width*dx,

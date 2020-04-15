@@ -195,7 +195,7 @@ void g2p( const ExecutionSpace& exec_space,
     auto local_mesh =
         Cajita::createLocalMesh<ExecutionSpace>( *(pm.mesh()->localGrid()) );
     auto cell_size =
-        pm.mesh()->localGrid()->globalGrid().globalMesh().uniformCellSize();
+        pm.mesh()->localGrid()->globalGrid().globalMesh().cellSize(0);
     auto cell_volume = cell_size * cell_size * cell_size;
 
     // Gather the data we need.
