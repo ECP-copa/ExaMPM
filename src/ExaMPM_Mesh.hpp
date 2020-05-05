@@ -116,7 +116,7 @@ class Mesh
     // Get the cell size.
     double cellSize() const
     {
-        return _local_grid->globalGrid().globalMesh().uniformCellSize();
+        return _local_grid->globalGrid().globalMesh().cellSize(0);
     }
 
     // Get the minimum node index in the domain.

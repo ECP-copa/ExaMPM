@@ -35,7 +35,7 @@ inertialScaling(
     const SplineDataType& sd,
     typename std::enable_if<(2==SplineDataType::order),void*>::type = 0)
 {
-    return 4.0 / ( sd.dx * sd.dx );
+    return 4.0 / ( sd.dx[0] * sd.dx[0] );
 }
 
 template<class SplineDataType>
@@ -44,7 +44,7 @@ inertialScaling(
     const SplineDataType& sd,
     typename std::enable_if<(3==SplineDataType::order),void*>::type = 0)
 {
-    return 3.0 / ( sd.dx * sd.dx );
+    return 3.0 / ( sd.dx[0] * sd.dx[0] );
 }
 
 //---------------------------------------------------------------------------//
