@@ -8,3 +8,5 @@ target_include_directories( DamBreak PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 add_executable( FreeFall free_fall.cpp )
 target_link_libraries( FreeFall PRIVATE exampm)
 target_include_directories( FreeFall PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+install(TARGETS DamBreak FreeFall DESTINATION ${CMAKE_INSTALL_BINDIR})

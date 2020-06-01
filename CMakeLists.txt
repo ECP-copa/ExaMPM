@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.12)
 
 project(ExaMPM LANGUAGES CXX VERSION 0.1.0)
 
+include(GNUInstallDirs)
+
 # find dependencies
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 find_package(MPI REQUIRED)
