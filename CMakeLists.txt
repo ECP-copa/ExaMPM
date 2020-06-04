@@ -9,8 +9,7 @@ include(GNUInstallDirs)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 find_package(MPI REQUIRED)
 find_package(Kokkos 3 REQUIRED)
-find_package(Cabana REQUIRED)
-find_package(Cajita REQUIRED)
+find_package(Cabana REQUIRED COMPONENTS Cabana::Cajita Cabana::cabanacore)
 find_package(Silo REQUIRED)
 
 # library
