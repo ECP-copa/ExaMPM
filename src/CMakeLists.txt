@@ -22,7 +22,7 @@ target_link_libraries(exampm
   Kokkos::kokkos
   MPI::MPI_CXX
   Cabana::cabanacore
-  Cajita::Cajita
+  Cabana::Cajita
   Silo::silo )
 
 target_include_directories(exampm
