@@ -131,15 +131,16 @@ void fieldSolve( const ExecutionSpace& exec_space,
     double mass_epsilon = 1.0e-12;
 
     // Compute the velocity.
-    auto global_nodes =
+    auto l2g = Cajita::IndexConversion::createL2G(
+        *(pm.mesh()->localGrid()), Cajita::Node() );
+    auto local_nodes =
         pm.mesh()->localGrid()->indexSpace(
-            Cajita::Ghost(), Cajita::Node(), Cajita::Global() );
+            Cajita::Ghost(), Cajita::Node(), Cajita::Local() );
     Kokkos::parallel_for(
-        Cajita::createExecutionPolicy(global_nodes,exec_space),
-        KOKKOS_LAMBDA( const int gi, const int gj, const int gk ){
-            auto li = gi - global_nodes.min(0);
-            auto lj = gj - global_nodes.min(1);
-            auto lk = gk - global_nodes.min(2);
+        Cajita::createExecutionPolicy(local_nodes,exec_space),
+        KOKKOS_LAMBDA( const int li, const int lj, const int lk ){
+            int gi, gj, gk;
+            l2g( li, lj, lk, gi, gj, gk );
 
             // Only compute velocity if a node has mass
             u_i(li,lj,lk,0) =
@@ -327,15 +328,16 @@ void correctParticlePositions( const ExecutionSpace& exec_space,
 
     // Apply boundary condition to position correction.
     // Compute the velocity.
-    auto global_nodes =
+    auto l2g = Cajita::IndexConversion::createL2G(
+        *(pm.mesh()->localGrid()), Cajita::Node() );
+    auto local_nodes =
         pm.mesh()->localGrid()->indexSpace(
-            Cajita::Ghost(), Cajita::Node(), Cajita::Global() );
+            Cajita::Ghost(), Cajita::Node(), Cajita::Local() );
     Kokkos::parallel_for(
-        Cajita::createExecutionPolicy(global_nodes,exec_space),
-        KOKKOS_LAMBDA( const int gi, const int gj, const int gk ){
-            auto li = gi - global_nodes.min(0);
-            auto lj = gj - global_nodes.min(1);
-            auto lk = gk - global_nodes.min(2);
+        Cajita::createExecutionPolicy(local_nodes,exec_space),
+        KOKKOS_LAMBDA( const int li, const int lj, const int lk ){
+            int gi, gj, gk;
+            l2g( li, lj, lk, gi, gj, gk );
             bc( gi, gj, gk,
                 x_i(li,lj,lk,0), x_i(li,lj,lk,1), x_i(li,lj,lk,2) );
         });
