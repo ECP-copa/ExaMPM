@@ -56,6 +56,9 @@ class ProblemManager
 {
   public:
 
+    using memory_space = MemorySpace;
+    using execution_space = typename memory_space::execution_space;
+
     using particle_members = Cabana::MemberTypes<double[3][3],
                                                  double[3],
                                                  double[3],
@@ -75,7 +78,7 @@ class ProblemManager
                                      Cajita::UniformMesh<double>,
                                      MemorySpace>;
 
-    using halo = Cajita::Halo<double,MemorySpace>;
+    using halo = Cajita::Halo<MemorySpace>;
 
     using mesh_type = Mesh<MemorySpace>;
 
@@ -243,42 +246,54 @@ class ProblemManager
 
     void scatter( Location::Node, Field::Momentum ) const
     {
-        _node_vector_halo->scatter( *_momentum );
+        _node_vector_halo->scatter( execution_space(),
+                                    Cajita::ScatterReduce::Sum(),
+                                    *_momentum );
     }
 
     void scatter( Location::Node, Field::Mass ) const
     {
-        _node_scalar_halo->scatter( *_mass );
+        _node_scalar_halo->scatter( execution_space(),
+                                    Cajita::ScatterReduce::Sum(),
+                                    *_mass );
     }
 
     void scatter( Location::Node, Field::Force ) const
     {
-        _node_vector_halo->scatter( *_force );
+        _node_vector_halo->scatter( execution_space(),
+                                    Cajita::ScatterReduce::Sum(),
+                                    *_force );
     }
 
     void scatter( Location::Node, Field::PositionCorrection ) const
     {
-        _node_vector_halo->scatter( *_position_correction );
+        _node_vector_halo->scatter( execution_space(),
+                                    Cajita::ScatterReduce::Sum(),
+                                    *_position_correction );
     }
 
     void scatter( Location::Cell, Field::Density ) const
     {
-        _cell_scalar_halo->scatter( *_density );
+        _cell_scalar_halo->scatter( execution_space(),
+                                    Cajita::ScatterReduce::Sum(),
+                                    *_density );
     }
 
     void scatter( Location::Cell, Field::Mark ) const
     {
-        _cell_scalar_halo->scatter( *_mark );
+        _cell_scalar_halo->scatter( execution_space(),
+                                    Cajita::ScatterReduce::Sum(),
+                                    *_mark );
     }
 
     void gather( Location::Node, Field::Velocity ) const
     {
-        _node_vector_halo->gather( *_velocity );
+        _node_vector_halo->gather( execution_space(), *_velocity );
     }
 
     void gather( Location::Node, Field::PositionCorrection ) const
     {
-        _node_vector_halo->gather( *_position_correction );
+        _node_vector_halo->gather( execution_space(), *_position_correction );
     }
 
     void communicateParticles( const int minimum_halo_width )
