@@ -19,8 +19,6 @@ set(SOURCES
 add_library(exampm ${SOURCES})
 
 target_link_libraries(exampm
-  Kokkos::kokkos
-  MPI::MPI_CXX
   Cabana::cabanacore
   Cabana::Cajita
   Silo::silo )
