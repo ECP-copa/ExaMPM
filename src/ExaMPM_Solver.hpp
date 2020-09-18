@@ -212,6 +212,29 @@ createSolver( const std::string& device,
         throw std::runtime_error( "CUDA Backend Not Enabled" );
 #endif
     }
+    else if ( 0 == device.compare("hip") )
+    {
+#ifdef KOKKOS_ENABLE_HIP
+        return std::make_shared<ExaMPM::Solver<Kokkos::Experimental::HIPSpace,Kokkos::Experimental::HIP>>(
+            comm,
+            global_bounding_box,
+            global_num_cell,
+            periodic,
+            partitioner,
+            halo_cell_width,
+            create_functor,
+            particles_per_cell,
+            bulk_modulus,
+            density,
+            gamma,
+            kappa,
+            delta_t,
+            gravity,
+            bc );
+#else
+        throw std::runtime_error( "HIP Backend Not Enabled" );
+#endif
+    }
     else
     {
         throw std::runtime_error( "invalid backend" );
