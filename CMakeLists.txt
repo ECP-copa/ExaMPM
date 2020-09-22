@@ -7,9 +7,13 @@ include(GNUInstallDirs)
 
 # find dependencies
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
-find_package(MPI REQUIRED)
-find_package(Kokkos 3 REQUIRED)
 find_package(Cabana REQUIRED COMPONENTS Cabana::Cajita Cabana::cabanacore)
+if( NOT Cabana_ENABLE_MPI )
+  message( FATAL_ERROR "Cabana must be compiled with MPI" )
+endif()
+if( NOT Cabana_ENABLE_CAJITA )
+  message( FATAL_ERROR "Cabana must be compiled with Cajita" )
+endif()
 find_package(Silo REQUIRED)
 
 # library
