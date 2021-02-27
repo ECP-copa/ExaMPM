@@ -72,7 +72,7 @@ void p2g( const ExecutionSpace& exec_space,
             double x[3] = { x_p(p,0), x_p(p,1), x_p(p,2) };
 
             // Setup interpolation to the nodes.
-            Cajita::SplineData<double,2,Cajita::Node> sd;
+            Cajita::SplineData<double,2,3,Cajita::Node> sd;
             Cajita::evaluateSpline( local_mesh, x, sd );
 
             // Compute the pressure on the particle with an equation of
@@ -211,7 +211,7 @@ void g2p( const ExecutionSpace& exec_space,
             double x[3] = { x_p(p,0), x_p(p,1), x_p(p,2) };
 
             // Setup interpolation from the nodes.
-            Cajita::SplineData<double,2,Cajita::Node> sd_i;
+            Cajita::SplineData<double,2,3,Cajita::Node> sd_i;
             Cajita::evaluateSpline( local_mesh, x, sd_i );
 
             // Update particle velocity.
@@ -240,12 +240,12 @@ void g2p( const ExecutionSpace& exec_space,
             }
 
             // Project density to cell.
-            Cajita::SplineData<double,1,Cajita::Cell> sd_c1;
+            Cajita::SplineData<double,1,3,Cajita::Cell> sd_c1;
             Cajita::evaluateSpline( local_mesh, x, sd_c1 );
             Cajita::P2G::value( m_p(p) / cell_volume, sd_c1, r_c_sv );
 
             // Mark cells. Indicates whether or not cells have particles.
-            Cajita::SplineData<double,0,Cajita::Cell> sd_c0;
+            Cajita::SplineData<double,0,3,Cajita::Cell> sd_c0;
             Cajita::evaluateSpline( local_mesh, x, sd_c0 );
             Cajita::P2G::value( 1.0, sd_c0, k_c_sv );
         });
@@ -303,7 +303,7 @@ void correctParticlePositions( const ExecutionSpace& exec_space,
             local_mesh.coordinates( Cajita::Cell(), idx, x );
 
             // Setup interpolation from cell center to nodes.
-            Cajita::SplineData<double,1,Cajita::Node> sd_i;
+            Cajita::SplineData<double,1,3,Cajita::Node> sd_i;
             Cajita::evaluateSpline( local_mesh, x, sd_i );
 
             // Clamp the density outside the fluid.
@@ -351,7 +351,7 @@ void correctParticlePositions( const ExecutionSpace& exec_space,
             double x[3] = { x_p(p,0), x_p(p,1), x_p(p,2) };
 
             // Setup interpolation from the nodes.
-            Cajita::SplineData<double,2,Cajita::Node> sd_i;
+            Cajita::SplineData<double,2,3,Cajita::Node> sd_i;
             Cajita::evaluateSpline( local_mesh, x, sd_i );
 
             // Correct the particle position.
