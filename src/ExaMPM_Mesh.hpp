@@ -40,7 +40,7 @@ class Mesh
     Mesh( const Kokkos::Array<double,6>& global_bounding_box,
           const std::array<int,3>& global_num_cell,
           const std::array<bool,3>& periodic,
-          const Cajita::Partitioner& partitioner,
+          const Cajita::BlockPartitioner<3>& partitioner,
           const int halo_cell_width,
           const int minimum_halo_cell_width,
           MPI_Comm comm )

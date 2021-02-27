@@ -31,8 +31,9 @@ struct ParticleInitFunc
     KOKKOS_INLINE_FUNCTION
     bool operator()( const double x[3], ParticleType& p ) const
     {
-        if ( 0.0 <= x[0] && x[0] <= 0.3 &&
-             0.0 <= x[2] && x[2] <= 0.7 )
+        if ( 0.0 <= x[0] && x[0] <= 0.4 &&
+             0.0 <= x[1] && x[1] <= 0.4 &&
+             0.0 <= x[2] && x[2] <= 0.6 )
         {
             // Affine matrix.
             for ( int d0 = 0; d0 < 3; ++d0 )
@@ -82,7 +83,7 @@ void damBreak( const double cell_size,
                                           static_cast<int>(1.0 / cell_size) };
 
     // This will look like a 2D problem so make the Y direction periodic.
-    std::array<bool,3> periodic = { false, true, false };
+    std::array<bool,3> periodic = { false, false, false };
 
     // Due to the 2D nature of the problem we will only partition in Y. The
     // behavior of the fluid will be to largely just run out in X and Z with
@@ -93,7 +94,7 @@ void damBreak( const double cell_size,
     Cajita::ManualPartitioner partitioner( ranks_per_dim );
 
     // Material properties.
-    double bulk_modulus = 5.0e5;
+    double bulk_modulus = 1.0e5;
     double density = 1.0e3;
     double gamma = 7.0;
     double kappa = 100.0;
@@ -104,10 +105,10 @@ void damBreak( const double cell_size,
     // Free slip conditions in X and Z.
     ExaMPM::BoundaryCondition bc;
     bc.boundary[0] = ExaMPM::BoundaryType::FREE_SLIP;
-    bc.boundary[1] = ExaMPM::BoundaryType::NONE;
+    bc.boundary[1] = ExaMPM::BoundaryType::FREE_SLIP;
     bc.boundary[2] = ExaMPM::BoundaryType::FREE_SLIP;
     bc.boundary[3] = ExaMPM::BoundaryType::FREE_SLIP;
-    bc.boundary[4] = ExaMPM::BoundaryType::NONE;
+    bc.boundary[4] = ExaMPM::BoundaryType::FREE_SLIP;
     bc.boundary[5] = ExaMPM::BoundaryType::FREE_SLIP;
 
     // Solve the problem.
