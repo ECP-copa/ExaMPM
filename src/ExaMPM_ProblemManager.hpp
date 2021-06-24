@@ -13,7 +13,6 @@
 #define EXAMPM_PROBLEMMANAGER_HPP
 
 #include <ExaMPM_ParticleInit.hpp>
-#include <ExaMPM_ParticleCommunication.hpp>
 #include <ExaMPM_Mesh.hpp>
 
 #include <Cabana_Core.hpp>
@@ -298,11 +297,12 @@ class ProblemManager
 
     void communicateParticles( const int minimum_halo_width )
     {
-        ParticleCommunication::redistribute(
+        auto positions = get( Location::Particle(), Field::Position()) ;
+        Cajita::particleGridMigrate(
             *(_mesh->localGrid()),
-            minimum_halo_width,
+            positions,
             _particles,
-            std::integral_constant<std::size_t,2>() );
+            minimum_halo_width );
     }
 
   private:

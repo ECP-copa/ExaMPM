@@ -2,7 +2,6 @@ set(HEADERS
   ExaMPM_BoundaryConditions.hpp
   ExaMPM_DenseLinearAlgebra.hpp
   ExaMPM_Mesh.hpp
-  ExaMPM_ParticleCommunication.hpp
   ExaMPM_ParticleInit.hpp
   ExaMPM_ProblemManager.hpp
   ExaMPM_SiloParticleWriter.hpp
