@@ -20,6 +20,8 @@
 
 #include <Kokkos_Core.hpp>
 
+#include <ALL.hpp>
+
 #include <memory>
 #include <string>
 
@@ -74,6 +76,23 @@ class Solver : public SolverBase
             bulk_modulus, density, gamma, kappa );
 
         MPI_Comm_rank( comm, &_rank );
+
+        _liball = std::make_shared<ALL::ALL<double, double>>(ALL::STAGGERED, 3, 0);
+        auto global_grid = _mesh->localGrid()->globalGrid();
+        std::vector<int> block_id(3,0);
+        for(std::size_t i=0; i<3; ++i)
+            block_id.at(i) = global_grid.dimBlockId(i);
+        std::vector<int> blocks_per_dim(3,0);
+        for(std::size_t i=0; i<3; ++i)
+            blocks_per_dim.at(i) = global_grid.dimNumBlock(i);
+        _liball->setProcGridParams(block_id, blocks_per_dim);
+        std::vector<double> min_domain_size(3,0);
+        for(std::size_t i=0; i<3; ++i)
+            min_domain_size.at(i) = 3.*_mesh->cellSize();
+        _liball->setMinDomainSize(min_domain_size);
+        _liball->setCommunicator(MPI_COMM_WORLD);
+        _liball->setProcTag(_rank);
+        _liball->setup();
     }
 
     void solve( const double t_final, const int write_freq ) override
@@ -96,9 +115,20 @@ class Solver : public SolverBase
 
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity, _bc );
 
+            auto min_index = _mesh->minDomainGlobalNodeIndex();
+            auto max_index = _mesh->maxDomainGlobalNodeIndex();
+            std::vector<ALL::Point<double>> vertices(2, ALL::Point<double>(3));
+            for(std::size_t d=0; d<3; ++d)
+                vertices.at(0)[d] = min_index[d];
+            for(std::size_t d=0; d<3; ++d)
+                vertices.at(1)[d] = max_index[d];
+            _liball->setVertices(vertices);
+            _liball->setWork(0.);
+
             _pm->communicateParticles( _halo_min );
 
             if ( 0 == t % write_freq )
+            {
                 SiloParticleWriter::writeTimeStep(
                     _mesh->localGrid()->globalGrid(),
                     t+1,
@@ -106,6 +136,8 @@ class Solver : public SolverBase
                     _pm->get( Location::Particle(), Field::Position() ),
                     _pm->get( Location::Particle(), Field::Velocity() ),
                     _pm->get( Location::Particle(), Field::J() ) );
+                _liball->printVTKoutlines(t);
+            }
 
            time += delta_t;
         }
@@ -120,6 +152,7 @@ class Solver : public SolverBase
     std::shared_ptr<Mesh<MemorySpace>> _mesh;
     std::shared_ptr<ProblemManager<MemorySpace>> _pm;
     int _rank;
+    std::shared_ptr<ALL::ALL<double, double>> _liball;
 };
 
 //---------------------------------------------------------------------------//

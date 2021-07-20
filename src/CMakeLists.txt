@@ -20,7 +20,8 @@ add_library(exampm ${SOURCES})
 target_link_libraries(exampm
   Cabana::cabanacore
   Cabana::Cajita
-  Silo::silo )
+  Silo::silo
+  ALL::ALL )
 
 target_include_directories(exampm
   PUBLIC
