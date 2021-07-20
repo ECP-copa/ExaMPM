@@ -78,13 +78,14 @@ class Solver : public SolverBase
         MPI_Comm_rank( comm, &_rank );
 
         _liball = std::make_shared<ALL::ALL<double, double>>(ALL::STAGGERED, 3, 0);
-        auto global_grid = _mesh->localGrid()->globalGrid();
+        // For some reason only(!) the following line causes the code to crash
+        //auto global_grid = _mesh->localGrid()->globalGrid();
         std::vector<int> block_id(3,0);
         for(std::size_t i=0; i<3; ++i)
-            block_id.at(i) = global_grid.dimBlockId(i);
+            block_id.at(i) = _mesh->localGrid()->globalGrid().dimBlockId(i);
         std::vector<int> blocks_per_dim(3,0);
         for(std::size_t i=0; i<3; ++i)
-            blocks_per_dim.at(i) = global_grid.dimNumBlock(i);
+            blocks_per_dim.at(i) = _mesh->localGrid()->globalGrid().dimNumBlock(i);
         _liball->setProcGridParams(block_id, blocks_per_dim);
         std::vector<double> min_domain_size(3,0);
         for(std::size_t i=0; i<3; ++i)
@@ -115,13 +116,13 @@ class Solver : public SolverBase
 
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity, _bc );
 
-            auto min_index = _mesh->minDomainGlobalNodeIndex();
-            auto max_index = _mesh->maxDomainGlobalNodeIndex();
+            const auto& local_mesh =
+                Cajita::createLocalMesh<Kokkos::HostSpace>( *(_mesh->localGrid()) );
             std::vector<ALL::Point<double>> vertices(2, ALL::Point<double>(3));
             for(std::size_t d=0; d<3; ++d)
-                vertices.at(0)[d] = min_index[d];
+                vertices.at(0)[d] = local_mesh.lowCorner(Cajita::Own(), d);
             for(std::size_t d=0; d<3; ++d)
-                vertices.at(1)[d] = max_index[d];
+                vertices.at(1)[d] = local_mesh.highCorner(Cajita::Own(), d);
             _liball->setVertices(vertices);
             _liball->setWork(0.);
 
