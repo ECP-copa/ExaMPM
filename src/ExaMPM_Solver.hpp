@@ -98,13 +98,13 @@ class Solver : public SolverBase
 
     void solve( const double t_final, const int write_freq ) override
     {
-        SiloParticleWriter::writeTimeStep(
-            _mesh->localGrid()->globalGrid(),
-            0,
-            0.0,
-            _pm->get( Location::Particle(), Field::Position() ),
-            _pm->get( Location::Particle(), Field::Velocity() ),
-            _pm->get( Location::Particle(), Field::J() ) );
+        //SiloParticleWriter::writeTimeStep(
+        //    _mesh->localGrid()->globalGrid(),
+        //    0,
+        //    0.0,
+        //    _pm->get( Location::Particle(), Field::Position() ),
+        //    _pm->get( Location::Particle(), Field::Velocity() ),
+        //    _pm->get( Location::Particle(), Field::J() ) );
 
         int num_step = t_final / _dt;
         double delta_t = t_final / num_step;
@@ -116,13 +116,17 @@ class Solver : public SolverBase
 
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity, _bc );
 
-            const auto& local_mesh =
-                Cajita::createLocalMesh<Kokkos::HostSpace>( *(_mesh->localGrid()) );
+            //const auto& local_mesh =
+            //    Cajita::createLocalMesh<Kokkos::HostSpace>( *(_mesh->localGrid()) );
             std::vector<ALL::Point<double>> vertices(2, ALL::Point<double>(3));
+            //for(std::size_t d=0; d<3; ++d)
+            //    vertices.at(0)[d] = local_mesh.lowCorner(Cajita::Own(), d);
+            //for(std::size_t d=0; d<3; ++d)
+            //    vertices.at(1)[d] = local_mesh.highCorner(Cajita::Own(), d);
             for(std::size_t d=0; d<3; ++d)
-                vertices.at(0)[d] = local_mesh.lowCorner(Cajita::Own(), d);
+                vertices.at(0)[d] = _mesh->localGrid()->globalGrid().globalOffset(d) * _mesh->cellSize();
             for(std::size_t d=0; d<3; ++d)
-                vertices.at(1)[d] = local_mesh.highCorner(Cajita::Own(), d);
+                vertices.at(1)[d] = vertices.at(0)[d] + _mesh->localGrid()->globalGrid().ownedNumCell(d) * _mesh->cellSize();
             _liball->setVertices(vertices);
             _liball->setWork(0.);
 
@@ -130,13 +134,13 @@ class Solver : public SolverBase
 
             if ( 0 == t % write_freq )
             {
-                SiloParticleWriter::writeTimeStep(
-                    _mesh->localGrid()->globalGrid(),
-                    t+1,
-                    time,
-                    _pm->get( Location::Particle(), Field::Position() ),
-                    _pm->get( Location::Particle(), Field::Velocity() ),
-                    _pm->get( Location::Particle(), Field::J() ) );
+                //SiloParticleWriter::writeTimeStep(
+                //    _mesh->localGrid()->globalGrid(),
+                //    t+1,
+                //    time,
+                //    _pm->get( Location::Particle(), Field::Position() ),
+                //    _pm->get( Location::Particle(), Field::Velocity() ),
+                //    _pm->get( Location::Particle(), Field::J() ) );
                 _liball->printVTKoutlines(t);
             }
 
