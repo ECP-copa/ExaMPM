@@ -48,7 +48,7 @@ class Solver : public SolverBase
             const Kokkos::Array<double,6>& global_bounding_box,
             const std::array<int,3>& global_num_cell,
             const std::array<bool,3>& periodic,
-            const Cajita::BlockPartitioner<3>& partitioner,
+            const Cajita::ManualBlockPartitioner<3>& partitioner, //todo(sschulz): should work with Cajita::BlockPartitioner<3>!
             const int halo_cell_width,
             const InitFunc& create_functor,
             const int particles_per_cell,
@@ -77,15 +77,15 @@ class Solver : public SolverBase
 
         MPI_Comm_rank( comm, &_rank );
 
-        _liball = std::make_shared<ALL::ALL<double, double>>(ALL::STAGGERED, 3, 0);
+        _liball = std::make_shared<ALL::ALL<double, double>>(ALL::TENSOR, 3, 0);
         // For some reason only(!) the following line causes the code to crash
         //auto global_grid = _mesh->localGrid()->globalGrid();
         std::vector<int> block_id(3,0);
         for(std::size_t i=0; i<3; ++i)
-            block_id.at(i) = _mesh->localGrid()->globalGrid().dimBlockId(i);
+            block_id.at(i) = _mesh->globalGrid()->dimBlockId(i);
         std::vector<int> blocks_per_dim(3,0);
         for(std::size_t i=0; i<3; ++i)
-            blocks_per_dim.at(i) = _mesh->localGrid()->globalGrid().dimNumBlock(i);
+            blocks_per_dim.at(i) = _mesh->globalGrid()->dimNumBlock(i);
         _liball->setProcGridParams(block_id, blocks_per_dim);
         std::vector<double> min_domain_size(3,0);
         for(std::size_t i=0; i<3; ++i)
@@ -106,6 +106,13 @@ class Solver : public SolverBase
         //    _pm->get( Location::Particle(), Field::Velocity() ),
         //    _pm->get( Location::Particle(), Field::J() ) );
 
+        std::vector<ALL::Point<double>> lb_vertices(2, ALL::Point<double>(3));
+        for(std::size_t d=0; d<3; ++d)
+            lb_vertices.at(0)[d] = _mesh->localGrid()->globalGrid().globalOffset(d) * _mesh->cellSize();
+        for(std::size_t d=0; d<3; ++d)
+            lb_vertices.at(1)[d] = lb_vertices.at(0)[d] + _mesh->localGrid()->globalGrid().ownedNumCell(d) * _mesh->cellSize();
+        _liball->setVertices(lb_vertices);
+
         int num_step = t_final / _dt;
         double delta_t = t_final / num_step;
         double time = 0.0;
@@ -116,19 +123,17 @@ class Solver : public SolverBase
 
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity, _bc );
 
-            //const auto& local_mesh =
-            //    Cajita::createLocalMesh<Kokkos::HostSpace>( *(_mesh->localGrid()) );
-            std::vector<ALL::Point<double>> vertices(2, ALL::Point<double>(3));
-            //for(std::size_t d=0; d<3; ++d)
-            //    vertices.at(0)[d] = local_mesh.lowCorner(Cajita::Own(), d);
-            //for(std::size_t d=0; d<3; ++d)
-            //    vertices.at(1)[d] = local_mesh.highCorner(Cajita::Own(), d);
+            _liball->setWork(_pm->numParticle());
+            _liball->balance();
+            std::vector<ALL::Point<double>> updated_vertices = _liball->getVertices();
             for(std::size_t d=0; d<3; ++d)
-                vertices.at(0)[d] = _mesh->localGrid()->globalGrid().globalOffset(d) * _mesh->cellSize();
+                _mesh->globalGrid()->setGlobalOffset(d,
+                        std::rint( updated_vertices.at(0)[d] / _mesh->cellSize() ));
             for(std::size_t d=0; d<3; ++d)
-                vertices.at(1)[d] = vertices.at(0)[d] + _mesh->localGrid()->globalGrid().ownedNumCell(d) * _mesh->cellSize();
-            _liball->setVertices(vertices);
-            _liball->setWork(0.);
+                _mesh->globalGrid()->setOwnedNumCell(d,
+                        std::rint( (updated_vertices.at(1)[d] - updated_vertices.at(0)[d])/_mesh->cellSize() ));
+            _liball->setVertices(updated_vertices);
+
 
             _pm->communicateParticles( _halo_min );
 
@@ -146,6 +151,7 @@ class Solver : public SolverBase
 
            time += delta_t;
         }
+        printf("Finished\n");
     }
 
   private:
@@ -169,7 +175,7 @@ createSolver( const std::string& device,
               const Kokkos::Array<double,6>& global_bounding_box,
               const std::array<int,3>& global_num_cell,
               const std::array<bool,3>& periodic,
-              const Cajita::BlockPartitioner<3>& partitioner,
+              const Cajita::ManualBlockPartitioner<3>& partitioner,
               const int halo_cell_width,
               const InitFunc& create_functor,
               const int particles_per_cell,
