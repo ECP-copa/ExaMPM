@@ -17,8 +17,11 @@
 #include <ExaMPM_Mesh.hpp>
 #include <ExaMPM_BoundaryConditions.hpp>
 #include <ExaMPM_SiloParticleWriter.hpp>
+#include <ExaMPM_VTKDomainWriter.hpp>
 
 #include <Kokkos_Core.hpp>
+
+#include <ALL.hpp>
 
 #include <memory>
 #include <string>
@@ -46,7 +49,7 @@ class Solver : public SolverBase
             const Kokkos::Array<double,6>& global_bounding_box,
             const std::array<int,3>& global_num_cell,
             const std::array<bool,3>& periodic,
-            const Cajita::BlockPartitioner<3>& partitioner,
+            const Cajita::ManualBlockPartitioner<3>& partitioner, //todo(sschulz): should work with Cajita::BlockPartitioner<3>!
             const int halo_cell_width,
             const InitFunc& create_functor,
             const int particles_per_cell,
@@ -61,6 +64,7 @@ class Solver : public SolverBase
     , _gravity( gravity )
     , _bc( bc )
     , _halo_min( 3 )
+    , _comm( comm )
     {
         _mesh = std::make_shared<Mesh<MemorySpace>>(
             global_bounding_box, global_num_cell, periodic, partitioner,
@@ -74,17 +78,45 @@ class Solver : public SolverBase
             bulk_modulus, density, gamma, kappa );
 
         MPI_Comm_rank( comm, &_rank );
+
+        _liball = std::make_shared<ALL::ALL<double, double>>(ALL::TENSOR, 3, 0);
+        // For some reason only(!) the following line causes the code to crash
+        //auto global_grid = _mesh->localGrid()->globalGrid();
+        std::vector<int> block_id(3,0);
+        for(std::size_t i=0; i<3; ++i)
+            block_id.at(i) = _mesh->mutGlobalGrid().dimBlockId(i);
+        std::vector<int> blocks_per_dim(3,0);
+        for(std::size_t i=0; i<3; ++i)
+            blocks_per_dim.at(i) = _mesh->mutGlobalGrid().dimNumBlock(i);
+        _liball->setProcGridParams(block_id, blocks_per_dim);
+        std::vector<double> min_domain_size(3,0);
+        for(std::size_t i=0; i<3; ++i)
+            min_domain_size.at(i) = 3.*_mesh->cellSize();
+        _liball->setMinDomainSize(min_domain_size);
+        _liball->setCommunicator(MPI_COMM_WORLD);
+        _liball->setProcTag(_rank);
+        _liball->setup();
     }
 
     void solve( const double t_final, const int write_freq ) override
     {
-        SiloParticleWriter::writeTimeStep(
-            _mesh->localGrid()->globalGrid(),
-            0,
-            0.0,
-            _pm->get( Location::Particle(), Field::Position() ),
-            _pm->get( Location::Particle(), Field::Velocity() ),
-            _pm->get( Location::Particle(), Field::J() ) );
+        //SiloParticleWriter::writeTimeStep(
+        //    _mesh->localGrid()->globalGrid(),
+        //    0,
+        //    0.0,
+        //    _pm->get( Location::Particle(), Field::Position() ),
+        //    _pm->get( Location::Particle(), Field::Velocity() ),
+        //    _pm->get( Location::Particle(), Field::J() ) );
+
+        std::vector<ALL::Point<double>> lb_vertices(2, ALL::Point<double>(3));
+        for(std::size_t d=0; d<3; ++d)
+            lb_vertices.at(0)[d] = _mesh->localGrid()->globalGrid().globalOffset(d) * _mesh->cellSize();
+        for(std::size_t d=0; d<3; ++d)
+            lb_vertices.at(1)[d] = lb_vertices.at(0)[d] + _mesh->localGrid()->globalGrid().ownedNumCell(d) * _mesh->cellSize();
+        _liball->setVertices(lb_vertices);
+        printf(">> %d, %g %g %g | %g %g %g\n", _rank,
+                lb_vertices.at(0)[0],lb_vertices.at(0)[1],lb_vertices.at(0)[2],
+                lb_vertices.at(1)[0],lb_vertices.at(1)[1],lb_vertices.at(1)[2]);
 
         int num_step = t_final / _dt;
         double delta_t = t_final / num_step;
@@ -96,19 +128,49 @@ class Solver : public SolverBase
 
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity, _bc );
 
+            _liball->setWork(_pm->numParticle());
+            _liball->balance();
+            std::vector<ALL::Point<double>> updated_vertices = _liball->getVertices();
+            for(std::size_t d=0; d<3; ++d)
+                _mesh->mutGlobalGrid().setGlobalOffset(d,
+                        std::rint( updated_vertices.at(0)[d] / _mesh->cellSize() ));
+            for(std::size_t d=0; d<3; ++d)
+                _mesh->mutGlobalGrid().setOwnedNumCell(d,
+                        std::rint( (updated_vertices.at(1)[d] - updated_vertices.at(0)[d])/_mesh->cellSize() ));
+            _liball->setVertices(updated_vertices);
+            printf(">> %d, balanced vertices: %g %g %g, %g %g %g\n", _rank,
+                updated_vertices.at(0)[0],updated_vertices.at(0)[1],updated_vertices.at(0)[2],
+                updated_vertices.at(1)[0],updated_vertices.at(1)[1],updated_vertices.at(1)[2]);
+
+            _pm->updateMesh(_mesh);
+
+
             _pm->communicateParticles( _halo_min );
 
             if ( 0 == t % write_freq )
-                SiloParticleWriter::writeTimeStep(
-                    _mesh->localGrid()->globalGrid(),
-                    t+1,
-                    time,
-                    _pm->get( Location::Particle(), Field::Position() ),
-                    _pm->get( Location::Particle(), Field::Velocity() ),
-                    _pm->get( Location::Particle(), Field::J() ) );
+            {
+                //SiloParticleWriter::writeTimeStep(
+                //    _mesh->localGrid()->globalGrid(),
+                //    t+1,
+                //    time,
+                //    _pm->get( Location::Particle(), Field::Position() ),
+                //    _pm->get( Location::Particle(), Field::Velocity() ),
+                //    _pm->get( Location::Particle(), Field::J() ) );
+                _liball->printVTKoutlines(t);
+                std::array<double, 6> vertices;
+                for(std::size_t d=0; d<3; ++d)
+                    vertices[d] = _mesh->mutGlobalGrid().globalOffset(d) * _mesh->cellSize();
+                for(std::size_t d=3; d<6; ++d)
+                    vertices[d] = vertices[d-3] + _mesh->mutGlobalGrid().ownedNumCell(d) * _mesh->cellSize();
+                printf(">> %d, %g %g %g | %g %g %g\n", _rank,
+                        vertices[0], vertices[1], vertices[2],
+                        vertices[3], vertices[4], vertices[5]);
+                VTKDomainWriter::writeDomain(_comm, t, vertices);
+            }
 
            time += delta_t;
         }
+        printf("Finished\n");
     }
 
   private:
@@ -117,9 +179,11 @@ class Solver : public SolverBase
     double _gravity;
     BoundaryCondition _bc;
     int _halo_min;
+    MPI_Comm _comm;
     std::shared_ptr<Mesh<MemorySpace>> _mesh;
     std::shared_ptr<ProblemManager<MemorySpace>> _pm;
     int _rank;
+    std::shared_ptr<ALL::ALL<double, double>> _liball;
 };
 
 //---------------------------------------------------------------------------//
@@ -131,7 +195,7 @@ createSolver( const std::string& device,
               const Kokkos::Array<double,6>& global_bounding_box,
               const std::array<int,3>& global_num_cell,
               const std::array<bool,3>& periodic,
-              const Cajita::BlockPartitioner<3>& partitioner,
+              const Cajita::ManualBlockPartitioner<3>& partitioner,
               const int halo_cell_width,
               const InitFunc& create_functor,
               const int particles_per_cell,
