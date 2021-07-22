@@ -17,6 +17,7 @@
 #include <ExaMPM_Mesh.hpp>
 #include <ExaMPM_BoundaryConditions.hpp>
 #include <ExaMPM_SiloParticleWriter.hpp>
+#include <ExaMPM_VTKDomainWriter.hpp>
 
 #include <Kokkos_Core.hpp>
 
@@ -63,6 +64,7 @@ class Solver : public SolverBase
     , _gravity( gravity )
     , _bc( bc )
     , _halo_min( 3 )
+    , _comm( comm )
     {
         _mesh = std::make_shared<Mesh<MemorySpace>>(
             global_bounding_box, global_num_cell, periodic, partitioner,
@@ -148,6 +150,15 @@ class Solver : public SolverBase
                 //    _pm->get( Location::Particle(), Field::Velocity() ),
                 //    _pm->get( Location::Particle(), Field::J() ) );
                 _liball->printVTKoutlines(t);
+                std::array<double, 6> vertices;
+                for(std::size_t d=0; d<3; ++d)
+                    vertices[d] = _mesh->mutGlobalGrid().globalOffset(d) * _mesh->cellSize();
+                for(std::size_t d=3; d<6; ++d)
+                    vertices[d] = vertices[d-3] + _mesh->mutGlobalGrid().ownedNumCell(d) * _mesh->cellSize();
+                printf(">> %d, %g %g %g | %g %g %g\n", _rank,
+                        vertices[0], vertices[1], vertices[2],
+                        vertices[3], vertices[4], vertices[5]);
+                VTKDomainWriter::writeDomain(_comm, t, vertices);
             }
 
            time += delta_t;
@@ -161,6 +172,7 @@ class Solver : public SolverBase
     double _gravity;
     BoundaryCondition _bc;
     int _halo_min;
+    MPI_Comm _comm;
     std::shared_ptr<Mesh<MemorySpace>> _mesh;
     std::shared_ptr<ProblemManager<MemorySpace>> _pm;
     int _rank;
