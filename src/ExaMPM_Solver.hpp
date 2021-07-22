@@ -133,6 +133,7 @@ class Solver : public SolverBase
                 _mesh->globalGrid()->setOwnedNumCell(d,
                         std::rint( (updated_vertices.at(1)[d] - updated_vertices.at(0)[d])/_mesh->cellSize() ));
             _liball->setVertices(updated_vertices);
+            _pm->updateMesh(_mesh);
 
 
             _pm->communicateParticles( _halo_min );
