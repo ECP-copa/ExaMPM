@@ -153,15 +153,15 @@ class Mesh
 
     
     // Get the local grid.
-    const std::shared_ptr<Cajita::LocalGrid<Cajita::UniformMesh<double>>>& localGrid()
+    const std::shared_ptr<Cajita::LocalGrid<Cajita::UniformMesh<double>>>& localGrid() const
     {
         return _local_grid;
     }
 
-    // Get the global grid.
-    const std::shared_ptr<Cajita::GlobalGrid<Cajita::UniformMesh<double>>>& globalGrid()
+    // Get the mutable global grid.
+    Cajita::GlobalGrid<Cajita::UniformMesh<double>>& mutGlobalGrid() const
     {
-        return _global_grid;
+        return _local_grid->mutGlobalGrid();
     }
 
     // Get the cell size.

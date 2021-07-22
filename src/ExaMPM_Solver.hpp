@@ -84,10 +84,10 @@ class Solver : public SolverBase
         //auto global_grid = _mesh->localGrid()->globalGrid();
         std::vector<int> block_id(3,0);
         for(std::size_t i=0; i<3; ++i)
-            block_id.at(i) = _mesh->globalGrid()->dimBlockId(i);
+            block_id.at(i) = _mesh->mutGlobalGrid().dimBlockId(i);
         std::vector<int> blocks_per_dim(3,0);
         for(std::size_t i=0; i<3; ++i)
-            blocks_per_dim.at(i) = _mesh->globalGrid()->dimNumBlock(i);
+            blocks_per_dim.at(i) = _mesh->mutGlobalGrid().dimNumBlock(i);
         _liball->setProcGridParams(block_id, blocks_per_dim);
         std::vector<double> min_domain_size(3,0);
         for(std::size_t i=0; i<3; ++i)
@@ -114,6 +114,9 @@ class Solver : public SolverBase
         for(std::size_t d=0; d<3; ++d)
             lb_vertices.at(1)[d] = lb_vertices.at(0)[d] + _mesh->localGrid()->globalGrid().ownedNumCell(d) * _mesh->cellSize();
         _liball->setVertices(lb_vertices);
+        printf(">> %d, %g %g %g | %g %g %g\n", _rank,
+                lb_vertices.at(0)[0],lb_vertices.at(0)[1],lb_vertices.at(0)[2],
+                lb_vertices.at(1)[0],lb_vertices.at(1)[1],lb_vertices.at(1)[2]);
 
         int num_step = t_final / _dt;
         double delta_t = t_final / num_step;
@@ -129,12 +132,16 @@ class Solver : public SolverBase
             _liball->balance();
             std::vector<ALL::Point<double>> updated_vertices = _liball->getVertices();
             for(std::size_t d=0; d<3; ++d)
-                _mesh->globalGrid()->setGlobalOffset(d,
+                _mesh->mutGlobalGrid().setGlobalOffset(d,
                         std::rint( updated_vertices.at(0)[d] / _mesh->cellSize() ));
             for(std::size_t d=0; d<3; ++d)
-                _mesh->globalGrid()->setOwnedNumCell(d,
+                _mesh->mutGlobalGrid().setOwnedNumCell(d,
                         std::rint( (updated_vertices.at(1)[d] - updated_vertices.at(0)[d])/_mesh->cellSize() ));
             _liball->setVertices(updated_vertices);
+            printf(">> %d, balanced vertices: %g %g %g, %g %g %g\n", _rank,
+                updated_vertices.at(0)[0],updated_vertices.at(0)[1],updated_vertices.at(0)[2],
+                updated_vertices.at(1)[0],updated_vertices.at(1)[1],updated_vertices.at(1)[2]);
+
             _pm->updateMesh(_mesh);
 
 
