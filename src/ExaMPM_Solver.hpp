@@ -152,10 +152,10 @@ class Solver : public SolverBase
                 _liball->printVTKoutlines(t);
                 std::array<double, 6> vertices;
                 for(std::size_t d=0; d<3; ++d)
-                    vertices[d] = _mesh->mutGlobalGrid().globalOffset(d) * _mesh->cellSize();
+                    vertices[d] = static_cast<double>(_mesh->mutGlobalGrid().globalOffset(d)) * _mesh->cellSize();
                 for(std::size_t d=3; d<6; ++d)
-                    vertices[d] = vertices[d-3] + _mesh->mutGlobalGrid().ownedNumCell(d) * _mesh->cellSize();
-                VTKDomainWriter::writeDomain(_comm, t, vertices);
+                    vertices[d] = vertices[d-3] + static_cast<double>(_mesh->mutGlobalGrid().ownedNumCell(d-3)) * _mesh->cellSize();
+                VTKDomainWriter::writeDomain(_comm, t, vertices, vtk_actual_domain_basename);
             }
 
            time += delta_t;

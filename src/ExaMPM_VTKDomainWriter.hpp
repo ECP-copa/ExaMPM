@@ -14,19 +14,20 @@
 #include <mpi.h>
 
 #include <sstream>
+#include <string>
 
 namespace ExaMPM
 {
 namespace VTKDomainWriter
 {
 // Create filename
-void writeDomainParallelFile(MPI_Comm comm, int time_step)
+void writeDomainParallelFile(MPI_Comm comm, int time_step, std::string& basename)
 {
     // Should only be called from a single rank
     int size;
     MPI_Comm_size(comm, &size);
     std::stringstream filename;
-    filename << "domain" << "_" << time_step << ".pvtu";
+    filename << basename << "_" << time_step << ".pvtu";
     FILE* file = fopen(filename.str().c_str(), "w");
     fprintf(file, "<?xml version=\"1.0\"?>\n");
     fprintf(file, "<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\">\n");
@@ -44,15 +45,15 @@ void writeDomainParallelFile(MPI_Comm comm, int time_step)
     fclose(file);
 }
 // Write VTU for domain (low corner, high corner)
-void writeDomain(MPI_Comm comm, int time_step, std::array<double, 6>& domain_vertices)
+void writeDomain(MPI_Comm comm, int time_step, std::array<double, 6>& domain_vertices, std::string& basename)
 {
     int rank;
     MPI_Comm_rank(comm, &rank);
     if(rank==1)
-        writeDomainParallelFile(comm, time_step);
+        writeDomainParallelFile(comm, time_step, basename);
     std::stringstream filename;
     // todo(sschulz): properly format, according to max rank
-    filename << "domain" << "_" << time_step << "_" << rank << ".vtu";
+    filename << basename << "_" << time_step << "_" << rank << ".vtu";
     FILE* file = fopen(filename.str().c_str(), "w");
     fprintf(file, "<?xml version=\"1.0\"?>\n");
     fprintf(file, "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\">\n");
