@@ -119,7 +119,6 @@ class Solver : public SolverBase
 
            time += delta_t;
         }
-        printf("Finished\n");
     }
 
   private:
