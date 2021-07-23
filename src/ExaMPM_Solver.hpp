@@ -153,7 +153,7 @@ class Solver : public SolverBase
                     _pm->get( Location::Particle(), Field::Position() ),
                     _pm->get( Location::Particle(), Field::Velocity() ),
                     _pm->get( Location::Particle(), Field::J() ) );
-                _liball->printVTKoutlines(t);
+                //_liball->printVTKoutlines(t);
                 std::array<double, 6> vertices;
                 for(std::size_t d=0; d<3; ++d)
                     vertices[d] = static_cast<double>(_mesh->mutGlobalGrid().globalOffset(d)) * _mesh->cellSize();
