@@ -100,7 +100,8 @@ class Solver : public SolverBase
 
     void solve( const double t_final, const int write_freq ) override
     {
-        std::string vtk_actual_domain_basename("domain");
+        std::string vtk_actual_domain_basename("domain_act");
+        std::string vtk_lb_domain_basename("domain_lb");
         SiloParticleWriter::writeTimeStep(
             _mesh->localGrid()->globalGrid(),
             0,
@@ -156,6 +157,11 @@ class Solver : public SolverBase
                 for(std::size_t d=3; d<6; ++d)
                     vertices[d] = vertices[d-3] + static_cast<double>(_mesh->mutGlobalGrid().ownedNumCell(d-3)) * _mesh->cellSize();
                 VTKDomainWriter::writeDomain(_comm, t, vertices, vtk_actual_domain_basename);
+                for(std::size_t d=0; d<3; ++d)
+                    vertices[d] = updated_vertices.at(0)[d];
+                for(std::size_t d=3; d<6; ++d)
+                    vertices[d] = updated_vertices.at(1)[d-3];
+                VTKDomainWriter::writeDomain(_comm, t, vertices, vtk_lb_domain_basename);
             }
 
            time += delta_t;
