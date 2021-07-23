@@ -130,12 +130,15 @@ class Solver : public SolverBase
             _liball->setWork(_pm->numParticle());
             _liball->balance();
             std::vector<ALL::Point<double>> updated_vertices = _liball->getVertices();
+            std::array<int, 6> cell_index_lo, cell_index_hi;
             for(std::size_t d=0; d<3; ++d)
-                _mesh->mutGlobalGrid().setGlobalOffset(d,
-                        std::rint( updated_vertices.at(0)[d] / _mesh->cellSize() ));
+                cell_index_lo[d] = std::rint( updated_vertices.at(0)[d] / _mesh->cellSize() );
             for(std::size_t d=0; d<3; ++d)
-                _mesh->mutGlobalGrid().setOwnedNumCell(d,
-                        std::rint( (updated_vertices.at(1)[d] - updated_vertices.at(0)[d])/_mesh->cellSize() ));
+                cell_index_hi[d] = std::rint( updated_vertices.at(1)[d] / _mesh->cellSize() );
+            for(std::size_t d=0; d<3; ++d)
+                _mesh->mutGlobalGrid().setGlobalOffset(d, cell_index_lo[d]);
+            for(std::size_t d=0; d<3; ++d)
+                _mesh->mutGlobalGrid().setOwnedNumCell(d, (cell_index_hi[d]-cell_index_lo[d]));
             _liball->setVertices(updated_vertices);
             _pm->updateMesh(_mesh);
 
