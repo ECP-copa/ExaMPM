@@ -42,6 +42,15 @@ jobs:
           cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/Cabana -DCMAKE_PREFIX_PATH="$HOME/kokkos" -DCabana_REQUIRE_${{ matrix.backend }}=ON
           cmake --build build --parallel 2
           cmake --install build
+      - name: Checkout ALL
+        run: |
+          git clone --depth 1 --branch v0.9.1 https://gitlab.jsc.fz-juelich.de/SLMS/loadbalancing ALL
+      - name: Build ALL
+        working-directory: ALL
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel 2
+          cmake --install build
       - name: Checkout code
         uses: actions/checkout@v2.2.0
       - name: Build
