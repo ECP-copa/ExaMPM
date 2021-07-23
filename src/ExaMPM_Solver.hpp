@@ -100,13 +100,14 @@ class Solver : public SolverBase
 
     void solve( const double t_final, const int write_freq ) override
     {
-        //SiloParticleWriter::writeTimeStep(
-        //    _mesh->localGrid()->globalGrid(),
-        //    0,
-        //    0.0,
-        //    _pm->get( Location::Particle(), Field::Position() ),
-        //    _pm->get( Location::Particle(), Field::Velocity() ),
-        //    _pm->get( Location::Particle(), Field::J() ) );
+        std::string vtk_actual_domain_basename("domain");
+        SiloParticleWriter::writeTimeStep(
+            _mesh->localGrid()->globalGrid(),
+            0,
+            0.0,
+            _pm->get( Location::Particle(), Field::Position() ),
+            _pm->get( Location::Particle(), Field::Velocity() ),
+            _pm->get( Location::Particle(), Field::J() ) );
 
         std::vector<ALL::Point<double>> lb_vertices(2, ALL::Point<double>(3));
         for(std::size_t d=0; d<3; ++d)
@@ -149,13 +150,13 @@ class Solver : public SolverBase
 
             if ( 0 == t % write_freq )
             {
-                //SiloParticleWriter::writeTimeStep(
-                //    _mesh->localGrid()->globalGrid(),
-                //    t+1,
-                //    time,
-                //    _pm->get( Location::Particle(), Field::Position() ),
-                //    _pm->get( Location::Particle(), Field::Velocity() ),
-                //    _pm->get( Location::Particle(), Field::J() ) );
+                SiloParticleWriter::writeTimeStep(
+                    _mesh->localGrid()->globalGrid(),
+                    t+1,
+                    time,
+                    _pm->get( Location::Particle(), Field::Position() ),
+                    _pm->get( Location::Particle(), Field::Velocity() ),
+                    _pm->get( Location::Particle(), Field::J() ) );
                 _liball->printVTKoutlines(t);
                 std::array<double, 6> vertices;
                 for(std::size_t d=0; d<3; ++d)
