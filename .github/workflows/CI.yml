@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Install deps
-        run: sudo apt-get install libsilo-dev openmpi-bin libopenmpi-dev
+        run: sudo apt-get update && sudo apt-get install libsilo-dev openmpi-bin libopenmpi-dev
       - name: Checkout kokkos
         uses: actions/checkout@v2.2.0
         with:
