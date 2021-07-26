@@ -31,8 +31,8 @@ struct BoundaryType
 struct BoundaryCondition
 {
     KOKKOS_INLINE_FUNCTION
-    void operator()( const int gi, const int gj, const int gk,
-                     double& ux, double& uy, double& uz ) const
+    void operator()( const int gi, const int gj, const int gk, double& ux,
+                     double& uy, double& uz ) const
     {
         // Low x
         if ( gi <= min[0] )
@@ -125,9 +125,9 @@ struct BoundaryCondition
         }
     }
 
-    Kokkos::Array<int,6> boundary;
-    Kokkos::Array<int,3> min;
-    Kokkos::Array<int,3> max;
+    Kokkos::Array<int, 6> boundary;
+    Kokkos::Array<int, 3> min;
+    Kokkos::Array<int, 3> max;
 };
 
 //---------------------------------------------------------------------------//
