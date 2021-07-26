@@ -48,13 +48,13 @@ jobs:
       - name: Build ALL
         working-directory: ALL
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/ALL
           cmake --build build --parallel 2
           cmake --install build
       - name: Checkout code
         uses: actions/checkout@v2.2.0
       - name: Build
         run: |
-          cmake -B build -DCMAKE_PREFIX_PATH="$HOME/kokkos;$HOME/Cabana"
+          cmake -B build -DCMAKE_PREFIX_PATH="$HOME/kokkos;$HOME/Cabana;$HOME/ALL"
           cmake --build build --parallel 2
           cd build && ctest --output-on-failure
