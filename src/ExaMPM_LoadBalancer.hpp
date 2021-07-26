@@ -90,6 +90,7 @@ class LoadBalancer
         std::vector<ALL::Point<double>> updated_vertices = _liball->getVertices();
         // todo(sschulz): The official VTK routine seems to create mangled files on my system.
         _liball->printVTKoutlines(t);
+        _liball->printVTKvertices(t);
         std::array<double, 6> vertices;
         for(std::size_t d=0; d<3; ++d)
             vertices[d] = static_cast<double>(_mesh->mutGlobalGrid().globalOffset(d)) * _mesh->cellSize();
