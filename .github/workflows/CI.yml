@@ -33,8 +33,8 @@ jobs:
       - name: Checkout Cabana
         uses: actions/checkout@v2.2.0
         with:
-          repository: ECP-copa/Cabana
-          ref: master
+          repository: aetx/Cabana
+          ref: all_lb
           path: Cabana
       - name: Build Cabana
         working-directory: Cabana
