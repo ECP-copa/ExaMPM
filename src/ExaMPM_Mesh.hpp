@@ -106,7 +106,7 @@ class Mesh
         int halo_width = std::max( minimum_halo_cell_width, halo_cell_width );
         _local_grid = Cajita::createLocalGrid( global_grid, halo_width );
     }
-    
+
     // Get the local grid.
     const std::shared_ptr<Cajita::LocalGrid<Cajita::UniformMesh<double>>>& localGrid() const
     {
