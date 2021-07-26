@@ -12,9 +12,9 @@
 #ifndef EXAMPM_TIMEINTEGRATOR_HPP
 #define EXAMPM_TIMEINTEGRATOR_HPP
 
-#include <ExaMPM_VelocityInterpolation.hpp>
 #include <ExaMPM_BoundaryConditions.hpp>
 #include <ExaMPM_ProblemManager.hpp>
+#include <ExaMPM_VelocityInterpolation.hpp>
 
 #include <Cajita.hpp>
 
@@ -28,9 +28,8 @@ namespace TimeIntegrator
 {
 //---------------------------------------------------------------------------//
 // Particle-to-grid.
-template<class ProblemManagerType, class ExecutionSpace>
-void p2g( const ExecutionSpace& exec_space,
-          const ProblemManagerType& pm )
+template <class ProblemManagerType, class ExecutionSpace>
+void p2g( const ExecutionSpace& exec_space, const ProblemManagerType& pm )
 {
     // Get the particle data we need.
     auto m_p = pm.get( Location::Particle(), Field::Mass() );
@@ -61,42 +60,43 @@ void p2g( const ExecutionSpace& exec_space,
 
     // Build the local mesh.
     auto local_mesh =
-        Cajita::createLocalMesh<ExecutionSpace>( *(pm.mesh()->localGrid()) );
+        Cajita::createLocalMesh<ExecutionSpace>( *( pm.mesh()->localGrid() ) );
 
     // Loop over particles.
     Kokkos::parallel_for(
         "p2g",
         Kokkos::RangePolicy<ExecutionSpace>( exec_space, 0, pm.numParticle() ),
-        KOKKOS_LAMBDA( const int p ){
+        KOKKOS_LAMBDA( const int p ) {
             // Get the particle position.
-            double x[3] = { x_p(p,0), x_p(p,1), x_p(p,2) };
+            double x[3] = { x_p( p, 0 ), x_p( p, 1 ), x_p( p, 2 ) };
 
             // Setup interpolation to the nodes.
-            Cajita::SplineData<double,2,3,Cajita::Node> sd;
+            Cajita::SplineData<double, 2, 3, Cajita::Node> sd;
             Cajita::evaluateSpline( local_mesh, x, sd );
 
             // Compute the pressure on the particle with an equation of
             // state.
-            double pressure = -bulk_mod * ( pow(j_p(p),-gamma) - 1.0 );
+            double pressure = -bulk_mod * ( pow( j_p( p ), -gamma ) - 1.0 );
 
             // Project the pressure gradient to the grid.
-            Cajita::P2G::gradient( -v_p(p)*j_p(p)*pressure, sd, f_i_sv );
+            Cajita::P2G::gradient( -v_p( p ) * j_p( p ) * pressure, sd,
+                                   f_i_sv );
 
             // Extract the particle velocity
-            double vel_p[3] = { u_p(p,0), u_p(p,1), u_p(p,2) };
+            double vel_p[3] = { u_p( p, 0 ), u_p( p, 1 ), u_p( p, 2 ) };
 
             // Extract the affine particle matrix.
             double aff_p[3][3];
             for ( int d0 = 0; d0 < 3; ++d0 )
                 for ( int d1 = 0; d1 < 3; ++d1 )
-                    aff_p[d0][d1] = B_p(p,d0,d1);
+                    aff_p[d0][d1] = B_p( p, d0, d1 );
 
             // Project momentum to the grid.
-            APIC::p2g( m_p(p), vel_p, aff_p, sd, mu_i_sv );
+            APIC::p2g( m_p( p ), vel_p, aff_p, sd, mu_i_sv );
 
             // Project mass to the grid.
-            Cajita::P2G::value( m_p(p), sd, m_i_sv );
-        });
+            Cajita::P2G::value( m_p( p ), sd, m_i_sv );
+        } );
 
     // Complete local scatter.
     Kokkos::Experimental::contribute( m_i, m_i_sv );
@@ -111,11 +111,9 @@ void p2g( const ExecutionSpace& exec_space,
 
 //---------------------------------------------------------------------------//
 // Field solve.
-template<class ProblemManagerType, class ExecutionSpace>
-void fieldSolve( const ExecutionSpace& exec_space,
-                 const ProblemManagerType& pm,
-                 const double delta_t,
-                 const double gravity,
+template <class ProblemManagerType, class ExecutionSpace>
+void fieldSolve( const ExecutionSpace& exec_space, const ProblemManagerType& pm,
+                 const double delta_t, const double gravity,
                  const BoundaryCondition& bc )
 {
     // Get the views we need.
@@ -131,45 +129,44 @@ void fieldSolve( const ExecutionSpace& exec_space,
     double mass_epsilon = 1.0e-12;
 
     // Compute the velocity.
-    auto l2g = Cajita::IndexConversion::createL2G(
-        *(pm.mesh()->localGrid()), Cajita::Node() );
-    auto local_nodes =
-        pm.mesh()->localGrid()->indexSpace(
-            Cajita::Ghost(), Cajita::Node(), Cajita::Local() );
+    auto l2g = Cajita::IndexConversion::createL2G( *( pm.mesh()->localGrid() ),
+                                                   Cajita::Node() );
+    auto local_nodes = pm.mesh()->localGrid()->indexSpace(
+        Cajita::Ghost(), Cajita::Node(), Cajita::Local() );
     Kokkos::parallel_for(
-        Cajita::createExecutionPolicy(local_nodes,exec_space),
-        KOKKOS_LAMBDA( const int li, const int lj, const int lk ){
+        Cajita::createExecutionPolicy( local_nodes, exec_space ),
+        KOKKOS_LAMBDA( const int li, const int lj, const int lk ) {
             int gi, gj, gk;
             l2g( li, lj, lk, gi, gj, gk );
 
             // Only compute velocity if a node has mass
-            u_i(li,lj,lk,0) =
-                ( m_i(li,lj,lk,0) > mass_epsilon )
-                ? ( mu_i(li,lj,lk,0) +
-                    delta_t * f_i(li,lj,lk,0) ) / m_i(li,lj,lk,0)
-                : 0.0;
-            u_i(li,lj,lk,1) =
-                ( m_i(li,lj,lk,0) > mass_epsilon )
-                ? ( mu_i(li,lj,lk,1) +
-                    delta_t * f_i(li,lj,lk,1) ) / m_i(li,lj,lk,0)
-                : 0.0;
-            u_i(li,lj,lk,2) =
-                ( m_i(li,lj,lk,0) > mass_epsilon )
-                ? ( mu_i(li,lj,lk,2) +
-                    delta_t * f_i(li,lj,lk,2) ) / m_i(li,lj,lk,0) - delta_g
-                : 0.0;
+            u_i( li, lj, lk, 0 ) = ( m_i( li, lj, lk, 0 ) > mass_epsilon )
+                                       ? ( mu_i( li, lj, lk, 0 ) +
+                                           delta_t * f_i( li, lj, lk, 0 ) ) /
+                                             m_i( li, lj, lk, 0 )
+                                       : 0.0;
+            u_i( li, lj, lk, 1 ) = ( m_i( li, lj, lk, 0 ) > mass_epsilon )
+                                       ? ( mu_i( li, lj, lk, 1 ) +
+                                           delta_t * f_i( li, lj, lk, 1 ) ) /
+                                             m_i( li, lj, lk, 0 )
+                                       : 0.0;
+            u_i( li, lj, lk, 2 ) = ( m_i( li, lj, lk, 0 ) > mass_epsilon )
+                                       ? ( mu_i( li, lj, lk, 2 ) +
+                                           delta_t * f_i( li, lj, lk, 2 ) ) /
+                                                 m_i( li, lj, lk, 0 ) -
+                                             delta_g
+                                       : 0.0;
 
             // Apply the boundary condition.
-            bc( gi, gj, gk,
-                u_i(li,lj,lk,0), u_i(li,lj,lk,1), u_i(li,lj,lk,2) );
-        });
+            bc( gi, gj, gk, u_i( li, lj, lk, 0 ), u_i( li, lj, lk, 1 ),
+                u_i( li, lj, lk, 2 ) );
+        } );
 }
 
 //---------------------------------------------------------------------------//
 // Grid-to-particle.
-template<class ProblemManagerType, class ExecutionSpace>
-void g2p( const ExecutionSpace& exec_space,
-          const ProblemManagerType& pm,
+template <class ProblemManagerType, class ExecutionSpace>
+void g2p( const ExecutionSpace& exec_space, const ProblemManagerType& pm,
           const double delta_t )
 {
     // Get the particle data we need.
@@ -194,9 +191,9 @@ void g2p( const ExecutionSpace& exec_space,
 
     // Build the local mesh.
     auto local_mesh =
-        Cajita::createLocalMesh<ExecutionSpace>( *(pm.mesh()->localGrid()) );
+        Cajita::createLocalMesh<ExecutionSpace>( *( pm.mesh()->localGrid() ) );
     auto cell_size =
-        pm.mesh()->localGrid()->globalGrid().globalMesh().cellSize(0);
+        pm.mesh()->localGrid()->globalGrid().globalMesh().cellSize( 0 );
     auto cell_volume = cell_size * cell_size * cell_size;
 
     // Gather the data we need.
@@ -206,12 +203,12 @@ void g2p( const ExecutionSpace& exec_space,
     Kokkos::parallel_for(
         "g2p",
         Kokkos::RangePolicy<ExecutionSpace>( exec_space, 0, pm.numParticle() ),
-        KOKKOS_LAMBDA( const int p ){
+        KOKKOS_LAMBDA( const int p ) {
             // Get the particle position.
-            double x[3] = { x_p(p,0), x_p(p,1), x_p(p,2) };
+            double x[3] = { x_p( p, 0 ), x_p( p, 1 ), x_p( p, 2 ) };
 
             // Setup interpolation from the nodes.
-            Cajita::SplineData<double,2,3,Cajita::Node> sd_i;
+            Cajita::SplineData<double, 2, 3, Cajita::Node> sd_i;
             Cajita::evaluateSpline( local_mesh, x, sd_i );
 
             // Update particle velocity.
@@ -219,10 +216,10 @@ void g2p( const ExecutionSpace& exec_space,
             double aff_p[3][3];
             APIC::g2p( u_i, sd_i, vel_p, aff_p );
             for ( int d = 0; d < 3; ++d )
-                u_p(p,d) = vel_p[d];
+                u_p( p, d ) = vel_p[d];
             for ( int d0 = 0; d0 < 3; ++d0 )
                 for ( int d1 = 0; d1 < 3; ++d1 )
-                    B_p(p,d0,d1) = aff_p[d0][d1];
+                    B_p( p, d0, d1 ) = aff_p[d0][d1];
 
             // Compute the velocity divergence (this is the trace of the
             // velocity gradient).
@@ -230,25 +227,25 @@ void g2p( const ExecutionSpace& exec_space,
             Cajita::G2P::divergence( u_i, sd_i, div_u );
 
             // Update the deformation gradient determinant.
-            j_p(p) *= exp( delta_t * div_u );
+            j_p( p ) *= exp( delta_t * div_u );
 
             // Move the particle
             for ( int d = 0; d < 3; ++d )
             {
                 x[d] += delta_t * vel_p[d];
-                x_p(p,d) = x[d];
+                x_p( p, d ) = x[d];
             }
 
             // Project density to cell.
-            Cajita::SplineData<double,1,3,Cajita::Cell> sd_c1;
+            Cajita::SplineData<double, 1, 3, Cajita::Cell> sd_c1;
             Cajita::evaluateSpline( local_mesh, x, sd_c1 );
-            Cajita::P2G::value( m_p(p) / cell_volume, sd_c1, r_c_sv );
+            Cajita::P2G::value( m_p( p ) / cell_volume, sd_c1, r_c_sv );
 
             // Mark cells. Indicates whether or not cells have particles.
-            Cajita::SplineData<double,0,3,Cajita::Cell> sd_c0;
+            Cajita::SplineData<double, 0, 3, Cajita::Cell> sd_c0;
             Cajita::evaluateSpline( local_mesh, x, sd_c0 );
             Cajita::P2G::value( 1.0, sd_c0, k_c_sv );
-        });
+        } );
 
     // Complete local scatter.
     Kokkos::Experimental::contribute( r_c, r_c_sv );
@@ -261,7 +258,7 @@ void g2p( const ExecutionSpace& exec_space,
 
 //---------------------------------------------------------------------------//
 // Correct particle positions.
-template<class ProblemManagerType, class ExecutionSpace>
+template <class ProblemManagerType, class ExecutionSpace>
 void correctParticlePositions( const ExecutionSpace& exec_space,
                                const ProblemManagerType& pm,
                                const double delta_t,
@@ -287,35 +284,34 @@ void correctParticlePositions( const ExecutionSpace& exec_space,
 
     // Build the local mesh.
     auto local_mesh =
-        Cajita::createLocalMesh<ExecutionSpace>( *(pm.mesh()->localGrid()) );
+        Cajita::createLocalMesh<ExecutionSpace>( *( pm.mesh()->localGrid() ) );
 
     // Compute nodal correction.
-    auto local_cells =
-        pm.mesh()->localGrid()->indexSpace(
-            Cajita::Own(), Cajita::Cell(), Cajita::Local() );
+    auto local_cells = pm.mesh()->localGrid()->indexSpace(
+        Cajita::Own(), Cajita::Cell(), Cajita::Local() );
     Kokkos::parallel_for(
         "compute_position_correction",
-        Cajita::createExecutionPolicy(local_cells,exec_space),
-        KOKKOS_LAMBDA( const int i, const int j, const int k ){
+        Cajita::createExecutionPolicy( local_cells, exec_space ),
+        KOKKOS_LAMBDA( const int i, const int j, const int k ) {
             // Get the cell center.
-            int idx[3] = {i,j,k};
+            int idx[3] = { i, j, k };
             double x[3];
             local_mesh.coordinates( Cajita::Cell(), idx, x );
 
             // Setup interpolation from cell center to nodes.
-            Cajita::SplineData<double,1,3,Cajita::Node> sd_i;
+            Cajita::SplineData<double, 1, 3, Cajita::Node> sd_i;
             Cajita::evaluateSpline( local_mesh, x, sd_i );
 
             // Clamp the density outside the fluid.
-            double rho = ( k_c(i,j,k,0) > 0.0 )
-                         ? r_c(i,j,k,0)
-                         : fmax( r_c(i,j,k,0), density );
+            double rho = ( k_c( i, j, k, 0 ) > 0.0 )
+                             ? r_c( i, j, k, 0 )
+                             : fmax( r_c( i, j, k, 0 ), density );
 
             // Compute correction.
             double correction =
-                -delta_t * delta_t * kappa * (1 - rho/density) / density;
+                -delta_t * delta_t * kappa * ( 1 - rho / density ) / density;
             Cajita::P2G::gradient( correction, sd_i, x_i_sv );
-        });
+        } );
 
     // Complete local scatter.
     Kokkos::Experimental::contribute( x_i, x_i_sv );
@@ -328,47 +324,44 @@ void correctParticlePositions( const ExecutionSpace& exec_space,
 
     // Apply boundary condition to position correction.
     // Compute the velocity.
-    auto l2g = Cajita::IndexConversion::createL2G(
-        *(pm.mesh()->localGrid()), Cajita::Node() );
-    auto local_nodes =
-        pm.mesh()->localGrid()->indexSpace(
-            Cajita::Ghost(), Cajita::Node(), Cajita::Local() );
+    auto l2g = Cajita::IndexConversion::createL2G( *( pm.mesh()->localGrid() ),
+                                                   Cajita::Node() );
+    auto local_nodes = pm.mesh()->localGrid()->indexSpace(
+        Cajita::Ghost(), Cajita::Node(), Cajita::Local() );
     Kokkos::parallel_for(
-        Cajita::createExecutionPolicy(local_nodes,exec_space),
-        KOKKOS_LAMBDA( const int li, const int lj, const int lk ){
+        Cajita::createExecutionPolicy( local_nodes, exec_space ),
+        KOKKOS_LAMBDA( const int li, const int lj, const int lk ) {
             int gi, gj, gk;
             l2g( li, lj, lk, gi, gj, gk );
-            bc( gi, gj, gk,
-                x_i(li,lj,lk,0), x_i(li,lj,lk,1), x_i(li,lj,lk,2) );
-        });
+            bc( gi, gj, gk, x_i( li, lj, lk, 0 ), x_i( li, lj, lk, 1 ),
+                x_i( li, lj, lk, 2 ) );
+        } );
 
     // Update particle positions.
     Kokkos::parallel_for(
         "correct_particles",
-        Kokkos::RangePolicy<ExecutionSpace>(exec_space,0,pm.numParticle()),
-        KOKKOS_LAMBDA( const int p ){
+        Kokkos::RangePolicy<ExecutionSpace>( exec_space, 0, pm.numParticle() ),
+        KOKKOS_LAMBDA( const int p ) {
             // Get the particle position.
-            double x[3] = { x_p(p,0), x_p(p,1), x_p(p,2) };
+            double x[3] = { x_p( p, 0 ), x_p( p, 1 ), x_p( p, 2 ) };
 
             // Setup interpolation from the nodes.
-            Cajita::SplineData<double,2,3,Cajita::Node> sd_i;
+            Cajita::SplineData<double, 2, 3, Cajita::Node> sd_i;
             Cajita::evaluateSpline( local_mesh, x, sd_i );
 
             // Correct the particle position.
             double delta_x[3];
             Cajita::G2P::value( x_i, sd_i, delta_x );
             for ( int d = 0; d < 3; ++d )
-                x_p(p,d) += delta_x[d];
-        });
+                x_p( p, d ) += delta_x[d];
+        } );
 }
 
 //---------------------------------------------------------------------------//
 // Take a time step.
-template<class ProblemManagerType, class ExecutionSpace>
-void step( const ExecutionSpace& exec_space,
-           const ProblemManagerType& pm,
-           const double delta_t,
-           const double gravity,
+template <class ProblemManagerType, class ExecutionSpace>
+void step( const ExecutionSpace& exec_space, const ProblemManagerType& pm,
+           const double delta_t, const double gravity,
            const BoundaryCondition& bc )
 {
     p2g( exec_space, pm );

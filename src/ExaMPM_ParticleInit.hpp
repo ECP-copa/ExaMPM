@@ -14,8 +14,8 @@
 
 #include <ExaMPM_Types.hpp>
 
-#include <Cajita.hpp>
 #include <Cabana_Core.hpp>
+#include <Cajita.hpp>
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
@@ -24,7 +24,7 @@ namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 // Filter out empty particles that weren't created.
-template<class CreationView, class ParticleList, class ExecutionSpace>
+template <class CreationView, class ParticleList, class ExecutionSpace>
 void filterEmpties( const ExecutionSpace& exec_space,
                     const int local_num_create,
                     const CreationView& particle_created,
@@ -34,35 +34,37 @@ void filterEmpties( const ExecutionSpace& exec_space,
 
     // Determine the empty particle positions in the compaction zone.
     int num_particles = particles.size();
-    Kokkos::View<int*,memory_space> empties(
-        Kokkos::ViewAllocateWithoutInitializing("empties"),
-        std::min(num_particles-local_num_create,local_num_create) );
+    Kokkos::View<int*, memory_space> empties(
+        Kokkos::ViewAllocateWithoutInitializing( "empties" ),
+        std::min( num_particles - local_num_create, local_num_create ) );
     Kokkos::parallel_scan(
-        Kokkos::RangePolicy<ExecutionSpace>(exec_space,0,local_num_create),
-        KOKKOS_LAMBDA( const int i, int& count, const bool final_pass ){
-            if ( !particle_created(i) )
+        Kokkos::RangePolicy<ExecutionSpace>( exec_space, 0, local_num_create ),
+        KOKKOS_LAMBDA( const int i, int& count, const bool final_pass ) {
+            if ( !particle_created( i ) )
             {
                 if ( final_pass )
                 {
-                    empties(count) = i;
+                    empties( count ) = i;
                 }
                 ++count;
             }
-        });
+        } );
 
     // Compact the list so the it only has real particles.
     Kokkos::parallel_scan(
-        Kokkos::RangePolicy<ExecutionSpace>(exec_space,local_num_create,num_particles),
-        KOKKOS_LAMBDA( const int i, int& count, const bool final_pass ){
-            if ( particle_created(i) )
+        Kokkos::RangePolicy<ExecutionSpace>( exec_space, local_num_create,
+                                             num_particles ),
+        KOKKOS_LAMBDA( const int i, int& count, const bool final_pass ) {
+            if ( particle_created( i ) )
             {
                 if ( final_pass )
                 {
-                    particles.setTuple( empties(count), particles.getTuple(i) );
+                    particles.setTuple( empties( count ),
+                                        particles.getTuple( i ) );
                 }
                 ++count;
             }
-        });
+        } );
     particles.resize( local_num_create );
     particles.shrinkToFit();
 }
@@ -97,7 +99,8 @@ void filterEmpties( const ExecutionSpace& exec_space,
   filled with particles and resized to a size equal to the number of particles
   created.
 */
-template<class ExecSpace, class LocalGridType, class InitFunctor, class ParticleList>
+template <class ExecSpace, class LocalGridType, class InitFunctor,
+          class ParticleList>
 void initializeParticles( const ExecSpace& exec_space,
                           const LocalGridType& local_grid,
                           const int particles_per_cell_dim,
@@ -119,15 +122,14 @@ void initializeParticles( const ExecSpace& exec_space,
 
     // Allocate enough space for the case the particles consume the entire
     // local grid.
-    int particles_per_cell = particles_per_cell_dim *
-                             particles_per_cell_dim *
+    int particles_per_cell = particles_per_cell_dim * particles_per_cell_dim *
                              particles_per_cell_dim;
     int num_particles = particles_per_cell * owned_cells.size();
     particles.resize( num_particles );
 
     // Creation status.
-    auto particle_created = Kokkos::View<bool*,device_type>(
-        Kokkos::ViewAllocateWithoutInitializing("particle_created"),
+    auto particle_created = Kokkos::View<bool*, device_type>(
+        Kokkos::ViewAllocateWithoutInitializing( "particle_created" ),
         num_particles );
 
     // Initialize particles.
@@ -135,29 +137,33 @@ void initializeParticles( const ExecSpace& exec_space,
     Kokkos::parallel_reduce(
         "init_particles_uniform",
         Cajita::createExecutionPolicy( owned_cells, exec_space ),
-        KOKKOS_LAMBDA( const int i, const int j, const int k, int& create_count ){
+        KOKKOS_LAMBDA( const int i, const int j, const int k,
+                       int& create_count ) {
             // Compute the owned local cell id.
-            int i_own = i - owned_cells.min(Dim::I);
-            int j_own = j - owned_cells.min(Dim::J);
-            int k_own = k - owned_cells.min(Dim::K);
-            int cell_id = i_own + owned_cells.extent(Dim::I) * (
-                j_own + k_own * owned_cells.extent(Dim::J) );
+            int i_own = i - owned_cells.min( Dim::I );
+            int j_own = j - owned_cells.min( Dim::J );
+            int k_own = k - owned_cells.min( Dim::K );
+            int cell_id =
+                i_own + owned_cells.extent( Dim::I ) *
+                            ( j_own + k_own * owned_cells.extent( Dim::J ) );
 
             // Get the coordinates of the low cell node.
-            int low_node[3] = {i,j,k};
+            int low_node[3] = { i, j, k };
             double low_coords[3];
             local_mesh.coordinates( Cajita::Node(), low_node, low_coords );
 
             // Get the coordinates of the high cell node.
-            int high_node[3] = {i+1,j+1,k+1};
+            int high_node[3] = { i + 1, j + 1, k + 1 };
             double high_coords[3];
             local_mesh.coordinates( Cajita::Node(), high_node, high_coords );
 
             // Compute the particle spacing in each dimension.
-            double spacing[3] =
-                { (high_coords[Dim::I] - low_coords[Dim::I]) / particles_per_cell_dim,
-                  (high_coords[Dim::J] - low_coords[Dim::J]) / particles_per_cell_dim,
-                  (high_coords[Dim::K] - low_coords[Dim::K]) / particles_per_cell_dim };
+            double spacing[3] = { ( high_coords[Dim::I] - low_coords[Dim::I] ) /
+                                      particles_per_cell_dim,
+                                  ( high_coords[Dim::J] - low_coords[Dim::J] ) /
+                                      particles_per_cell_dim,
+                                  ( high_coords[Dim::K] - low_coords[Dim::K] ) /
+                                      particles_per_cell_dim };
 
             // Particle coordinate.
             double px[3];
@@ -171,23 +177,24 @@ void initializeParticles( const ExecSpace& exec_space,
                     for ( int kp = 0; kp < particles_per_cell_dim; ++kp )
                     {
                         // Local particle id.
-                        int pid = cell_id * particles_per_cell +
-                                  ip + particles_per_cell_dim * (
-                                      jp + particles_per_cell_dim * kp );
+                        int pid = cell_id * particles_per_cell + ip +
+                                  particles_per_cell_dim *
+                                      ( jp + particles_per_cell_dim * kp );
 
                         // Set the particle position.
-                        px[Dim::I] = 0.5 * spacing[Dim::I] + ip * spacing[Dim::I] +
-                                     low_coords[Dim::I];
-                        px[Dim::J] = 0.5 * spacing[Dim::J] + jp * spacing[Dim::J] +
-                                     low_coords[Dim::J];
-                        px[Dim::K] = 0.5 * spacing[Dim::K] + kp * spacing[Dim::K] +
-                                     low_coords[Dim::K];
+                        px[Dim::I] = 0.5 * spacing[Dim::I] +
+                                     ip * spacing[Dim::I] + low_coords[Dim::I];
+                        px[Dim::J] = 0.5 * spacing[Dim::J] +
+                                     jp * spacing[Dim::J] + low_coords[Dim::J];
+                        px[Dim::K] = 0.5 * spacing[Dim::K] +
+                                     kp * spacing[Dim::K] + low_coords[Dim::K];
 
                         // Create a new particle.
-                        particle_created(pid) = create_functor( px, particle );
+                        particle_created( pid ) =
+                            create_functor( px, particle );
 
                         // If we created a new particle insert it into the list.
-                        if ( particle_created(pid) )
+                        if ( particle_created( pid ) )
                         {
                             particles.setTuple( pid, particle );
                             ++create_count;

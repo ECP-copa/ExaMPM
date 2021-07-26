@@ -29,29 +29,26 @@ namespace ExaMPM
   \class Mesh
   \brief Logically and spatially uniform Cartesian mesh.
 */
-template<class MemorySpace>
+template <class MemorySpace>
 class Mesh
 {
   public:
-
     using memory_space = MemorySpace;
 
     // Construct a mesh.
-    Mesh( const Kokkos::Array<double,6>& global_bounding_box,
-          const std::array<int,3>& global_num_cell,
-          const std::array<bool,3>& periodic,
+    Mesh( const Kokkos::Array<double, 6>& global_bounding_box,
+          const std::array<int, 3>& global_num_cell,
+          const std::array<bool, 3>& periodic,
           const Cajita::BlockPartitioner<3>& partitioner,
-          const int halo_cell_width,
-          const int minimum_halo_cell_width,
+          const int halo_cell_width, const int minimum_halo_cell_width,
           MPI_Comm comm )
     {
         // Make a copy of the global number of cells so we can modify it.
-        std::array<int,3> num_cell = global_num_cell;
+        std::array<int, 3> num_cell = global_num_cell;
 
         // Compute the cell size.
         double cell_size =
-            (global_bounding_box[3] - global_bounding_box[0]) /
-            num_cell[0];
+            ( global_bounding_box[3] - global_bounding_box[0] ) / num_cell[0];
 
         // Because the mesh is uniform check that the domain is evenly
         // divisible by the cell size in each dimension within round-off
@@ -59,21 +56,20 @@ class Mesh
         for ( int d = 0; d < 3; ++d )
         {
             double extent = num_cell[d] * cell_size;
-            if ( std::abs(
-                     extent - (global_bounding_box[d+3]-
-                               global_bounding_box[d]) ) >
+            if ( std::abs( extent - ( global_bounding_box[d + 3] -
+                                      global_bounding_box[d] ) ) >
                  double( 10.0 ) * std::numeric_limits<double>::epsilon() )
                 throw std::logic_error(
                     "Extent not evenly divisible by uniform cell size" );
         }
 
         // Create global mesh bounds.
-        std::array<double,3> global_low_corner = { global_bounding_box[0],
-                                                   global_bounding_box[1],
-                                                   global_bounding_box[2] };
-        std::array<double,3> global_high_corner = { global_bounding_box[3],
-                                                    global_bounding_box[4],
-                                                    global_bounding_box[5] };
+        std::array<double, 3> global_low_corner = { global_bounding_box[0],
+                                                    global_bounding_box[1],
+                                                    global_bounding_box[2] };
+        std::array<double, 3> global_high_corner = { global_bounding_box[3],
+                                                     global_bounding_box[4],
+                                                     global_bounding_box[5] };
         for ( int d = 0; d < 3; ++d )
         {
             _min_domain_global_node_index[d] = 0;
@@ -86,9 +82,9 @@ class Mesh
         {
             if ( !periodic[d] )
             {
-                global_low_corner[d] -= cell_size*minimum_halo_cell_width;
-                global_high_corner[d] += cell_size*minimum_halo_cell_width;
-                num_cell[d] += 2*minimum_halo_cell_width;
+                global_low_corner[d] -= cell_size * minimum_halo_cell_width;
+                global_high_corner[d] += cell_size * minimum_halo_cell_width;
+                num_cell[d] += 2 * minimum_halo_cell_width;
                 _min_domain_global_node_index[d] += minimum_halo_cell_width;
                 _max_domain_global_node_index[d] -= minimum_halo_cell_width;
             }
@@ -99,8 +95,8 @@ class Mesh
             global_low_corner, global_high_corner, num_cell );
 
         // Build the global grid.
-        auto global_grid = Cajita::createGlobalGrid(
-            comm, global_mesh, periodic, partitioner );
+        auto global_grid = Cajita::createGlobalGrid( comm, global_mesh,
+                                                     periodic, partitioner );
 
         // Build the local grid.
         int halo_width = std::max( minimum_halo_cell_width, halo_cell_width );
@@ -108,7 +104,8 @@ class Mesh
     }
 
     // Get the local grid.
-    const std::shared_ptr<Cajita::LocalGrid<Cajita::UniformMesh<double>>>& localGrid() const
+    const std::shared_ptr<Cajita::LocalGrid<Cajita::UniformMesh<double>>>&
+    localGrid() const
     {
         return _local_grid;
     }
@@ -122,28 +119,26 @@ class Mesh
     // Get the cell size.
     double cellSize() const
     {
-        return _local_grid->globalGrid().globalMesh().cellSize(0);
+        return _local_grid->globalGrid().globalMesh().cellSize( 0 );
     }
 
     // Get the minimum node index in the domain.
-    Kokkos::Array<int,3> minDomainGlobalNodeIndex() const
+    Kokkos::Array<int, 3> minDomainGlobalNodeIndex() const
     {
         return _min_domain_global_node_index;
     }
 
     // Get the maximum node index in the domain.
-    Kokkos::Array<int,3> maxDomainGlobalNodeIndex() const
+    Kokkos::Array<int, 3> maxDomainGlobalNodeIndex() const
     {
         return _max_domain_global_node_index;
     }
 
   public:
+    std::shared_ptr<Cajita::LocalGrid<Cajita::UniformMesh<double>>> _local_grid;
 
-    std::shared_ptr<
-      Cajita::LocalGrid<Cajita::UniformMesh<double>>> _local_grid;
-
-    Kokkos::Array<int,3> _min_domain_global_node_index;
-    Kokkos::Array<int,3> _max_domain_global_node_index;
+    Kokkos::Array<int, 3> _min_domain_global_node_index;
+    Kokkos::Array<int, 3> _max_domain_global_node_index;
 };
 
 //---------------------------------------------------------------------------//
