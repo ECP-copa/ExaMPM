@@ -75,7 +75,7 @@ class Solver : public SolverBase
 
         MPI_Comm_rank( comm, &_rank );
 
-        _lb = LoadBalancer(comm, _mesh);
+        _lb = std::make_shared<LoadBalancer<MemorySpace>>(comm, _mesh);
 
     }
 
@@ -88,7 +88,7 @@ class Solver : public SolverBase
             _pm->get( Location::Particle(), Field::Position() ),
             _pm->get( Location::Particle(), Field::Velocity() ),
             _pm->get( Location::Particle(), Field::J() ) );
-        _lb.output(0);
+        _lb->output(0);
 
 
         int num_step = t_final / _dt;
@@ -101,7 +101,7 @@ class Solver : public SolverBase
 
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity, _bc );
 
-            _lb.balance(_pm);
+            _lb->balance(_pm);
 
             _pm->communicateParticles( _halo_min );
 
@@ -114,7 +114,7 @@ class Solver : public SolverBase
                     _pm->get( Location::Particle(), Field::Position() ),
                     _pm->get( Location::Particle(), Field::Velocity() ),
                     _pm->get( Location::Particle(), Field::J() ) );
-                _lb.output(t);
+                _lb->output(t);
             }
 
            time += delta_t;
@@ -130,7 +130,7 @@ class Solver : public SolverBase
     std::shared_ptr<Mesh<MemorySpace>> _mesh;
     std::shared_ptr<ProblemManager<MemorySpace>> _pm;
     int _rank;
-    std::shared_ptr<ALL::ALL<double, double>> _liball;
+    std::shared_ptr<LoadBalancer<MemorySpace>> _lb;
 };
 
 //---------------------------------------------------------------------------//

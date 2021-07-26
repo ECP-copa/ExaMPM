@@ -31,7 +31,7 @@ class LoadBalancer
 
     using mesh_type = Mesh<MemorySpace>;
     // todo(sschulz): Allow for arbitrary dimension
-    LoadBalancer( MPI_comm comm,
+    LoadBalancer( MPI_Comm comm,
                   const std::shared_ptr<mesh_type>& mesh )
         : _comm( comm )
         , _mesh( mesh )
@@ -87,8 +87,9 @@ class LoadBalancer
     {
         std::string vtk_actual_domain_basename("domain_act");
         std::string vtk_lb_domain_basename("domain_lb");
+        std::vector<ALL::Point<double>> updated_vertices = _liball->getVertices();
         // todo(sschulz): The official VTK routine seems to create mangled files on my system.
-        //_liball->printVTKoutlines(t);
+        _liball->printVTKoutlines(t);
         std::array<double, 6> vertices;
         for(std::size_t d=0; d<3; ++d)
             vertices[d] = static_cast<double>(_mesh->mutGlobalGrid().globalOffset(d)) * _mesh->cellSize();
@@ -106,10 +107,10 @@ class LoadBalancer
   private:
 
     MPI_Comm _comm;
-    std::shared_ptr<mesh_type>& _mesh;
+    std::shared_ptr<mesh_type> _mesh;
     std::shared_ptr<ALL::ALL<double, double>> _liball;
     int _rank;
 
-}
+};
 } // end namespace ExaMPM
 #endif // EXAMPM_LOADBALANCER_HPP
