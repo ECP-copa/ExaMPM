@@ -20,7 +20,7 @@ namespace ExaMPM
 {
 namespace VTKDomainWriter
 {
-// Create filename
+// Write PVTU
 void writeDomainParallelFile( MPI_Comm comm, int time_step,
                               std::string& basename )
 {
@@ -128,7 +128,6 @@ void writeDomain( MPI_Comm comm, int time_step,
     fclose( file );
 }
 
-// Write PVTU
 } // end namespace VTKDomainWriter
 } // end namespace ExaMPM
 #endif // EXAMPM_VTKDOMAINWRITER_HPP
