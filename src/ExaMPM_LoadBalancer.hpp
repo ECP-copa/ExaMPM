@@ -30,7 +30,7 @@ class LoadBalancer
   public:
     using mesh_type = Mesh<MemorySpace>;
     // todo(sschulz): Allow for arbitrary dimension
-    LoadBalancer( MPI_Comm comm, const std::shared_ptr<mesh_type>& mesh )
+    LoadBalancer( MPI_Comm comm, std::shared_ptr<mesh_type>& mesh )
         : _comm( comm )
         , _mesh( mesh )
     {

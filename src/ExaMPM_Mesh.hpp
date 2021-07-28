@@ -111,7 +111,7 @@ class Mesh
     }
 
     // Get the mutable global grid.
-    Cajita::GlobalGrid<Cajita::UniformMesh<double>>& mutGlobalGrid() const
+    Cajita::GlobalGrid<Cajita::UniformMesh<double>>& mutGlobalGrid()
     {
         return _local_grid->mutGlobalGrid();
     }
