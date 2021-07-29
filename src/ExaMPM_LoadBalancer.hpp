@@ -75,19 +75,17 @@ class LoadBalancer
         _liball->balance();
         std::vector<ALL::Point<double>> updated_vertices =
             _liball->getVertices();
-        std::array<int, 6> cell_index_lo, cell_index_hi;
+        std::array<int, 3> cell_index_lo, cell_index_hi;
         for ( std::size_t d = 0; d < 3; ++d )
             cell_index_lo[d] =
                 std::rint( updated_vertices.at( 0 )[d] / _mesh->cellSize() );
         for ( std::size_t d = 0; d < 3; ++d )
             cell_index_hi[d] =
                 std::rint( updated_vertices.at( 1 )[d] / _mesh->cellSize() );
-        for ( std::size_t d = 0; d < 3; ++d )
-            _mesh->globalGrid().setGlobalOffset( d, cell_index_lo[d] );
         std::array<int, 3> num_cell;
         for ( std::size_t d = 0; d < 3; ++d )
             num_cell[d] = cell_index_hi[d] - cell_index_lo[d];
-        _mesh->globalGrid().setOwnedNumCell( num_cell );
+        _mesh->globalGrid().setNumCellAndOffset( num_cell, cell_index_lo );
         _liball->setVertices( updated_vertices );
         pm->updateMesh( _mesh );
     }
