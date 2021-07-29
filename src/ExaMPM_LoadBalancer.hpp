@@ -42,10 +42,10 @@ class LoadBalancer
         // auto global_grid = _mesh->localGrid()->globalGrid();
         std::vector<int> block_id( 3, 0 );
         for ( std::size_t i = 0; i < 3; ++i )
-            block_id.at( i ) = _mesh->mutGlobalGrid().dimBlockId( i );
+            block_id.at( i ) = _mesh->globalGrid().dimBlockId( i );
         std::vector<int> blocks_per_dim( 3, 0 );
         for ( std::size_t i = 0; i < 3; ++i )
-            blocks_per_dim.at( i ) = _mesh->mutGlobalGrid().dimNumBlock( i );
+            blocks_per_dim.at( i ) = _mesh->globalGrid().dimNumBlock( i );
         _liball->setProcGridParams( block_id, blocks_per_dim );
         std::vector<double> min_domain_size( 3, 0 );
         for ( std::size_t i = 0; i < 3; ++i )
@@ -83,10 +83,11 @@ class LoadBalancer
             cell_index_hi[d] =
                 std::rint( updated_vertices.at( 1 )[d] / _mesh->cellSize() );
         for ( std::size_t d = 0; d < 3; ++d )
-            _mesh->mutGlobalGrid().setGlobalOffset( d, cell_index_lo[d] );
+            _mesh->globalGrid().setGlobalOffset( d, cell_index_lo[d] );
+        std::array<int, 3> num_cell;
         for ( std::size_t d = 0; d < 3; ++d )
-            _mesh->mutGlobalGrid().setOwnedNumCell(
-                d, ( cell_index_hi[d] - cell_index_lo[d] ) );
+            num_cell[d] = cell_index_hi[d] - cell_index_lo[d];
+        _mesh->globalGrid().setOwnedNumCell( num_cell );
         _liball->setVertices( updated_vertices );
         pm->updateMesh( _mesh );
     }
@@ -103,13 +104,13 @@ class LoadBalancer
         // _liball->printVTKoutlines( t );
         std::array<double, 6> vertices;
         for ( std::size_t d = 0; d < 3; ++d )
-            vertices[d] = static_cast<double>(
-                              _mesh->mutGlobalGrid().globalOffset( d ) ) *
-                          _mesh->cellSize();
+            vertices[d] =
+                static_cast<double>( _mesh->globalGrid().globalOffset( d ) ) *
+                _mesh->cellSize();
         for ( std::size_t d = 3; d < 6; ++d )
             vertices[d] = vertices[d - 3] +
                           static_cast<double>(
-                              _mesh->mutGlobalGrid().ownedNumCell( d - 3 ) ) *
+                              _mesh->globalGrid().ownedNumCell( d - 3 ) ) *
                               _mesh->cellSize();
         VTKDomainWriter::writeDomain( _comm, t, vertices,
                                       vtk_actual_domain_basename );
