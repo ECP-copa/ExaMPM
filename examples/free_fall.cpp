@@ -1,5 +1,5 @@
-#include <ExaMPM_Solver.hpp>
 #include <ExaMPM_BoundaryConditions.hpp>
+#include <ExaMPM_Solver.hpp>
 
 #include <Cabana_Core.hpp>
 
@@ -20,18 +20,18 @@ struct ParticleInitFunc
     double _volume;
     double _mass;
 
-    ParticleInitFunc( const double cell_size,
-                      const int ppc,
+    ParticleInitFunc( const double cell_size, const int ppc,
                       const double density )
-        : _volume( cell_size * cell_size * cell_size / (ppc*ppc*ppc) )
+        : _volume( cell_size * cell_size * cell_size / ( ppc * ppc * ppc ) )
         , _mass( _volume * density )
-    {}
-
-    template<class ParticleType>
-    KOKKOS_INLINE_FUNCTION
-    bool operator()( const double x[3], ParticleType& p ) const
     {
-        if ( x[0]*x[0] + x[1]*x[1] + x[2]*x[2] < 0.25 * 0.25 )
+    }
+
+    template <class ParticleType>
+    KOKKOS_INLINE_FUNCTION bool operator()( const double x[3],
+                                            ParticleType& p ) const
+    {
+        if ( x[0] * x[0] + x[1] * x[1] + x[2] * x[2] < 0.25 * 0.25 )
         {
             // Affine matrix.
             for ( int d0 = 0; d0 < 3; ++d0 )
@@ -63,32 +63,29 @@ struct ParticleInitFunc
 };
 
 //---------------------------------------------------------------------------//
-void freeFall( const double cell_size,
-               const int ppc,
-               const int halo_size,
-               const double delta_t,
-               const double t_final,
-               const int write_freq,
+void freeFall( const double cell_size, const int ppc, const int halo_size,
+               const double delta_t, const double t_final, const int write_freq,
                const std::string& device )
 {
     // The dam break domain is in a box on [0,1] in each dimension.
-    Kokkos::Array<double,6> global_box = { -0.5, -0.5, -0.5, 0.5, 0.5, 0.5 };
+    Kokkos::Array<double, 6> global_box = { -0.5, -0.5, -0.5, 0.5, 0.5, 0.5 };
 
     // Compute the number of cells in each direction. The user input must
     // squarely divide the domain.
-    std::array<int,3> global_num_cell = { static_cast<int>(1.0 / cell_size),
-                                          static_cast<int>(1.0 / cell_size),
-                                          static_cast<int>(1.0 / cell_size) };
+    std::array<int, 3> global_num_cell = {
+        static_cast<int>( 1.0 / cell_size ),
+        static_cast<int>( 1.0 / cell_size ),
+        static_cast<int>( 1.0 / cell_size ) };
 
     // This will look like a 2D problem so make the Y direction periodic.
-    std::array<bool,3> periodic = { true, true, true };
+    std::array<bool, 3> periodic = { true, true, true };
 
     // Due to the 2D nature of the problem we will only partition in Y. The
     // behavior of the fluid will be to largely just run out in X and Z with
     // little movement in Y.
     int comm_size;
     MPI_Comm_size( MPI_COMM_WORLD, &comm_size );
-    std::array<int,3> ranks_per_dim = { 1, comm_size, 1 };
+    std::array<int, 3> ranks_per_dim = { 1, comm_size, 1 };
     Cajita::ManualPartitioner partitioner( ranks_per_dim );
 
     // Material properties.
@@ -110,23 +107,10 @@ void freeFall( const double cell_size,
     bc.boundary[5] = ExaMPM::BoundaryType::NONE;
 
     // Solve the problem.
-    auto solver =
-        ExaMPM::createSolver( device,
-                              MPI_COMM_WORLD,
-                              global_box,
-                              global_num_cell,
-                              periodic,
-                              partitioner,
-                              halo_size,
-                              ParticleInitFunc(cell_size,ppc,density),
-                              ppc,
-                              bulk_modulus,
-                              density,
-                              gamma,
-                              kappa,
-                              delta_t,
-                              gravity,
-                              bc );
+    auto solver = ExaMPM::createSolver(
+        device, MPI_COMM_WORLD, global_box, global_num_cell, periodic,
+        partitioner, halo_size, ParticleInitFunc( cell_size, ppc, density ),
+        ppc, bulk_modulus, density, gamma, kappa, delta_t, gravity, bc );
     solver->solve( t_final, write_freq );
 }
 
@@ -166,7 +150,6 @@ int main( int argc, char* argv[] )
     MPI_Finalize();
 
     return 0;
-
 }
 
 //---------------------------------------------------------------------------//

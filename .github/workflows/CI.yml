@@ -49,3 +49,8 @@ jobs:
           cmake -B build -DCMAKE_PREFIX_PATH="$HOME/kokkos;$HOME/Cabana"
           cmake --build build --parallel 2
           cd build && ctest --output-on-failure
+      - name: Format
+        working-directory: build
+        run: |
+          make format
+          git diff --exit-code
