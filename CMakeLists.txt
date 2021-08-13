@@ -15,7 +15,22 @@ if( NOT Cabana_ENABLE_CAJITA )
   message( FATAL_ERROR "Cabana must be compiled with Cajita" )
 endif()
 find_package(Silo REQUIRED)
-find_package(ALL 0.9.1 REQUIRED)
+
+# optional dependencies (taken from Cabana)
+macro(ExaMPM_add_dependency)
+  cmake_parse_arguments(EXAMPM_DEPENDENCY "" "PACKAGE;VERSION" "" ${ARGN})
+  find_package( ${EXAMPM_DEPENDENCY_PACKAGE} ${EXAMPM_DEPENDENCY_VERSION} QUIET )
+  string(TOUPPER "${EXAMPM_DEPENDENCY_PACKAGE}" EXAMPM_DEPENDENCY_OPTION )
+  option(
+    ExaMPM_REQUIRE_${EXAMPM_DEPENDENCY_OPTION}
+    "Require ExaMPM to build with ${EXAMPM_DEPENDENCY_PACKAGE} support" ${EXAMPM_DEPENDENCY_PACKAGE}_FOUND)
+  if(ExaMPM_REQUIRE_${EXAMPM_DEPENDENCY_OPTION})
+    find_package( ${EXAMPM_DEPENDENCY_PACKAGE} ${EXAMPM_DEPENDENCY_VERSION} REQUIRED )
+  endif()
+  set(ExaMPM_ENABLE_${EXAMPM_DEPENDENCY_OPTION} ${${EXAMPM_DEPENDENCY_PACKAGE}_FOUND})
+endmacro()
+
+ExaMPM_add_dependency( PACKAGE "ALL" VERSION 0.9.2 )
 
 # find Clang Format
 find_package( CLANG_FORMAT 10 )

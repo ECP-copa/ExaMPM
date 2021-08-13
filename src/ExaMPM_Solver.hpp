@@ -13,11 +13,14 @@
 #define EXAMPM_SOLVER_HPP
 
 #include <ExaMPM_BoundaryConditions.hpp>
-#include <ExaMPM_LoadBalancer.hpp>
 #include <ExaMPM_Mesh.hpp>
 #include <ExaMPM_ProblemManager.hpp>
 #include <ExaMPM_SiloParticleWriter.hpp>
 #include <ExaMPM_TimeIntegrator.hpp>
+
+#ifdef ExaMPM_ENABLE_ALL
+#include <ExaMPM_LoadBalancer.hpp>
+#endif
 
 #include <Kokkos_Core.hpp>
 
@@ -68,7 +71,9 @@ class Solver : public SolverBase
 
         MPI_Comm_rank( comm, &_rank );
 
+#ifdef ExaMPM_ENABLE_ALL
         _lb = std::make_shared<LoadBalancer<MemorySpace>>( comm, _mesh );
+#endif
     }
 
     void solve( const double t_final, const int write_freq ) override
@@ -78,7 +83,9 @@ class Solver : public SolverBase
             _pm->get( Location::Particle(), Field::Position() ),
             _pm->get( Location::Particle(), Field::Velocity() ),
             _pm->get( Location::Particle(), Field::J() ) );
+#ifdef ExaMPM_ENABLE_ALL
         _lb->output( 0 );
+#endif
 
         int num_step = t_final / _dt;
         double delta_t = t_final / num_step;
@@ -91,7 +98,9 @@ class Solver : public SolverBase
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity,
                                   _bc );
 
+#ifdef ExaMPM_ENABLE_ALL
             _lb->balance( _pm );
+#endif
 
             _pm->communicateParticles( _halo_min );
 
@@ -102,7 +111,9 @@ class Solver : public SolverBase
                     _pm->get( Location::Particle(), Field::Position() ),
                     _pm->get( Location::Particle(), Field::Velocity() ),
                     _pm->get( Location::Particle(), Field::J() ) );
+#ifdef ExaMPM_ENABLE_ALL
                 _lb->output( t );
+#endif
             }
 
             time += delta_t;
@@ -117,7 +128,9 @@ class Solver : public SolverBase
     std::shared_ptr<Mesh<MemorySpace>> _mesh;
     std::shared_ptr<ProblemManager<MemorySpace>> _pm;
     int _rank;
+#ifdef ExaMPM_ENABLE_ALL
     std::shared_ptr<LoadBalancer<MemorySpace>> _lb;
+#endif
 };
 
 //---------------------------------------------------------------------------//
