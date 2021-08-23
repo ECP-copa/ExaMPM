@@ -35,17 +35,20 @@ class LoadBalancer
         , _mesh( mesh )
     {
         MPI_Comm_rank( comm, &_rank );
-        _lb = std::make_shared<Cajita::LoadBalancer<UniformMesh<double>>>( _mesh->localGrid()->globalGrid(), 3.*_mesh->cellSize() );
+        _lb = std::make_shared<Cajita::LoadBalancer<UniformMesh<double>>>(
+            _mesh->localGrid()->globalGrid(), 3. * _mesh->cellSize() );
     }
 
     // This will update the domain decomposition and also update the mesh
     void balance( std::shared_ptr<ProblemManager<MemorySpace>> pm )
     {
         double work = pm->numParticle();
-        // todo(sschulz): How to save the partitioner, without requiring a shared ptr everywhere?
-        auto partitioner = 
-        auto global_grid = _lb->createBalancedGlobalGrid( _mesh->globalMesh(), partitioner, work )
-        _mesh->newGlobalGrid(global_grid);
+        // todo(sschulz): How to save the partitioner, without requiring a
+        // shared ptr everywhere?
+        auto partitioner = auto global_grid =
+            _lb->createBalancedGlobalGrid( _mesh->globalMesh(), partitioner,
+                                           work )
+                _mesh->newGlobalGrid( global_grid );
         pm->updateMesh( _mesh );
     }
 

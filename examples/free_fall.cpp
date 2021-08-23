@@ -86,7 +86,8 @@ void freeFall( const double cell_size, const int ppc, const int halo_size,
     int comm_size;
     MPI_Comm_size( MPI_COMM_WORLD, &comm_size );
     std::array<int, 3> ranks_per_dim = { 1, comm_size, 1 };
-    std::shared_ptr<Cajita::ManualPartitioner> partitioner = std::make_shared<Cajita::ManualPartitioner>( ranks_per_dim );
+    std::shared_ptr<Cajita::ManualPartitioner> partitioner =
+        std::make_shared<Cajita::ManualPartitioner>( ranks_per_dim );
 
     // Material properties.
     double bulk_modulus = 5.0e5;

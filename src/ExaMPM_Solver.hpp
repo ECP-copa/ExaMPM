@@ -56,8 +56,8 @@ class Solver : public SolverBase
         , _gravity( gravity )
         , _bc( bc )
         , _halo_min( 3 )
-          , _comm(comm)
-          , _partitioner( partitioner)
+        , _comm( comm )
+        , _partitioner( partitioner )
     {
         _mesh = std::make_shared<Mesh<MemorySpace>>(
             global_bounding_box, global_num_cell, periodic, *partitioner,
@@ -72,7 +72,9 @@ class Solver : public SolverBase
 
         MPI_Comm_rank( comm, &_rank );
 
-        _lb = std::make_shared<Cajita::LoadBalancer<Cajita::UniformMesh<double>>>( _mesh->globalGrid(),3.* _mesh->cellSize() );
+        _lb =
+            std::make_shared<Cajita::LoadBalancer<Cajita::UniformMesh<double>>>(
+                _mesh->globalGrid(), 3. * _mesh->cellSize() );
     }
 
     void solve( const double t_final, const int write_freq ) override
@@ -102,12 +104,14 @@ class Solver : public SolverBase
                 printf( "Step %d / %d\n", t + 1, num_step );
 
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity,
-                    _bc );
+                                  _bc );
 
             double work = _pm->numParticle();
-            // todo(sschulz): How to save the partitioner, without requiring a shared ptr everywhere?
-            auto global_grid = _lb->createBalancedGlobalGrid( _mesh->globalMesh(), *_partitioner, work );
-                _mesh->newGlobalGrid(global_grid);
+            // todo(sschulz): How to save the partitioner, without requiring a
+            // shared ptr everywhere?
+            auto global_grid = _lb->createBalancedGlobalGrid(
+                _mesh->globalMesh(), *_partitioner, work );
+            _mesh->newGlobalGrid( global_grid );
             _pm->updateMesh( _mesh );
 
             _pm->communicateParticles( _halo_min );
@@ -122,10 +126,10 @@ class Solver : public SolverBase
 
                 vertices = _lb->getVertices();
                 VTKDomainWriter::writeDomain( _comm, 0, vertices,
-                        vtk_actual_domain_basename );
+                                              vtk_actual_domain_basename );
                 vertices = _lb->getInternalVertices();
                 VTKDomainWriter::writeDomain( _comm, 0, vertices,
-                        vtk_lb_domain_basename );
+                                              vtk_lb_domain_basename );
             }
 
             time += delta_t;

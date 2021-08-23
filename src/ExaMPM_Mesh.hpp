@@ -95,8 +95,8 @@ class Mesh
             global_low_corner, global_high_corner, num_cell );
 
         // Build the global grid.
-        _global_grid = Cajita::createGlobalGrid( comm, _global_mesh,
-                                                     periodic, partitioner );
+        _global_grid = Cajita::createGlobalGrid( comm, _global_mesh, periodic,
+                                                 partitioner );
 
         // Build the local grid.
         _halo_width = std::max( minimum_halo_cell_width, halo_cell_width );
@@ -104,7 +104,9 @@ class Mesh
     }
 
     // Global grid updated and update local values
-    void newGlobalGrid( std::shared_ptr<Cajita::GlobalGrid<Cajita::UniformMesh<double>>>& global_grid )
+    void newGlobalGrid(
+        std::shared_ptr<Cajita::GlobalGrid<Cajita::UniformMesh<double>>>&
+            global_grid )
     {
         _global_grid = global_grid;
         _local_grid = Cajita::createLocalGrid( _global_grid, _halo_width );
@@ -118,12 +120,14 @@ class Mesh
     }
 
     // Get the mutable global grid.
-    const std::shared_ptr<Cajita::GlobalGrid<Cajita::UniformMesh<double>>>& globalGrid()
+    const std::shared_ptr<Cajita::GlobalGrid<Cajita::UniformMesh<double>>>&
+    globalGrid()
     {
         return _global_grid;
     }
 
-    const std::shared_ptr<Cajita::GlobalMesh<Cajita::UniformMesh<double>>>& globalMesh() const
+    const std::shared_ptr<Cajita::GlobalMesh<Cajita::UniformMesh<double>>>&
+    globalMesh() const
     {
         return _global_mesh;
     }
@@ -148,8 +152,10 @@ class Mesh
 
   public:
     std::shared_ptr<Cajita::LocalGrid<Cajita::UniformMesh<double>>> _local_grid;
-    std::shared_ptr<Cajita::GlobalGrid<Cajita::UniformMesh<double>>> _global_grid;
-    std::shared_ptr<Cajita::GlobalMesh<Cajita::UniformMesh<double>>> _global_mesh;
+    std::shared_ptr<Cajita::GlobalGrid<Cajita::UniformMesh<double>>>
+        _global_grid;
+    std::shared_ptr<Cajita::GlobalMesh<Cajita::UniformMesh<double>>>
+        _global_mesh;
 
     int _halo_width;
 
