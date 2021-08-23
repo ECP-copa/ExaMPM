@@ -30,6 +30,15 @@ jobs:
           cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/kokkos -DKokkos_CXX_STANDARD=14 -DKokkos_ENABLE_${{ matrix.backend }}=ON
           cmake --build build --parallel 2
           cmake --install build
+      - name: Checkout ALL
+        run: |
+          git clone --depth 1 --branch master https://gitlab.jsc.fz-juelich.de/SLMS/loadbalancing ALL
+      - name: Build ALL
+        working-directory: ALL
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/ALL
+          cmake --build build --parallel 2
+          cmake --install build
       - name: Checkout Cabana
         uses: actions/checkout@v2.2.0
         with:
@@ -39,16 +48,7 @@ jobs:
       - name: Build Cabana
         working-directory: Cabana
         run: |
-          cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/Cabana -DCMAKE_PREFIX_PATH="$HOME/kokkos" -DCabana_REQUIRE_${{ matrix.backend }}=ON
-          cmake --build build --parallel 2
-          cmake --install build
-      - name: Checkout ALL
-        run: |
-          git clone --depth 1 --branch master https://gitlab.jsc.fz-juelich.de/SLMS/loadbalancing ALL
-      - name: Build ALL
-        working-directory: ALL
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/ALL
+          cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/Cabana -DCMAKE_PREFIX_PATH="$HOME/kokkos" -DCabana_REQUIRE_${{ matrix.backend }}=ON -DCabana_REQUIRE_ALL=ON
           cmake --build build --parallel 2
           cmake --install build
       - name: Checkout code
