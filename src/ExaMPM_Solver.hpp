@@ -17,10 +17,9 @@
 #include <ExaMPM_ProblemManager.hpp>
 #include <ExaMPM_SiloParticleWriter.hpp>
 #include <ExaMPM_TimeIntegrator.hpp>
+#include <ExaMPM_VTKDomainWriter.hpp>
 
-#ifdef ExaMPM_ENABLE_ALL
-#include <ExaMPM_LoadBalancer.hpp>
-#endif
+#include <Cajita_LoadBalancer.hpp>
 
 #include <Kokkos_Core.hpp>
 
@@ -47,7 +46,7 @@ class Solver : public SolverBase
     Solver( MPI_Comm comm, const Kokkos::Array<double, 6>& global_bounding_box,
             const std::array<int, 3>& global_num_cell,
             const std::array<bool, 3>& periodic,
-            const Cajita::BlockPartitioner<3>& partitioner,
+            const std::shared_ptr<Cajita::ManualPartitioner>& partitioner,
             const int halo_cell_width, const InitFunc& create_functor,
             const int particles_per_cell, const double bulk_modulus,
             const double density, const double gamma, const double kappa,
@@ -57,9 +56,11 @@ class Solver : public SolverBase
         , _gravity( gravity )
         , _bc( bc )
         , _halo_min( 3 )
+          , _comm(comm)
+          , _partitioner( partitioner)
     {
         _mesh = std::make_shared<Mesh<MemorySpace>>(
-            global_bounding_box, global_num_cell, periodic, partitioner,
+            global_bounding_box, global_num_cell, periodic, *partitioner,
             halo_cell_width, _halo_min, comm );
 
         _bc.min = _mesh->minDomainGlobalNodeIndex();
@@ -71,9 +72,7 @@ class Solver : public SolverBase
 
         MPI_Comm_rank( comm, &_rank );
 
-#ifdef ExaMPM_ENABLE_ALL
-        _lb = std::make_shared<LoadBalancer<MemorySpace>>( comm, _mesh );
-#endif
+        _lb = std::make_shared<Cajita::LoadBalancer<Cajita::UniformMesh<double>>>( _mesh->globalGrid(),3.* _mesh->cellSize() );
     }
 
     void solve( const double t_final, const int write_freq ) override
@@ -83,9 +82,16 @@ class Solver : public SolverBase
             _pm->get( Location::Particle(), Field::Position() ),
             _pm->get( Location::Particle(), Field::Velocity() ),
             _pm->get( Location::Particle(), Field::J() ) );
-#ifdef ExaMPM_ENABLE_ALL
-        _lb->output( 0 );
-#endif
+
+        std::string vtk_actual_domain_basename( "domain_act" );
+        std::string vtk_lb_domain_basename( "domain_lb" );
+        std::array<double, 6> vertices;
+        vertices = _lb->getVertices();
+        VTKDomainWriter::writeDomain( _comm, 0, vertices,
+                                      vtk_actual_domain_basename );
+        vertices = _lb->getInternalVertices();
+        VTKDomainWriter::writeDomain( _comm, 0, vertices,
+                                      vtk_lb_domain_basename );
 
         int num_step = t_final / _dt;
         double delta_t = t_final / num_step;
@@ -96,11 +102,13 @@ class Solver : public SolverBase
                 printf( "Step %d / %d\n", t + 1, num_step );
 
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity,
-                                  _bc );
+                    _bc );
 
-#ifdef ExaMPM_ENABLE_ALL
-            _lb->balance( _pm );
-#endif
+            double work = _pm->numParticle();
+            // todo(sschulz): How to save the partitioner, without requiring a shared ptr everywhere?
+            auto global_grid = _lb->createBalancedGlobalGrid( _mesh->globalMesh(), *_partitioner, work );
+                _mesh->newGlobalGrid(global_grid);
+            _pm->updateMesh( _mesh );
 
             _pm->communicateParticles( _halo_min );
 
@@ -111,9 +119,13 @@ class Solver : public SolverBase
                     _pm->get( Location::Particle(), Field::Position() ),
                     _pm->get( Location::Particle(), Field::Velocity() ),
                     _pm->get( Location::Particle(), Field::J() ) );
-#ifdef ExaMPM_ENABLE_ALL
-                _lb->output( t );
-#endif
+
+                vertices = _lb->getVertices();
+                VTKDomainWriter::writeDomain( _comm, 0, vertices,
+                        vtk_actual_domain_basename );
+                vertices = _lb->getInternalVertices();
+                VTKDomainWriter::writeDomain( _comm, 0, vertices,
+                        vtk_lb_domain_basename );
             }
 
             time += delta_t;
@@ -128,9 +140,9 @@ class Solver : public SolverBase
     std::shared_ptr<Mesh<MemorySpace>> _mesh;
     std::shared_ptr<ProblemManager<MemorySpace>> _pm;
     int _rank;
-#ifdef ExaMPM_ENABLE_ALL
-    std::shared_ptr<LoadBalancer<MemorySpace>> _lb;
-#endif
+    MPI_Comm _comm;
+    std::shared_ptr<Cajita::ManualPartitioner> _partitioner;
+    std::shared_ptr<Cajita::LoadBalancer<Cajita::UniformMesh<double>>> _lb;
 };
 
 //---------------------------------------------------------------------------//
@@ -141,7 +153,7 @@ createSolver( const std::string& device, MPI_Comm comm,
               const Kokkos::Array<double, 6>& global_bounding_box,
               const std::array<int, 3>& global_num_cell,
               const std::array<bool, 3>& periodic,
-              const Cajita::BlockPartitioner<3>& partitioner,
+              const std::shared_ptr<Cajita::ManualPartitioner>& partitioner,
               const int halo_cell_width, const InitFunc& create_functor,
               const int particles_per_cell, const double bulk_modulus,
               const double density, const double gamma, const double kappa,

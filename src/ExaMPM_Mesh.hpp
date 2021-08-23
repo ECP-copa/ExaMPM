@@ -91,16 +91,23 @@ class Mesh
         }
 
         // Create the global mesh.
-        auto global_mesh = Cajita::createUniformGlobalMesh(
+        _global_mesh = Cajita::createUniformGlobalMesh(
             global_low_corner, global_high_corner, num_cell );
 
         // Build the global grid.
-        auto global_grid = Cajita::createGlobalGrid( comm, global_mesh,
+        _global_grid = Cajita::createGlobalGrid( comm, _global_mesh,
                                                      periodic, partitioner );
 
         // Build the local grid.
-        int halo_width = std::max( minimum_halo_cell_width, halo_cell_width );
-        _local_grid = Cajita::createLocalGrid( global_grid, halo_width );
+        _halo_width = std::max( minimum_halo_cell_width, halo_cell_width );
+        _local_grid = Cajita::createLocalGrid( _global_grid, _halo_width );
+    }
+
+    // Global grid updated and update local values
+    void newGlobalGrid( std::shared_ptr<Cajita::GlobalGrid<Cajita::UniformMesh<double>>>& global_grid )
+    {
+        _global_grid = global_grid;
+        _local_grid = Cajita::createLocalGrid( _global_grid, _halo_width );
     }
 
     // Get the local grid.
@@ -111,9 +118,14 @@ class Mesh
     }
 
     // Get the mutable global grid.
-    Cajita::GlobalGrid<Cajita::UniformMesh<double>>& globalGrid()
+    const std::shared_ptr<Cajita::GlobalGrid<Cajita::UniformMesh<double>>>& globalGrid()
     {
-        return _local_grid->globalGrid();
+        return _global_grid;
+    }
+
+    const std::shared_ptr<Cajita::GlobalMesh<Cajita::UniformMesh<double>>>& globalMesh() const
+    {
+        return _global_mesh;
     }
 
     // Get the cell size.
@@ -136,6 +148,10 @@ class Mesh
 
   public:
     std::shared_ptr<Cajita::LocalGrid<Cajita::UniformMesh<double>>> _local_grid;
+    std::shared_ptr<Cajita::GlobalGrid<Cajita::UniformMesh<double>>> _global_grid;
+    std::shared_ptr<Cajita::GlobalMesh<Cajita::UniformMesh<double>>> _global_mesh;
+
+    int _halo_width;
 
     Kokkos::Array<int, 3> _min_domain_global_node_index;
     Kokkos::Array<int, 3> _max_domain_global_node_index;
