@@ -48,7 +48,7 @@ jobs:
       - name: Build Cabana
         working-directory: Cabana
         run: |
-          cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/Cabana -DCMAKE_PREFIX_PATH="$HOME/kokkos" -DCabana_REQUIRE_${{ matrix.backend }}=ON -DCabana_REQUIRE_ALL=ON
+            cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/Cabana -DCMAKE_PREFIX_PATH="$HOME/kokkos:$HOME/ALL" -DCabana_REQUIRE_${{ matrix.backend }}=ON -DCabana_REQUIRE_ALL=ON
           cmake --build build --parallel 2
           cmake --install build
       - name: Checkout code
