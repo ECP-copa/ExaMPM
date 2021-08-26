@@ -150,6 +150,7 @@ class ProblemManager
 
     void updateMesh( const std::shared_ptr<mesh_type>& mesh )
     {
+        _mesh = mesh;
         auto node_vector_layout =
             Cajita::createArrayLayout( _mesh->localGrid(), 3, Cajita::Node() );
         auto node_scalar_layout =
