@@ -28,6 +28,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <cstdio>
 
 namespace ExaMPM
 {
@@ -413,6 +414,8 @@ void writeTimeStep( const GlobalGridType& global_grid,
     // Mirror the coordinates to the host.
     auto host_coords =
         Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), view );
+    printf("%s: coords size: %lu, extent %lu %lu %lu\n", __func__, coords.size(), coords.extent(0), coords.extent(1), coords.extent(2));
+    printf("%s: host_coords size: %lu, extent %lu %lu %lu\n", __func__, host_coords.size(), host_coords.extent(0), host_coords.extent(1), host_coords.extent(2));
 
     // Add the point mesh.
     std::string mesh_name = "particles";
