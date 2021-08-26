@@ -73,8 +73,8 @@ class Solver : public SolverBase
         MPI_Comm_rank( comm, &_rank );
 
         _lb =
-            std::make_shared<Cajita::LoadBalancer<Cajita::UniformMesh<double>>>( _comm, 
-                _mesh->globalGrid(), 3. * _mesh->cellSize() );
+            std::make_shared<Cajita::LoadBalancer<Cajita::UniformMesh<double>>>(
+                _comm, _mesh->globalGrid(), 3. * _mesh->cellSize() );
     }
 
     void solve( const double t_final, const int write_freq ) override
