@@ -67,7 +67,6 @@ void filterEmpties( const ExecutionSpace& exec_space,
         } );
     particles.resize( local_num_create );
     particles.shrinkToFit();
-    printf("%s: particles.size(): %lu\n", __func__, particles.size());
 }
 
 //---------------------------------------------------------------------------//
@@ -203,7 +202,6 @@ void initializeParticles( const ExecSpace& exec_space,
                     }
         },
         local_num_create );
-    printf("%s: local_num_create %d\n", __func__, local_num_create);
 
     // Filter empties.
     filterEmpties( exec_space, local_num_create, particle_created, particles );
