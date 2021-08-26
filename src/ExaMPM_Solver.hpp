@@ -125,10 +125,10 @@ class Solver : public SolverBase
                     _pm->get( Location::Particle(), Field::J() ) );
 
                 vertices = _lb->getVertices();
-                VTKDomainWriter::writeDomain( _comm, 0, vertices,
+                VTKDomainWriter::writeDomain( _comm, t, vertices,
                                               vtk_actual_domain_basename );
                 vertices = _lb->getInternalVertices();
-                VTKDomainWriter::writeDomain( _comm, 0, vertices,
+                VTKDomainWriter::writeDomain( _comm, t, vertices,
                                               vtk_lb_domain_basename );
             }
 
