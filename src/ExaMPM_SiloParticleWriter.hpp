@@ -413,6 +413,8 @@ void writeTimeStep( const GlobalGridType& global_grid,
     // Mirror the coordinates to the host.
     auto host_coords =
         Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), view );
+    // todo(sschulz): Handle empty domains. Without kokkos debug build this
+    // seems to work. But it should still be handled properly.
 
     // Add the point mesh.
     std::string mesh_name = "particles";
