@@ -12,26 +12,20 @@ set(HEADERS
   ExaMPM_VelocityInterpolation.hpp
   )
 
-if(ExaMPM_ENABLE_ALL)
-  list(APPEND HEADERS
-    ExaMPM_LoadBalancer.hpp
-    )
-endif()
-
 set(SOURCES
   ExaMPM_Mesh.cpp
   )
 
 add_library(exampm ${SOURCES})
 
+if(Cabana_ENABLE_ALL)
+    target_compile_definitions(exampm PUBLIC Cabana_ENABLE_ALL)
+endif()
+
 target_link_libraries(exampm
   Cabana::cabanacore
   Cabana::Cajita
   Silo::silo )
-
-if(ExaMPM_ENABLE_ALL)
-  target_link_libraries(exampm ALL::ALL)
-endif()
 
 target_include_directories(exampm
   PUBLIC

@@ -19,7 +19,9 @@
 #include <ExaMPM_TimeIntegrator.hpp>
 #include <ExaMPM_VTKDomainWriter.hpp>
 
+#ifdef Cabana_ENABLE_ALL
 #include <Cajita_LoadBalancer.hpp>
+#endif
 
 #include <Kokkos_Core.hpp>
 
@@ -72,9 +74,11 @@ class Solver : public SolverBase
 
         MPI_Comm_rank( comm, &_rank );
 
+#ifdef Cabana_ENABLE_ALL
         _lb =
             std::make_shared<Cajita::LoadBalancer<Cajita::UniformMesh<double>>>(
                 _comm, _mesh->globalGrid(), 3. * _mesh->cellSize() );
+#endif
     }
 
     void solve( const double t_final, const int write_freq ) override
@@ -88,12 +92,15 @@ class Solver : public SolverBase
         std::string vtk_actual_domain_basename( "domain_act" );
         std::string vtk_lb_domain_basename( "domain_lb" );
         std::array<double, 6> vertices;
+
+#ifdef Cabana_ENABLE_ALL
         vertices = _lb->getVertices();
         VTKDomainWriter::writeDomain( _comm, 0, vertices,
                                       vtk_actual_domain_basename );
         vertices = _lb->getInternalVertices();
         VTKDomainWriter::writeDomain( _comm, 0, vertices,
                                       vtk_lb_domain_basename );
+#endif
 
         int num_step = t_final / _dt;
         double delta_t = t_final / num_step;
@@ -106,13 +113,13 @@ class Solver : public SolverBase
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity,
                                   _bc );
 
+#ifdef Cabana_ENABLE_ALL
             double work = _pm->numParticle();
-            // todo(sschulz): How to save the partitioner, without requiring a
-            // shared ptr everywhere?
             auto global_grid = _lb->createBalancedGlobalGrid(
                 _mesh->globalMesh(), *_partitioner, work );
             _mesh->newGlobalGrid( global_grid );
             _pm->updateMesh( _mesh );
+#endif
 
             _pm->communicateParticles( _halo_min );
 
@@ -124,12 +131,14 @@ class Solver : public SolverBase
                     _pm->get( Location::Particle(), Field::Velocity() ),
                     _pm->get( Location::Particle(), Field::J() ) );
 
+#ifdef Cabana_ENABLE_ALL
                 vertices = _lb->getVertices();
                 VTKDomainWriter::writeDomain( _comm, t, vertices,
                                               vtk_actual_domain_basename );
                 vertices = _lb->getInternalVertices();
                 VTKDomainWriter::writeDomain( _comm, t, vertices,
                                               vtk_lb_domain_basename );
+#endif
             }
 
             time += delta_t;
@@ -146,7 +155,9 @@ class Solver : public SolverBase
     int _rank;
     MPI_Comm _comm;
     std::shared_ptr<Cajita::ManualPartitioner> _partitioner;
+#ifdef Cabana_ENABLE_ALL
     std::shared_ptr<Cajita::LoadBalancer<Cajita::UniformMesh<double>>> _lb;
+#endif
 };
 
 //---------------------------------------------------------------------------//
