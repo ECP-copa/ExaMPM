@@ -18,10 +18,6 @@ set(SOURCES
 
 add_library(exampm ${SOURCES})
 
-if(Cabana_ENABLE_ALL)
-    target_compile_definitions(exampm PUBLIC Cabana_ENABLE_ALL)
-endif()
-
 target_link_libraries(exampm
   Cabana::cabanacore
   Cabana::Cajita
