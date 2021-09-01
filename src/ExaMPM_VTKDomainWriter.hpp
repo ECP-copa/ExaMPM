@@ -41,7 +41,7 @@ void writeDomainParallelFile( MPI_Comm comm, int time_step,
     fprintf( file, "\t\t<PDataArray type=\"Float64\" Name=\"Points\" "
                    "NumberOfComponents=\"3\"/>\n" );
     fprintf( file, "\t</PPoints>\n" );
-    for ( std::size_t i = 0; i < size; ++i )
+    for ( int i = 0; i < size; ++i )
         fprintf( file, "\t<Piece Source=\"%s_%d_%lu.vtu\"/>\n",
                  basename.c_str(), time_step, i );
     fprintf( file, "</PUnstructuredGrid>\n" );
