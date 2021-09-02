@@ -19,7 +19,7 @@
 #include <ExaMPM_TimeIntegrator.hpp>
 #include <ExaMPM_VTKDomainWriter.hpp>
 
-#ifdef Cabana_ENABLE_ALL
+#ifdef ExaMPM_ENABLE_LB
 #include <Cajita_LoadBalancer.hpp>
 #endif
 
@@ -74,7 +74,7 @@ class Solver : public SolverBase
 
         MPI_Comm_rank( comm, &_rank );
 
-#ifdef Cabana_ENABLE_ALL
+#ifdef ExaMPM_ENABLE_LB
         _lb =
             std::make_shared<Cajita::LoadBalancer<Cajita::UniformMesh<double>>>(
                 _comm, _mesh->globalGrid(), 3. * _mesh->cellSize() );
@@ -93,7 +93,7 @@ class Solver : public SolverBase
         std::string vtk_lb_domain_basename( "domain_lb" );
         std::array<double, 6> vertices;
 
-#ifdef Cabana_ENABLE_ALL
+#ifdef ExaMPM_ENABLE_LB
         vertices = _lb->getVertices();
         VTKDomainWriter::writeDomain( _comm, 0, vertices,
                                       vtk_actual_domain_basename );
@@ -113,7 +113,7 @@ class Solver : public SolverBase
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity,
                                   _bc );
 
-#ifdef Cabana_ENABLE_ALL
+#ifdef ExaMPM_ENABLE_LB
             double work = _pm->numParticle();
             auto global_grid = _lb->createBalancedGlobalGrid(
                 _mesh->globalMesh(), *_partitioner, work );
@@ -131,7 +131,7 @@ class Solver : public SolverBase
                     _pm->get( Location::Particle(), Field::Velocity() ),
                     _pm->get( Location::Particle(), Field::J() ) );
 
-#ifdef Cabana_ENABLE_ALL
+#ifdef ExaMPM_ENABLE_LB
                 vertices = _lb->getVertices();
                 VTKDomainWriter::writeDomain( _comm, t, vertices,
                                               vtk_actual_domain_basename );
@@ -155,7 +155,7 @@ class Solver : public SolverBase
     int _rank;
     MPI_Comm _comm;
     std::shared_ptr<Cajita::ManualPartitioner> _partitioner;
-#ifdef Cabana_ENABLE_ALL
+#ifdef ExaMPM_ENABLE_LB
     std::shared_ptr<Cajita::LoadBalancer<Cajita::UniformMesh<double>>> _lb;
 #endif
 };

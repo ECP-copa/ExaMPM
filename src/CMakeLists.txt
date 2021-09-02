@@ -18,6 +18,10 @@ set(SOURCES
 
 add_library(exampm ${SOURCES})
 
+if(ExaMPM_ENABLE_LB)
+  target_compile_definitions(exampm PUBLIC ExaMPM_ENABLE_LB)
+endif()
+
 target_link_libraries(exampm
   Cabana::cabanacore
   Cabana::Cajita
