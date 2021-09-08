@@ -58,6 +58,7 @@ class Solver : public SolverBase
         , _gravity( gravity )
         , _bc( bc )
         , _halo_min( 3 )
+        , _lb_step( 10 )
         , _comm( comm )
         , _partitioner( partitioner )
     {
@@ -114,11 +115,14 @@ class Solver : public SolverBase
                                   _bc );
 
 #ifdef ExaMPM_ENABLE_LB
-            double work = _pm->numParticle();
-            auto global_grid = _lb->createBalancedGlobalGrid(
-                _mesh->globalMesh(), *_partitioner, work );
-            _mesh->newGlobalGrid( global_grid );
-            _pm->updateMesh( _mesh );
+            if ( _lb_step > 0 && 0 == t % _lb_step )
+            {
+                double work = _pm->numParticle();
+                auto global_grid = _lb->createBalancedGlobalGrid(
+                    _mesh->globalMesh(), *_partitioner, work );
+                _mesh->newGlobalGrid( global_grid );
+                _pm->updateMesh( _mesh );
+            }
 #endif
 
             _pm->communicateParticles( _halo_min );
@@ -152,6 +156,7 @@ class Solver : public SolverBase
     int _halo_min;
     std::shared_ptr<Mesh<MemorySpace>> _mesh;
     std::shared_ptr<ProblemManager<MemorySpace>> _pm;
+    int _lb_step;
     int _rank;
     MPI_Comm _comm;
     std::shared_ptr<Cajita::ManualPartitioner> _partitioner;
