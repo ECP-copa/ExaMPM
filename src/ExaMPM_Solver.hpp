@@ -84,6 +84,14 @@ class Solver : public SolverBase
 
     void solve( const double t_final, const int write_freq ) override
     {
+        double output_time = 0;
+        double integrate_time = 0;
+        double lb_time = 0;
+        double comm_part_time = 0;
+        Kokkos::Timer timer, output_timer, integrate_timer, lb_timer,
+            comm_part_timer;
+
+        output_timer.reset();
         SiloParticleWriter::writeTimeStep(
             _mesh->localGrid()->globalGrid(), 0, 0.0,
             _pm->get( Location::Particle(), Field::Position() ),
@@ -102,6 +110,7 @@ class Solver : public SolverBase
         VTKDomainWriter::writeDomain( _comm, 0, vertices,
                                       vtk_lb_domain_basename );
 #endif
+        output_time += output_timer.seconds();
 
         int num_step = t_final / _dt;
         double delta_t = t_final / num_step;
@@ -111,9 +120,12 @@ class Solver : public SolverBase
             if ( 0 == _rank && 0 == t % write_freq )
                 printf( "Step %d / %d\n", t + 1, num_step );
 
+            integrate_timer.reset();
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity,
                                   _bc );
+            integrate_time += integrate_timer.seconds();
 
+            lb_timer.reset();
 #ifdef ExaMPM_ENABLE_LB
             if ( _lb_step > 0 && 0 == t % _lb_step )
             {
@@ -124,11 +136,15 @@ class Solver : public SolverBase
                 _pm->updateMesh( _mesh );
             }
 #endif
+            lb_time += lb_timer.seconds();
 
+            comm_part_timer.reset();
             _pm->communicateParticles( _halo_min );
+            comm_part_time += comm_part_timer.seconds();
 
             if ( 0 == t % write_freq )
             {
+                output_timer.reset();
                 SiloParticleWriter::writeTimeStep(
                     _mesh->localGrid()->globalGrid(), t + 1, time,
                     _pm->get( Location::Particle(), Field::Position() ),
@@ -143,9 +159,36 @@ class Solver : public SolverBase
                 VTKDomainWriter::writeDomain( _comm, t, vertices,
                                               vtk_lb_domain_basename );
 #endif
+                output_time += output_timer.seconds();
             }
 
             time += delta_t;
+        }
+        double total_time = timer.seconds();
+        double steps_per_sec = 1. * num_step / total_time;
+        int total_num_particle;
+        int num_particle = _pm->numParticle();
+        MPI_Reduce( &num_particle, &total_num_particle, 1, MPI_INT, MPI_SUM, 0,
+                    _comm );
+        int comm_size;
+        MPI_Comm_size( _comm, &comm_size );
+        if ( _rank == 0 )
+        {
+            std::cout
+                << std::fixed << std::setprecision( 2 )
+                << "\n#Procs Particles | Time T_Out T_lb T_Int T_Comm_part\n"
+                << comm_size << " " << total_num_particle << " | " << total_time
+                << " " << output_time << " " << lb_time << " " << integrate_time
+                << " " << comm_part_time << " | PERFORMANCE\n"
+                << comm_size << " " << total_num_particle << " | "
+                << "1.0"
+                << " " << output_time / total_time << " "
+                << lb_time / total_time << " " << integrate_time / total_time
+                << " " << comm_part_time / total_time << " | FRACTION\n\n"
+                << "#Steps/s Particlesteps/s Particlesteps/(proc*s)\n"
+                << std::scientific << steps_per_sec << " "
+                << steps_per_sec * total_num_particle << " "
+                << steps_per_sec * total_num_particle / comm_size << std::endl;
         }
     }
 
