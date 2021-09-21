@@ -293,6 +293,9 @@ class ProblemManager
 
     void scatter( Location::Cell, Field::Density ) const
     {
+        printf( "%s: _density extent %lu %lu %lu\n", __func__,
+                _density->view().extent( 0 ), _density->view().extent( 1 ),
+                _density->view().extent( 2 ) );
         _cell_scalar_halo->scatter( execution_space(),
                                     Cajita::ScatterReduce::Sum(), *_density );
     }

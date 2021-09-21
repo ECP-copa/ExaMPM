@@ -37,6 +37,8 @@ class SolverBase
   public:
     virtual ~SolverBase() = default;
     virtual void solve( const double t_final, const int write_freq ) = 0;
+    virtual void solve( const double t_final, const int write_freq,
+                        const int lb_freq ) = 0;
 };
 
 //---------------------------------------------------------------------------//
@@ -58,7 +60,6 @@ class Solver : public SolverBase
         , _gravity( gravity )
         , _bc( bc )
         , _halo_min( 3 )
-        , _lb_step( 10 )
         , _comm( comm )
         , _partitioner( partitioner )
     {
@@ -83,6 +84,12 @@ class Solver : public SolverBase
     }
 
     void solve( const double t_final, const int write_freq ) override
+    {
+        solve( t_final, write_freq, 10 );
+    }
+
+    void solve( const double t_final, const int write_freq,
+                const int lb_freq ) override
     {
         double output_time = 0;
         double integrate_time = 0;
@@ -127,7 +134,7 @@ class Solver : public SolverBase
 
             lb_timer.reset();
 #ifdef ExaMPM_ENABLE_LB
-            if ( _lb_step > 0 && 0 == t % _lb_step )
+            if ( lb_freq > 0 && 0 == t % lb_freq )
             {
                 double work = _pm->numParticle();
                 auto global_grid = _lb->createBalancedGlobalGrid(
@@ -199,7 +206,6 @@ class Solver : public SolverBase
     int _halo_min;
     std::shared_ptr<Mesh<MemorySpace>> _mesh;
     std::shared_ptr<ProblemManager<MemorySpace>> _pm;
-    int _lb_step;
     int _rank;
     MPI_Comm _comm;
     std::shared_ptr<Cajita::ManualPartitioner> _partitioner;

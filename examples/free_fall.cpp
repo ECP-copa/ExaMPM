@@ -65,7 +65,7 @@ struct ParticleInitFunc
 //---------------------------------------------------------------------------//
 void freeFall( const double cell_size, const int ppc, const int halo_size,
                const double delta_t, const double t_final, const int write_freq,
-               const std::string& device )
+               const std::string& device, const int lb_freq )
 {
     // The dam break domain is in a box on [0,1] in each dimension.
     Kokkos::Array<double, 6> global_box = { -0.5, -0.5, -0.5, 0.5, 0.5, 0.5 };
@@ -112,7 +112,7 @@ void freeFall( const double cell_size, const int ppc, const int halo_size,
         device, MPI_COMM_WORLD, global_box, global_num_cell, periodic,
         partitioner, halo_size, ParticleInitFunc( cell_size, ppc, density ),
         ppc, bulk_modulus, density, gamma, kappa, delta_t, gravity, bc );
-    solver->solve( t_final, write_freq );
+    solver->solve( t_final, write_freq, lb_freq );
 }
 
 //---------------------------------------------------------------------------//
@@ -143,8 +143,12 @@ int main( int argc, char* argv[] )
     // device type
     std::string device( argv[7] );
 
+    // optional lb frequency
+    int lb_freq = argc > 8 ? std::atoi( argv[8] ) : 10;
+
     // run the problem.
-    freeFall( cell_size, ppc, halo_size, delta_t, t_final, write_freq, device );
+    freeFall( cell_size, ppc, halo_size, delta_t, t_final, write_freq, device,
+              lb_freq );
 
     Kokkos::finalize();
 
