@@ -96,7 +96,7 @@ class Solver : public SolverBase
         double lb_time = 0;
         double comm_part_time = 0;
         Kokkos::Timer timer, output_timer, integrate_timer, lb_timer,
-            comm_part_timer;
+            comm_part_timer, step_timer;
 
         output_timer.reset();
         SiloParticleWriter::writeTimeStep(
@@ -118,6 +118,14 @@ class Solver : public SolverBase
                                       vtk_lb_domain_basename );
 #endif
         output_time += output_timer.seconds();
+
+        int total_num_particle;
+        int num_particle = _pm->numParticle();
+        MPI_Reduce( &num_particle, &total_num_particle, 1, MPI_INT, MPI_SUM, 0,
+                    _comm );
+        int comm_size;
+        MPI_Comm_size( _comm, &comm_size );
+        step_timer.reset();
 
         int num_step = t_final / _dt;
         double delta_t = t_final / num_step;
@@ -165,20 +173,29 @@ class Solver : public SolverBase
                 vertices = _lb->getInternalVertices();
                 VTKDomainWriter::writeDomain( _comm, t, vertices,
                                               vtk_lb_domain_basename );
-#endif
+                double quality = _lb->getQuality();
                 output_time += output_timer.seconds();
+                output_timer.reset();
+                if ( _rank == 0 )
+                {
+                    double step_time = step_timer.seconds();
+                    std::cout
+                        << std::fixed << std::setprecision( 5 ) << t << " "
+                        << quality << " " << write_freq / step_time << " "
+                        << write_freq / step_time * total_num_particle << " "
+                        << write_freq / step_time * total_num_particle /
+                               comm_size
+                        << std::endl;
+                }
+                step_timer.reset();
+                output_time += output_timer.seconds();
+#endif
             }
 
             time += delta_t;
         }
         double total_time = timer.seconds();
         double steps_per_sec = 1. * num_step / total_time;
-        int total_num_particle;
-        int num_particle = _pm->numParticle();
-        MPI_Reduce( &num_particle, &total_num_particle, 1, MPI_INT, MPI_SUM, 0,
-                    _comm );
-        int comm_size;
-        MPI_Comm_size( _comm, &comm_size );
         if ( _rank == 0 )
         {
             std::cout
