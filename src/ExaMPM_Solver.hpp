@@ -173,7 +173,7 @@ class Solver : public SolverBase
                 vertices = _lb->getInternalVertices();
                 VTKDomainWriter::writeDomain( _comm, t, vertices,
                                               vtk_lb_domain_basename );
-                double quality = _lb->getQuality();
+                double imbalance = _lb->getImbalance();
                 output_time += output_timer.seconds();
                 output_timer.reset();
                 if ( _rank == 0 )
@@ -181,7 +181,7 @@ class Solver : public SolverBase
                     double step_time = step_timer.seconds();
                     std::cout
                         << std::fixed << std::setprecision( 5 ) << t << " "
-                        << quality << " " << write_freq / step_time << " "
+                        << imbalance << " " << write_freq / step_time << " "
                         << write_freq / step_time * total_num_particle << " "
                         << write_freq / step_time * total_num_particle /
                                comm_size
