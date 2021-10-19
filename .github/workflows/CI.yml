@@ -13,16 +13,19 @@ jobs:
   CI:
     strategy:
       matrix:
-        backend: ["OPENMP"]
+        distro: ['ubuntu:latest']
+        backend: ["SERIAL", "OPENMP"]
     runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ecp-copa/ci-containers/${{ matrix.distro }}
     steps:
       - name: Install deps
-        run: sudo apt-get update && sudo apt-get install libsilo-dev openmpi-bin libopenmpi-dev
+        run: sudo apt-get update && sudo apt-get install -y libsilo-dev 
       - name: Checkout kokkos
         uses: actions/checkout@v2.2.0
         with:
           repository: kokkos/kokkos
-          ref: 3.2.00
+          ref: 3.4.01
           path: kokkos
       - name: Build kokkos
         working-directory: kokkos
