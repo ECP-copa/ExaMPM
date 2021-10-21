@@ -77,9 +77,9 @@ class Solver : public SolverBase
         MPI_Comm_rank( comm, &_rank );
 
 #ifdef ExaMPM_ENABLE_LB
-        _lb =
-            std::make_shared<Cajita::LoadBalancer<Cajita::UniformMesh<double>>>(
-                _comm, _mesh->globalGrid(), 3. * _mesh->cellSize() );
+        _lb = std::make_shared<
+            Cajita::Experimental::LoadBalancer<Cajita::UniformMesh<double>>>(
+            _comm, _mesh->globalGrid(), 3. * _mesh->cellSize() );
 #endif
     }
 
@@ -227,7 +227,9 @@ class Solver : public SolverBase
     MPI_Comm _comm;
     std::shared_ptr<Cajita::ManualPartitioner> _partitioner;
 #ifdef ExaMPM_ENABLE_LB
-    std::shared_ptr<Cajita::LoadBalancer<Cajita::UniformMesh<double>>> _lb;
+    std::shared_ptr<
+        Cajita::Experimental::LoadBalancer<Cajita::UniformMesh<double>>>
+        _lb;
 #endif
 };
 
