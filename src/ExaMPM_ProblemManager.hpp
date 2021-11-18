@@ -116,36 +116,7 @@ class ProblemManager
     {
         initializeParticles( exec_space, *( _mesh->localGrid() ),
                              particles_per_cell, create_functor, _particles );
-
-        auto node_vector_layout =
-            Cajita::createArrayLayout( _mesh->localGrid(), 3, Cajita::Node() );
-        auto node_scalar_layout =
-            Cajita::createArrayLayout( _mesh->localGrid(), 1, Cajita::Node() );
-        auto cell_scalar_layout =
-            Cajita::createArrayLayout( _mesh->localGrid(), 1, Cajita::Cell() );
-
-        _momentum = Cajita::createArray<double, MemorySpace>(
-            "momentum", node_vector_layout );
-        _mass = Cajita::createArray<double, MemorySpace>( "mass",
-                                                          node_scalar_layout );
-        _force = Cajita::createArray<double, MemorySpace>( "force",
-                                                           node_vector_layout );
-        _velocity = Cajita::createArray<double, MemorySpace>(
-            "velocity", node_vector_layout );
-        _position_correction = Cajita::createArray<double, MemorySpace>(
-            "position_correction", node_vector_layout );
-        _density = Cajita::createArray<double, MemorySpace>(
-            "density", cell_scalar_layout );
-
-        _mark = Cajita::createArray<double, MemorySpace>( "mark",
-                                                          cell_scalar_layout );
-
-        _node_vector_halo = Cajita::createHalo<double, MemorySpace>(
-            *node_vector_layout, Cajita::FullHaloPattern() );
-        _node_scalar_halo = Cajita::createHalo<double, MemorySpace>(
-            *node_scalar_layout, Cajita::FullHaloPattern() );
-        _cell_scalar_halo = Cajita::createHalo<double, MemorySpace>(
-            *cell_scalar_layout, Cajita::FullHaloPattern() );
+        updateMesh( mesh );
     }
 
     void updateMesh( const std::shared_ptr<mesh_type>& mesh )
