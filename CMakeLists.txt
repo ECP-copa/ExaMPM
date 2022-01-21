@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.12)
 project(ExaMPM LANGUAGES CXX VERSION 0.1.0)
 
 include(GNUInstallDirs)
+include(CMakeDependentOption)
 
 # find dependencies
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
@@ -15,6 +16,8 @@ if( NOT Cabana_ENABLE_CAJITA )
   message( FATAL_ERROR "Cabana must be compiled with Cajita" )
 endif()
 find_package(Silo REQUIRED)
+
+cmake_dependent_option(ExaMPM_ENABLE_LB "Enable Cabana load balancing" ON Cabana_ENABLE_ALL OFF)
 
 # find Clang Format
 find_package( CLANG_FORMAT 10 )

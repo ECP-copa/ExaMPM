@@ -8,6 +8,7 @@ set(HEADERS
   ExaMPM_Solver.hpp
   ExaMPM_TimeIntegrator.hpp
   ExaMPM_Types.hpp
+  ExaMPM_VTKDomainWriter.hpp
   ExaMPM_VelocityInterpolation.hpp
   )
 
@@ -16,6 +17,10 @@ set(SOURCES
   )
 
 add_library(exampm ${SOURCES})
+
+if(ExaMPM_ENABLE_LB)
+  target_compile_definitions(exampm PUBLIC ExaMPM_ENABLE_LB)
+endif()
 
 target_link_libraries(exampm
   Cabana::cabanacore

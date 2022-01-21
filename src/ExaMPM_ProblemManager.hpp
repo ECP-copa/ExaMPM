@@ -116,7 +116,12 @@ class ProblemManager
     {
         initializeParticles( exec_space, *( _mesh->localGrid() ),
                              particles_per_cell, create_functor, _particles );
+        updateMesh( mesh );
+    }
 
+    void updateMesh( const std::shared_ptr<mesh_type>& mesh )
+    {
+        _mesh = mesh;
         auto node_vector_layout =
             Cajita::createArrayLayout( _mesh->localGrid(), 3, Cajita::Node() );
         auto node_scalar_layout =
@@ -259,6 +264,9 @@ class ProblemManager
 
     void scatter( Location::Cell, Field::Density ) const
     {
+        printf( "%s: _density extent %lu %lu %lu\n", __func__,
+                _density->view().extent( 0 ), _density->view().extent( 1 ),
+                _density->view().extent( 2 ) );
         _cell_scalar_halo->scatter( execution_space(),
                                     Cajita::ScatterReduce::Sum(), *_density );
     }
