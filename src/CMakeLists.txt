@@ -4,7 +4,6 @@ set(HEADERS
   ExaMPM_Mesh.hpp
   ExaMPM_ParticleInit.hpp
   ExaMPM_ProblemManager.hpp
-  ExaMPM_SiloParticleWriter.hpp
   ExaMPM_Solver.hpp
   ExaMPM_TimeIntegrator.hpp
   ExaMPM_Types.hpp
@@ -20,7 +19,7 @@ add_library(exampm ${SOURCES})
 target_link_libraries(exampm
   Cabana::cabanacore
   Cabana::Cajita
-  Silo::silo )
+)
 
 target_include_directories(exampm
   PUBLIC
