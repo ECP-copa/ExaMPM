@@ -161,37 +161,37 @@ class ProblemManager
     double kappa() const { return _kappa; }
 
     typename particle_list::template member_slice_type<0>
-        get( Location::Particle, Field::Affine ) const
+    get( Location::Particle, Field::Affine ) const
     {
         return Cabana::slice<0>( _particles, "affine" );
     }
 
     typename particle_list::template member_slice_type<1>
-        get( Location::Particle, Field::Velocity ) const
+    get( Location::Particle, Field::Velocity ) const
     {
         return Cabana::slice<1>( _particles, "velocity" );
     }
 
     typename particle_list::template member_slice_type<2>
-        get( Location::Particle, Field::Position ) const
+    get( Location::Particle, Field::Position ) const
     {
         return Cabana::slice<2>( _particles, "position" );
     }
 
     typename particle_list::template member_slice_type<3>
-        get( Location::Particle, Field::Mass ) const
+    get( Location::Particle, Field::Mass ) const
     {
         return Cabana::slice<3>( _particles, "mass" );
     }
 
     typename particle_list::template member_slice_type<4>
-        get( Location::Particle, Field::Volume ) const
+    get( Location::Particle, Field::Volume ) const
     {
         return Cabana::slice<4>( _particles, "volume" );
     }
 
     typename particle_list::template member_slice_type<5>
-        get( Location::Particle, Field::J ) const
+    get( Location::Particle, Field::J ) const
     {
         return Cabana::slice<5>( _particles, "J" );
     }
