@@ -104,9 +104,7 @@ void p2g( const ExecutionSpace& exec_space, const ProblemManagerType& pm )
     Kokkos::Experimental::contribute( f_i, f_i_sv );
 
     // Complete global scatter.
-    pm.scatter( Location::Node(), Field::Mass() );
-    pm.scatter( Location::Node(), Field::Momentum() );
-    pm.scatter( Location::Node(), Field::Force() );
+    pm.scatter( Location::Node() );
 }
 
 //---------------------------------------------------------------------------//
@@ -197,7 +195,7 @@ void g2p( const ExecutionSpace& exec_space, const ProblemManagerType& pm,
     auto cell_volume = cell_size * cell_size * cell_size;
 
     // Gather the data we need.
-    pm.gather( Location::Node(), Field::Velocity() );
+    pm.gather( Location::Node() );
 
     // Loop over particles.
     Kokkos::parallel_for(
@@ -252,8 +250,7 @@ void g2p( const ExecutionSpace& exec_space, const ProblemManagerType& pm,
     Kokkos::Experimental::contribute( k_c, k_c_sv );
 
     // Complete global scatter.
-    pm.scatter( Location::Cell(), Field::Density() );
-    pm.scatter( Location::Cell(), Field::Mark() );
+    pm.scatter( Location::Cell() );
 }
 
 //---------------------------------------------------------------------------//
