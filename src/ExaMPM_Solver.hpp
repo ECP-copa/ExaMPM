@@ -71,11 +71,13 @@ class Solver : public SolverBase
 
     void solve( const double t_final, const int write_freq ) override
     {
+#ifdef CABANA_ENABLE_SILO
         Cajita::Experimental::SiloParticleOutput::writeTimeStep(
             "particles", _mesh->localGrid()->globalGrid(), 0, 0.0,
             _pm->get( Location::Particle(), Field::Position() ),
             _pm->get( Location::Particle(), Field::Velocity() ),
             _pm->get( Location::Particle(), Field::J() ) );
+#endif
 
         int num_step = t_final / _dt;
         double delta_t = t_final / num_step;
@@ -91,11 +93,13 @@ class Solver : public SolverBase
             _pm->communicateParticles( _halo_min );
 
             if ( 0 == t % write_freq )
+#ifdef CABANA_ENABLE_SILO
                 Cajita::Experimental::SiloParticleOutput::writeTimeStep(
                     "particles", _mesh->localGrid()->globalGrid(), t + 1, time,
                     _pm->get( Location::Particle(), Field::Position() ),
                     _pm->get( Location::Particle(), Field::Velocity() ),
                     _pm->get( Location::Particle(), Field::J() ) );
+#endif
 
             time += delta_t;
         }
