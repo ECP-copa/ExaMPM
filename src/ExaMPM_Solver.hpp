@@ -43,20 +43,37 @@ class Solver : public SolverBase
     template <class InitFunc>
     Solver( MPI_Comm comm, const Kokkos::Array<double, 6>& global_bounding_box,
             const std::array<int, 3>& global_num_cell,
-            const std::array<bool, 3>& periodic,
-            const Cajita::BlockPartitioner<3>& partitioner,
-            const int halo_cell_width, const InitFunc& create_functor,
-            const int particles_per_cell, const double bulk_modulus,
-            const double density, const double gamma, const double kappa,
-            const double delta_t, const double gravity,
-            const BoundaryCondition& bc )
+            const std::array<bool, 3>& periodic, const int halo_cell_width,
+            const InitFunc& create_functor, const int particles_per_cell,
+            const double bulk_modulus, const double density, const double gamma,
+            const double kappa, const double delta_t, const double gravity,
+            const BoundaryCondition& bc, const std::string& partitioner_type )
         : _dt( delta_t )
         , _gravity( gravity )
         , _bc( bc )
         , _halo_min( 3 )
     {
+        if ( 0 == partitioner_type.compare( "manual" ) )
+        {
+            int comm_size;
+            MPI_Comm_size( comm, &comm_size );
+            std::array<int, 3> ranks_per_dim = { 1, comm_size, 1 };
+            _partitioner =
+                std::make_shared<Cajita::ManualPartitioner>( ranks_per_dim );
+        }
+        else if ( 0 == partitioner_type.compare( "dynamic" ) )
+        {
+            _partitioner = std::make_shared<Cajita::DynamicPartitioner<
+                Kokkos::Device<ExecutionSpace, MemorySpace>>>(
+                comm, global_num_cell );
+        }
+        else
+        {
+            throw std::runtime_error( "invalid partitioner type" );
+        }
+
         _mesh = std::make_shared<Mesh<MemorySpace>>(
-            global_bounding_box, global_num_cell, periodic, partitioner,
+            global_bounding_box, global_num_cell, periodic, *_partitioner,
             halo_cell_width, _halo_min, comm );
 
         _bc.min = _mesh->minDomainGlobalNodeIndex();
@@ -112,6 +129,7 @@ class Solver : public SolverBase
     int _halo_min;
     std::shared_ptr<Mesh<MemorySpace>> _mesh;
     std::shared_ptr<ProblemManager<MemorySpace>> _pm;
+    std::shared_ptr<Cajita::BlockPartitioner<3>> _partitioner;
     int _rank;
 };
 
@@ -122,22 +140,21 @@ std::shared_ptr<SolverBase>
 createSolver( const std::string& device, MPI_Comm comm,
               const Kokkos::Array<double, 6>& global_bounding_box,
               const std::array<int, 3>& global_num_cell,
-              const std::array<bool, 3>& periodic,
-              const Cajita::BlockPartitioner<3>& partitioner,
-              const int halo_cell_width, const InitFunc& create_functor,
-              const int particles_per_cell, const double bulk_modulus,
-              const double density, const double gamma, const double kappa,
-              const double delta_t, const double gravity,
-              const BoundaryCondition& bc )
+              const std::array<bool, 3>& periodic, const int halo_cell_width,
+              const InitFunc& create_functor, const int particles_per_cell,
+              const double bulk_modulus, const double density,
+              const double gamma, const double kappa, const double delta_t,
+              const double gravity, const BoundaryCondition& bc,
+              const std::string& partitioner_type )
 {
     if ( 0 == device.compare( "serial" ) )
     {
 #ifdef KOKKOS_ENABLE_SERIAL
         return std::make_shared<
             ExaMPM::Solver<Kokkos::HostSpace, Kokkos::Serial>>(
-            comm, global_bounding_box, global_num_cell, periodic, partitioner,
+            comm, global_bounding_box, global_num_cell, periodic,
             halo_cell_width, create_functor, particles_per_cell, bulk_modulus,
-            density, gamma, kappa, delta_t, gravity, bc );
+            density, gamma, kappa, delta_t, gravity, bc, partitioner_type );
 #else
         throw std::runtime_error( "Serial Backend Not Enabled" );
 #endif
@@ -147,9 +164,9 @@ createSolver( const std::string& device, MPI_Comm comm,
 #ifdef KOKKOS_ENABLE_OPENMP
         return std::make_shared<
             ExaMPM::Solver<Kokkos::HostSpace, Kokkos::OpenMP>>(
-            comm, global_bounding_box, global_num_cell, periodic, partitioner,
+            comm, global_bounding_box, global_num_cell, periodic,
             halo_cell_width, create_functor, particles_per_cell, bulk_modulus,
-            density, gamma, kappa, delta_t, gravity, bc );
+            density, gamma, kappa, delta_t, gravity, bc, partitioner_type );
 #else
         throw std::runtime_error( "OpenMP Backend Not Enabled" );
 #endif
@@ -159,9 +176,9 @@ createSolver( const std::string& device, MPI_Comm comm,
 #ifdef KOKKOS_ENABLE_CUDA
         return std::make_shared<
             ExaMPM::Solver<Kokkos::CudaSpace, Kokkos::Cuda>>(
-            comm, global_bounding_box, global_num_cell, periodic, partitioner,
+            comm, global_bounding_box, global_num_cell, periodic,
             halo_cell_width, create_functor, particles_per_cell, bulk_modulus,
-            density, gamma, kappa, delta_t, gravity, bc );
+            density, gamma, kappa, delta_t, gravity, bc, partitioner_type );
 #else
         throw std::runtime_error( "CUDA Backend Not Enabled" );
 #endif
@@ -171,9 +188,9 @@ createSolver( const std::string& device, MPI_Comm comm,
 #ifdef KOKKOS_ENABLE_HIP
         return std::make_shared<ExaMPM::Solver<Kokkos::Experimental::HIPSpace,
                                                Kokkos::Experimental::HIP>>(
-            comm, global_bounding_box, global_num_cell, periodic, partitioner,
+            comm, global_bounding_box, global_num_cell, periodic,
             halo_cell_width, create_functor, particles_per_cell, bulk_modulus,
-            density, gamma, kappa, delta_t, gravity, bc );
+            density, gamma, kappa, delta_t, gravity, bc, partitioner_type );
 #else
         throw std::runtime_error( "HIP Backend Not Enabled" );
 #endif
