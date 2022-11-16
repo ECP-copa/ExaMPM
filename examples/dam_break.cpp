@@ -122,6 +122,22 @@ int main( int argc, char* argv[] )
 
     Kokkos::initialize( argc, argv );
 
+    // check inputs and write usage
+    if (argc < 8) {
+        std::cerr << "Usage: ./DamBreak cell_size parts_per_cell_size halo_cells dt t_end write_freq device\n";
+        std::cerr << "\nwhere cell_size       edge length of a computational cell (domain is unit cube)\n";
+        std::cerr << "      parts_per_cell  particles per cell in each direction\n";
+        std::cerr << "      halo_cells      number of halo cells\n";
+        std::cerr << "      dt              time step size\n";
+        std::cerr << "      t_end           simulation end time\n";
+        std::cerr << "      write_freq      number of steps between output files\n";
+        std::cerr << "      device          compute device: serial, openmp, cuda, hip\n";
+        std::cerr << "\nfor example: ./DamBreak 0.05 2 0 0.001 1.0 10 serial\n";
+        Kokkos::finalize();
+        MPI_Finalize();
+        return 0;
+    }
+
     // cell size
     double cell_size = std::atof( argv[1] );
 
