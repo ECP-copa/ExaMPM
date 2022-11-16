@@ -98,7 +98,7 @@ void damBreak( const double cell_size, const int ppc, const int halo_size,
     // Gravity pulls down in z.
     double gravity = 9.81;
 
-    // Free slip conditions in X and Z.
+    // Free slip conditions (alternative: NO_SLIP)
     ExaMPM::BoundaryCondition bc;
     bc.boundary[0] = ExaMPM::BoundaryType::FREE_SLIP;
     bc.boundary[1] = ExaMPM::BoundaryType::FREE_SLIP;
