@@ -22,7 +22,7 @@ struct ParticleInitFunc
 
     ParticleInitFunc( const double cell_size, const int ppc,
                       const double density )
-        : _volume( cell_size * cell_size * cell_size / ppc )
+        : _volume( cell_size * cell_size * cell_size / ( ppc * ppc * ppc ) )
         , _mass( _volume * density )
     {
     }
@@ -31,7 +31,7 @@ struct ParticleInitFunc
     KOKKOS_INLINE_FUNCTION bool operator()( const double x[3],
                                             ParticleType& p ) const
     {
-        if ( 0.0 <= x[0] && x[0] <= 0.4 && 0.0 <= x[1] && x[1] <= 0.4 &&
+        if ( 0.0 <= x[0] && x[0] <= 0.4 && 0.0 <= x[1] && x[1] <= 1.0 &&
              0.0 <= x[2] && x[2] <= 0.6 )
         {
             // Affine matrix.
