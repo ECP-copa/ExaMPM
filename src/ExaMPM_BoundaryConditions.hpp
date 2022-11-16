@@ -80,7 +80,7 @@ struct BoundaryCondition
         }
 
         // High x
-        if ( gi >= max[0] - 1 )
+        if ( gi >= max[0] )
         {
             if ( boundary[3] == BoundaryType::NO_SLIP )
             {
@@ -95,7 +95,7 @@ struct BoundaryCondition
         }
 
         // High y
-        if ( gj >= max[1] - 1 )
+        if ( gj >= max[1] )
         {
             if ( boundary[4] == BoundaryType::NO_SLIP )
             {
@@ -110,7 +110,7 @@ struct BoundaryCondition
         }
 
         // High z
-        if ( gk >= max[2] - 1 )
+        if ( gk >= max[2] )
         {
             if ( boundary[5] == BoundaryType::NO_SLIP )
             {

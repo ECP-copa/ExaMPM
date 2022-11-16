@@ -73,7 +73,7 @@ class Mesh
         for ( int d = 0; d < 3; ++d )
         {
             _min_domain_global_node_index[d] = 0;
-            _max_domain_global_node_index[d] = num_cell[d] + 1;
+            _max_domain_global_node_index[d] = num_cell[d];
         }
 
         // For dimensions that are not periodic we pad by the minimum halo
@@ -86,7 +86,7 @@ class Mesh
                 global_high_corner[d] += cell_size * minimum_halo_cell_width;
                 num_cell[d] += 2 * minimum_halo_cell_width;
                 _min_domain_global_node_index[d] += minimum_halo_cell_width;
-                _max_domain_global_node_index[d] -= minimum_halo_cell_width;
+                _max_domain_global_node_index[d] += minimum_halo_cell_width;
             }
         }
 
