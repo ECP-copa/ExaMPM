@@ -85,14 +85,14 @@ class Solver : public SolverBase
         for ( int t = 0; t < num_step; ++t )
         {
             if ( 0 == _rank && 0 == t % write_freq )
-                printf( "Step %d / %d\n", t + 1, num_step );
+                printf( "Step %d / %d\n", t, num_step );
 
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity,
                                   _bc );
 
             _pm->communicateParticles( _halo_min );
 
-            if ( 0 == t % write_freq )
+            if ( 0 == ( t + 1 ) % write_freq )
 #ifdef Cabana_ENABLE_SILO
                 Cajita::Experimental::SiloParticleOutput::writeTimeStep(
                     "particles", _mesh->localGrid()->globalGrid(), t + 1, time,
