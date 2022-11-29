@@ -68,21 +68,22 @@ void freeFall( const double cell_size, const int ppc, const int halo_size,
                const std::string& device )
 {
     // The free fall domain is in a box on [-0.5,0.5] in each dimension.
-    Kokkos::Array<double, 6> global_box = {-0.5, -0.5, -0.5, 0.5, 0.5, 0.5};
+    Kokkos::Array<double, 6> global_box = { -0.5, -0.5, -0.5, 0.5, 0.5, 0.5 };
 
     // Compute the number of cells in each direction. The user input must
     // squarely divide the domain.
-    std::array<int, 3> global_num_cell = {static_cast<int>( 1.0 / cell_size ),
-                                          static_cast<int>( 1.0 / cell_size ),
-                                          static_cast<int>( 1.0 / cell_size )};
+    std::array<int, 3> global_num_cell = {
+        static_cast<int>( 1.0 / cell_size ),
+        static_cast<int>( 1.0 / cell_size ),
+        static_cast<int>( 1.0 / cell_size ) };
 
     // All boundaries are periodic to allow the ball to keep falling.
-    std::array<bool, 3> periodic = {true, true, true};
+    std::array<bool, 3> periodic = { true, true, true };
 
     // For simplicity we will only partition in Y.
     int comm_size;
     MPI_Comm_size( MPI_COMM_WORLD, &comm_size );
-    std::array<int, 3> ranks_per_dim = {1, comm_size, 1};
+    std::array<int, 3> ranks_per_dim = { 1, comm_size, 1 };
     Cajita::ManualPartitioner partitioner( ranks_per_dim );
 
     // Material properties.
