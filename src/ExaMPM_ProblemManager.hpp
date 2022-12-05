@@ -140,9 +140,9 @@ class ProblemManager
         _mark = Cajita::createArray<double, MemorySpace>( "mark",
                                                           cell_scalar_layout );
 
-        _node_halo = Cajita::createHalo( Cajita::NodeHaloPattern<3>(), -1,
-                                         *_momentum, *_mass, *_force );
-        _node_velocity_halo =
+        _node_scatter_halo = Cajita::createHalo(
+            Cajita::NodeHaloPattern<3>(), -1, *_momentum, *_mass, *_force );
+        _node_gather_halo =
             Cajita::createHalo( Cajita::NodeHaloPattern<3>(), -1, *_velocity );
         _node_correction_halo = Cajita::createHalo(
             Cajita::NodeHaloPattern<3>(), -1, *_position_correction );
@@ -236,8 +236,9 @@ class ProblemManager
 
     void scatter( Location::Node ) const
     {
-        _node_halo->scatter( execution_space(), Cajita::ScatterReduce::Sum(),
-                             *_momentum, *_mass, *_force );
+        _node_scatter_halo->scatter( execution_space(),
+                                     Cajita::ScatterReduce::Sum(), *_momentum,
+                                     *_mass, *_force );
     }
 
     void scatter( Location::Node, Field::PositionCorrection ) const
@@ -255,7 +256,7 @@ class ProblemManager
 
     void gather( Location::Node ) const
     {
-        _node_velocity_halo->gather( execution_space(), *_velocity );
+        _node_gather_halo->gather( execution_space(), *_velocity );
     }
 
     void gather( Location::Node, Field::PositionCorrection ) const
@@ -285,8 +286,8 @@ class ProblemManager
     std::shared_ptr<node_array> _position_correction;
     std::shared_ptr<cell_array> _density;
     std::shared_ptr<cell_array> _mark;
-    std::shared_ptr<halo> _node_halo;
-    std::shared_ptr<halo> _node_velocity_halo;
+    std::shared_ptr<halo> _node_scatter_halo;
+    std::shared_ptr<halo> _node_gather_halo;
     std::shared_ptr<halo> _node_correction_halo;
     std::shared_ptr<halo> _cell_halo;
 };
