@@ -140,12 +140,14 @@ class ProblemManager
         _mark = Cajita::createArray<double, MemorySpace>( "mark",
                                                           cell_scalar_layout );
 
-        _node_vector_halo = Cajita::createHalo<double, MemorySpace>(
-            *node_vector_layout, Cajita::FullHaloPattern() );
-        _node_scalar_halo = Cajita::createHalo<double, MemorySpace>(
-            *node_scalar_layout, Cajita::FullHaloPattern() );
-        _cell_scalar_halo = Cajita::createHalo<double, MemorySpace>(
-            *cell_scalar_layout, Cajita::FullHaloPattern() );
+        _node_scatter_halo = Cajita::createHalo(
+            Cajita::NodeHaloPattern<3>(), -1, *_momentum, *_mass, *_force );
+        _node_gather_halo =
+            Cajita::createHalo( Cajita::NodeHaloPattern<3>(), -1, *_velocity );
+        _node_correction_halo = Cajita::createHalo(
+            Cajita::NodeHaloPattern<3>(), -1, *_position_correction );
+        _cell_halo = Cajita::createHalo( Cajita::NodeHaloPattern<3>(), -1,
+                                         *_density, *_mark );
     }
 
     std::size_t numParticle() const { return _particles.size(); }
@@ -232,51 +234,35 @@ class ProblemManager
         return _mark->view();
     }
 
-    void scatter( Location::Node, Field::Momentum ) const
+    void scatter( Location::Node ) const
     {
-        _node_vector_halo->scatter( execution_space(),
-                                    Cajita::ScatterReduce::Sum(), *_momentum );
-    }
-
-    void scatter( Location::Node, Field::Mass ) const
-    {
-        _node_scalar_halo->scatter( execution_space(),
-                                    Cajita::ScatterReduce::Sum(), *_mass );
-    }
-
-    void scatter( Location::Node, Field::Force ) const
-    {
-        _node_vector_halo->scatter( execution_space(),
-                                    Cajita::ScatterReduce::Sum(), *_force );
+        _node_scatter_halo->scatter( execution_space(),
+                                     Cajita::ScatterReduce::Sum(), *_momentum,
+                                     *_mass, *_force );
     }
 
     void scatter( Location::Node, Field::PositionCorrection ) const
     {
-        _node_vector_halo->scatter( execution_space(),
-                                    Cajita::ScatterReduce::Sum(),
-                                    *_position_correction );
+        _node_correction_halo->scatter( execution_space(),
+                                        Cajita::ScatterReduce::Sum(),
+                                        *_position_correction );
     }
 
-    void scatter( Location::Cell, Field::Density ) const
+    void scatter( Location::Cell ) const
     {
-        _cell_scalar_halo->scatter( execution_space(),
-                                    Cajita::ScatterReduce::Sum(), *_density );
+        _cell_halo->scatter( execution_space(), Cajita::ScatterReduce::Sum(),
+                             *_density, *_mark );
     }
 
-    void scatter( Location::Cell, Field::Mark ) const
+    void gather( Location::Node ) const
     {
-        _cell_scalar_halo->scatter( execution_space(),
-                                    Cajita::ScatterReduce::Sum(), *_mark );
-    }
-
-    void gather( Location::Node, Field::Velocity ) const
-    {
-        _node_vector_halo->gather( execution_space(), *_velocity );
+        _node_gather_halo->gather( execution_space(), *_velocity );
     }
 
     void gather( Location::Node, Field::PositionCorrection ) const
     {
-        _node_vector_halo->gather( execution_space(), *_position_correction );
+        _node_correction_halo->gather( execution_space(),
+                                       *_position_correction );
     }
 
     void communicateParticles( const int minimum_halo_width )
@@ -300,9 +286,10 @@ class ProblemManager
     std::shared_ptr<node_array> _position_correction;
     std::shared_ptr<cell_array> _density;
     std::shared_ptr<cell_array> _mark;
-    std::shared_ptr<halo> _node_vector_halo;
-    std::shared_ptr<halo> _node_scalar_halo;
-    std::shared_ptr<halo> _cell_scalar_halo;
+    std::shared_ptr<halo> _node_scatter_halo;
+    std::shared_ptr<halo> _node_gather_halo;
+    std::shared_ptr<halo> _node_correction_halo;
+    std::shared_ptr<halo> _cell_halo;
 };
 
 //---------------------------------------------------------------------------//
