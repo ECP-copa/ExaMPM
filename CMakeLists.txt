@@ -16,7 +16,7 @@ if( NOT Cabana_ENABLE_CAJITA )
 endif()
 
 # find Clang Format
-find_package( CLANG_FORMAT 10 )
+find_package( CLANG_FORMAT 14 )
 
 # library
 add_subdirectory(src)
