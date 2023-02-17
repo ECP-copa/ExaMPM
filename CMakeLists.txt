@@ -1,7 +1,8 @@
 # project settings
 cmake_minimum_required(VERSION 3.12)
 
-project(ExaMPM LANGUAGES CXX VERSION 0.1.0)
+# C only for Cabana HDF5 workaround.
+project(ExaMPM LANGUAGES CXX C VERSION 0.1.0)
 
 include(GNUInstallDirs)
 
