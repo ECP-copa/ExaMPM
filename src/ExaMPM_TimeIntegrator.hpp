@@ -14,6 +14,7 @@
 
 #include <ExaMPM_BoundaryConditions.hpp>
 #include <ExaMPM_ProblemManager.hpp>
+#include <ExaMPM_TimeStepControl.hpp>
 #include <ExaMPM_VelocityInterpolation.hpp>
 
 #include <Cajita.hpp>
@@ -361,10 +362,14 @@ void step( const ExecutionSpace& exec_space, const ProblemManagerType& pm,
            const double delta_t, const double gravity,
            const BoundaryCondition& bc )
 {
+    // fixed timesteps is guaranteed only when sufficently low delta_t does not
+    // violates CFL condition. This sufficiently low delta_t would be a max_dt
+    // that guarantees the fixed timestpes without violoating CFL condition
+    double new_dt = TimeStepControl::timeStepControl( exec_space, pm, delta_t );
     p2g( exec_space, pm );
-    fieldSolve( exec_space, pm, delta_t, gravity, bc );
-    g2p( exec_space, pm, delta_t );
-    correctParticlePositions( exec_space, pm, delta_t, bc );
+    fieldSolve( exec_space, pm, new_dt, gravity, bc );
+    g2p( exec_space, pm, new_dt );
+    correctParticlePositions( exec_space, pm, new_dt, bc );
 }
 
 //---------------------------------------------------------------------------//

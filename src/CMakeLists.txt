@@ -6,6 +6,7 @@ set(HEADERS
   ExaMPM_ProblemManager.hpp
   ExaMPM_Solver.hpp
   ExaMPM_TimeIntegrator.hpp
+  ExaMPM_TimeStepControl.hpp
   ExaMPM_Types.hpp
   ExaMPM_VelocityInterpolation.hpp
   )
