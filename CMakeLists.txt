@@ -1,7 +1,8 @@
 # project settings
 cmake_minimum_required(VERSION 3.12)
 
-project(ExaMPM LANGUAGES CXX VERSION 0.1.0)
+# C only for Cabana HDF5 workaround.
+project(ExaMPM LANGUAGES CXX C VERSION 0.1.0)
 
 include(GNUInstallDirs)
 
@@ -16,7 +17,7 @@ if( NOT Cabana_ENABLE_CAJITA )
 endif()
 
 # find Clang Format
-find_package( CLANG_FORMAT 10 )
+find_package( CLANG_FORMAT 14 )
 
 # library
 add_subdirectory(src)

@@ -71,13 +71,8 @@ class Solver : public SolverBase
 
     void solve( const double t_final, const int write_freq ) override
     {
-#ifdef Cabana_ENABLE_SILO
-        Cajita::Experimental::SiloParticleOutput::writeTimeStep(
-            "particles", _mesh->localGrid()->globalGrid(), 0, 0.0,
-            _pm->get( Location::Particle(), Field::Position() ),
-            _pm->get( Location::Particle(), Field::Velocity() ),
-            _pm->get( Location::Particle(), Field::J() ) );
-#endif
+        // Output initial state.
+        outputParticles( 0, 0.0 );
 
         int num_step = t_final / _dt;
         double delta_t = t_final / num_step;
@@ -92,17 +87,34 @@ class Solver : public SolverBase
 
             _pm->communicateParticles( _halo_min );
 
+            // Output particles periodically.
             if ( 0 == ( t + 1 ) % write_freq )
-#ifdef Cabana_ENABLE_SILO
-                Cajita::Experimental::SiloParticleOutput::writeTimeStep(
-                    "particles", _mesh->localGrid()->globalGrid(), t + 1, time,
-                    _pm->get( Location::Particle(), Field::Position() ),
-                    _pm->get( Location::Particle(), Field::Velocity() ),
-                    _pm->get( Location::Particle(), Field::J() ) );
-#endif
+                outputParticles( t + 1, time );
 
             time += delta_t;
         }
+    }
+
+    void outputParticles( const int step, const double time )
+    {
+        // Prefer HDF5 output over Silo. Only output if one is enabled.
+#ifdef Cabana_ENABLE_HDF5
+        Cabana::Experimental::HDF5ParticleOutput::HDF5Config h5_config;
+        Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
+            h5_config, "particles", _mesh->localGrid()->globalGrid().comm(),
+            step, time, _pm->numParticle(),
+            _pm->get( Location::Particle(), Field::Position() ),
+            _pm->get( Location::Particle(), Field::Velocity() ),
+            _pm->get( Location::Particle(), Field::J() ) );
+#else
+#ifdef Cabana_ENABLE_SILO
+        Cajita::Experimental::SiloParticleOutput::writeTimeStep(
+            "particles", _mesh->localGrid()->globalGrid(), step, time,
+            _pm->get( Location::Particle(), Field::Position() ),
+            _pm->get( Location::Particle(), Field::Velocity() ),
+            _pm->get( Location::Particle(), Field::J() ) );
+#endif
+#endif
     }
 
   private:
