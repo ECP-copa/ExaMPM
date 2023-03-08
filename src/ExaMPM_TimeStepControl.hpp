@@ -22,10 +22,9 @@
 
 namespace ExaMPM
 {
-namespace TimeStepControl
-{
+
 //---------------------------------------------------------------------------//
-// GlobalTimeStep
+// Find minimum timestep across MPI ranks.
 double updateGlobalTimestep( const double current_dt,
                              const double local_min_dt )
 {
@@ -125,20 +124,20 @@ double maxVelocity( ExecutionSpace, const ProblemManagerType& pm,
     return updateGlobalTimestep( current_dt, min_dt );
 }
 
+// Set new restricted timestep based on CFL and maximum velocity critera
+// Note this will return the user-specified timestep if it is below the
+// restictions.
 template <class ExecutionSpace, class ProblemManagerType>
 double timeStepControl( const ExecutionSpace& exec_space,
                         const ProblemManagerType& pm, const double current_dt,
                         const double cfl = 0.5 )
 {
-    double momentum_cfl_dt = momentumCFL<ExecutionSpace, ProblemManagerType>(
-        exec_space, pm, current_dt, cfl );
+    double momentum_cfl_dt = momentumCFL( exec_space, pm, current_dt, cfl );
     double max_velocity_dt = maxVelocity( exec_space, pm, current_dt, cfl );
 
     return std::min( { momentum_cfl_dt, max_velocity_dt } );
 }
-//---------------------------------------------------------------------------//
 
-} // end namespace TimeStepControl
 } // end namespace ExaMPM
 
 #endif // EXAMPM_TIMESTEPCONTROL_HPP
