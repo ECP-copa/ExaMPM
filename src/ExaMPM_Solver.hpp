@@ -80,7 +80,7 @@ class Solver : public SolverBase
         for ( int t = 0; t < num_step; ++t )
         {
             if ( 0 == _rank && 0 == t % write_freq )
-                printf( "Step %d / %d\n", t + 1, num_step );
+                printf( "Step %d / %d\n", t, num_step );
 
             TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity,
                                   _bc );
@@ -88,7 +88,7 @@ class Solver : public SolverBase
             _pm->communicateParticles( _halo_min );
 
             // Output particles periodically.
-            if ( 0 == t % write_freq )
+            if ( 0 == ( t + 1 ) % write_freq )
                 outputParticles( t + 1, time );
 
             time += delta_t;

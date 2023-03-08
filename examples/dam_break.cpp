@@ -22,7 +22,7 @@ struct ParticleInitFunc
 
     ParticleInitFunc( const double cell_size, const int ppc,
                       const double density )
-        : _volume( cell_size * cell_size * cell_size / ppc )
+        : _volume( cell_size * cell_size * cell_size / ( ppc * ppc * ppc ) )
         , _mass( _volume * density )
     {
     }
@@ -31,7 +31,7 @@ struct ParticleInitFunc
     KOKKOS_INLINE_FUNCTION bool operator()( const double x[3],
                                             ParticleType& p ) const
     {
-        if ( 0.0 <= x[0] && x[0] <= 0.4 && 0.0 <= x[1] && x[1] <= 0.4 &&
+        if ( 0.0 <= x[0] && x[0] <= 0.4 && 0.0 <= x[1] && x[1] <= 1.0 &&
              0.0 <= x[2] && x[2] <= 0.6 )
         {
             // Affine matrix.
@@ -98,7 +98,7 @@ void damBreak( const double cell_size, const int ppc, const int halo_size,
     // Gravity pulls down in z.
     double gravity = 9.81;
 
-    // Free slip conditions in X and Z.
+    // Free slip conditions (alternative: NO_SLIP)
     ExaMPM::BoundaryCondition bc;
     bc.boundary[0] = ExaMPM::BoundaryType::FREE_SLIP;
     bc.boundary[1] = ExaMPM::BoundaryType::FREE_SLIP;
@@ -121,6 +121,28 @@ int main( int argc, char* argv[] )
     MPI_Init( &argc, &argv );
 
     Kokkos::initialize( argc, argv );
+
+    // check inputs and write usage
+    if ( argc < 8 )
+    {
+        std::cerr << "Usage: ./DamBreak cell_size parts_per_cell_size "
+                     "halo_cells dt t_end write_freq device\n";
+        std::cerr << "\nwhere cell_size       edge length of a computational "
+                     "cell (domain is unit cube)\n";
+        std::cerr
+            << "      parts_per_cell  particles per cell in each direction\n";
+        std::cerr << "      halo_cells      number of halo cells\n";
+        std::cerr << "      dt              time step size\n";
+        std::cerr << "      t_end           simulation end time\n";
+        std::cerr
+            << "      write_freq      number of steps between output files\n";
+        std::cerr << "      device          compute device: serial, openmp, "
+                     "cuda, hip\n";
+        std::cerr << "\nfor example: ./DamBreak 0.05 2 0 0.001 1.0 10 serial\n";
+        Kokkos::finalize();
+        MPI_Finalize();
+        return 0;
+    }
 
     // cell size
     double cell_size = std::atof( argv[1] );
