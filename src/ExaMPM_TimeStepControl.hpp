@@ -25,12 +25,12 @@ namespace ExaMPM
 
 //---------------------------------------------------------------------------//
 // Find minimum timestep across MPI ranks.
-double updateGlobalTimestep( const double current_dt,
+double updateGlobalTimestep( MPI_Comm comm, const double current_dt,
                              const double local_min_dt )
 {
     double global_min_dt = 0.0;
     MPI_Allreduce( &local_min_dt, &global_min_dt, 1, MPI_DOUBLE, MPI_MIN,
-                   MPI_COMM_WORLD );
+                   comm );
 
     if ( global_min_dt < current_dt )
         return global_min_dt;
@@ -41,7 +41,7 @@ double updateGlobalTimestep( const double current_dt,
 //---------------------------------------------------------------------------//
 // Momentum CFL condition
 template <class ExecutionSpace, class ProblemManagerType>
-double momentumCFL( ExecutionSpace, const ProblemManagerType& pm,
+double momentumCFL( MPI_Comm comm, ExecutionSpace, const ProblemManagerType& pm,
                     const double current_dt, const double cfl )
 {
     using Kokkos::Experimental::abs;
@@ -85,13 +85,13 @@ double momentumCFL( ExecutionSpace, const ProblemManagerType& pm,
         },
         Kokkos::Min<double>( min_dt ) );
 
-    return updateGlobalTimestep( current_dt, min_dt );
+    return updateGlobalTimestep( comm, current_dt, min_dt );
 }
 
 //---------------------------------------------------------------------------//
 // Max velocity condition
 template <class ExecutionSpace, class ProblemManagerType>
-double maxVelocity( ExecutionSpace, const ProblemManagerType& pm,
+double maxVelocity( MPI_Comm comm, ExecutionSpace, const ProblemManagerType& pm,
                     const double current_dt, const double cfl )
 {
     using Kokkos::Experimental::sqrt;
@@ -121,19 +121,21 @@ double maxVelocity( ExecutionSpace, const ProblemManagerType& pm,
         },
         Kokkos::Min<double>( min_dt ) );
 
-    return updateGlobalTimestep( current_dt, min_dt );
+    return updateGlobalTimestep( comm, current_dt, min_dt );
 }
 
 // Set new restricted timestep based on CFL and maximum velocity critera
 // Note this will return the user-specified timestep if it is below the
 // restictions.
 template <class ExecutionSpace, class ProblemManagerType>
-double timeStepControl( const ExecutionSpace& exec_space,
+double timeStepControl( MPI_Comm comm, const ExecutionSpace& exec_space,
                         const ProblemManagerType& pm, const double current_dt,
                         const double cfl = 0.5 )
 {
-    double momentum_cfl_dt = momentumCFL( exec_space, pm, current_dt, cfl );
-    double max_velocity_dt = maxVelocity( exec_space, pm, current_dt, cfl );
+    double momentum_cfl_dt =
+        momentumCFL( comm, exec_space, pm, current_dt, cfl );
+    double max_velocity_dt =
+        maxVelocity( comm, exec_space, pm, current_dt, cfl );
 
     return std::min( { momentum_cfl_dt, max_velocity_dt } );
 }

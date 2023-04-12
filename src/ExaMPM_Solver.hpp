@@ -85,7 +85,8 @@ class Solver : public SolverBase
             // Fixed timestep is guaranteed only when sufficently low dt
             // does not violate the CFL condition (otherwise user-set dt is
             // really a max_dt).
-            _dt = timeStepControl( ExecutionSpace(), *_pm, _dt );
+            _dt = timeStepControl( _mesh->localGrid()->globalGrid().comm(),
+                                   ExecutionSpace(), *_pm, _dt );
 
             TimeIntegrator::step( ExecutionSpace(), *_pm, _dt, _gravity, _bc );
 
