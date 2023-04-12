@@ -16,6 +16,7 @@
 #include <ExaMPM_Mesh.hpp>
 #include <ExaMPM_ProblemManager.hpp>
 #include <ExaMPM_TimeIntegrator.hpp>
+#include <ExaMPM_TimeStepControl.hpp>
 
 #include <Cabana_Core.hpp>
 #include <Kokkos_Core.hpp>
@@ -51,6 +52,8 @@ class Solver : public SolverBase
             const double delta_t, const double gravity,
             const BoundaryCondition& bc )
         : _dt( delta_t )
+        , _time( 0.0 )
+        , _step( 0 )
         , _gravity( gravity )
         , _bc( bc )
         , _halo_min( 3 )
@@ -72,44 +75,47 @@ class Solver : public SolverBase
     void solve( const double t_final, const int write_freq ) override
     {
         // Output initial state.
-        outputParticles( 0, 0.0 );
+        outputParticles();
 
-        int num_step = t_final / _dt;
-        double delta_t = t_final / num_step;
-        double time = 0.0;
-        for ( int t = 0; t < num_step; ++t )
+        while ( _time < t_final )
         {
-            if ( 0 == _rank && 0 == t % write_freq )
-                printf( "Step %d / %d\n", t, num_step );
+            if ( 0 == _rank && 0 == _step % write_freq )
+                printf( "Time %f / %f\n", _time, t_final );
 
-            TimeIntegrator::step( ExecutionSpace(), *_pm, delta_t, _gravity,
-                                  _bc );
+            // Fixed timestep is guaranteed only when sufficently low dt
+            // does not violate the CFL condition (otherwise user-set dt is
+            // really a max_dt).
+            _dt = timeStepControl( _mesh->localGrid()->globalGrid().comm(),
+                                   ExecutionSpace(), *_pm, _dt );
+
+            TimeIntegrator::step( ExecutionSpace(), *_pm, _dt, _gravity, _bc );
 
             _pm->communicateParticles( _halo_min );
 
-            // Output particles periodically.
-            if ( 0 == ( t + 1 ) % write_freq )
-                outputParticles( t + 1, time );
+            _time += _dt;
+            _step++;
 
-            time += delta_t;
+            // Output particles periodically.
+            if ( 0 == ( _step ) % write_freq )
+                outputParticles();
         }
     }
 
-    void outputParticles( const int step, const double time )
+    void outputParticles()
     {
         // Prefer HDF5 output over Silo. Only output if one is enabled.
 #ifdef Cabana_ENABLE_HDF5
         Cabana::Experimental::HDF5ParticleOutput::HDF5Config h5_config;
         Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
             h5_config, "particles", _mesh->localGrid()->globalGrid().comm(),
-            step, time, _pm->numParticle(),
+            _step, _time, _pm->numParticle(),
             _pm->get( Location::Particle(), Field::Position() ),
             _pm->get( Location::Particle(), Field::Velocity() ),
             _pm->get( Location::Particle(), Field::J() ) );
 #else
 #ifdef Cabana_ENABLE_SILO
         Cajita::Experimental::SiloParticleOutput::writeTimeStep(
-            "particles", _mesh->localGrid()->globalGrid(), step, time,
+            "particles", _mesh->localGrid()->globalGrid(), _step, _time,
             _pm->get( Location::Particle(), Field::Position() ),
             _pm->get( Location::Particle(), Field::Velocity() ),
             _pm->get( Location::Particle(), Field::J() ) );
@@ -119,6 +125,8 @@ class Solver : public SolverBase
 
   private:
     double _dt;
+    double _time;
+    int _step;
     double _gravity;
     BoundaryCondition _bc;
     int _halo_min;
