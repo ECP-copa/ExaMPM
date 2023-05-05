@@ -56,8 +56,3 @@ jobs:
         run: |
            $HOME/exampm/bin/DamBreak 0.05 2 0 0.001 0.25 100 ${{ matrix.backend }}
            $HOME/exampm/bin/FreeFall 0.05 2 0 0.001 0.25 100 ${{ matrix.backend }}
-      - name: Format
-        working-directory: build
-        run: |
-          make format
-          git diff --exit-code
