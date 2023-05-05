@@ -49,9 +49,13 @@ jobs:
         uses: actions/checkout@v2.2.0
       - name: Build
         run: |
-          cmake -B build -DCMAKE_PREFIX_PATH="$HOME/kokkos;$HOME/Cabana"
+          cmake -B build -DCMAKE_PREFIX_PATH="$HOME/kokkos;$HOME/Cabana" -DCMAKE_INSTALL_PREFIX=$HOME/exampm
           cmake --build build --parallel 2
-          cd build && ctest --output-on-failure
+          cmake --install build
+      - name: Test ExaMPM
+        run: |
+           $HOME/exampm/bin/DamBreak 0.05 2 0 0.001 0.25 100 ${{ matrix.backend }}
+           $HOME/exampm/bin/FreeFall 0.05 2 0 0.001 0.25 100 ${{ matrix.backend }}
       - name: Format
         working-directory: build
         run: |
