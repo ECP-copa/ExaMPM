@@ -44,8 +44,8 @@ template <class ExecutionSpace, class ProblemManagerType>
 double momentumCFL( MPI_Comm comm, ExecutionSpace, const ProblemManagerType& pm,
                     const double current_dt, const double cfl )
 {
-    using Kokkos::Experimental::abs;
-    using Kokkos::Experimental::sqrt;
+    using Kokkos::abs;
+    using Kokkos::sqrt;
 
     // Get the particle data we need.
     auto m_p = pm.get( Location::Particle(), Field::Mass() );
@@ -71,14 +71,14 @@ double momentumCFL( MPI_Comm comm, ExecutionSpace, const ProblemManagerType& pm,
             double rho = m_p( p ) / v_p( p );
 
             // local wave speed
-            auto c = Kokkos::Experimental::sqrt( B / rho );
+            auto c = Kokkos::sqrt( B / rho );
 
             // local dt
             double local_dt = cfl * cell_size /
-                              ( Kokkos::Experimental::abs( u ) +
-                                Kokkos::Experimental::abs( v ) +
-                                Kokkos::Experimental::abs( w ) +
-                                c * Kokkos::Experimental::sqrt( 3.0 ) );
+                              ( Kokkos::abs( u ) +
+                                Kokkos::abs( v ) +
+                                Kokkos::abs( w ) +
+                                c * Kokkos::sqrt( 3.0 ) );
 
             if ( local_dt < local_min )
                 local_min = local_dt;
@@ -94,7 +94,7 @@ template <class ExecutionSpace, class ProblemManagerType>
 double maxVelocity( MPI_Comm comm, ExecutionSpace, const ProblemManagerType& pm,
                     const double current_dt, const double cfl )
 {
-    using Kokkos::Experimental::sqrt;
+    using Kokkos::sqrt;
 
     // Get the particle data we need.
     auto u_p = pm.get( Location::Particle(), Field::Velocity() );
