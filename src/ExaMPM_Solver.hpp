@@ -150,7 +150,8 @@ createSolver( const std::string& device, MPI_Comm comm,
               const double delta_t, const double gravity,
               const BoundaryCondition& bc )
 {
-    if ( 0 == device.compare( "serial" ) )
+    if ( 0 == device.compare( "serial" ) || 0 == device.compare( "Serial" ) ||
+         0 == device.compare( "SERIAL" ) )
     {
 #ifdef KOKKOS_ENABLE_SERIAL
         return std::make_shared<
@@ -162,7 +163,9 @@ createSolver( const std::string& device, MPI_Comm comm,
         throw std::runtime_error( "Serial Backend Not Enabled" );
 #endif
     }
-    else if ( 0 == device.compare( "openmp" ) )
+    else if ( 0 == device.compare( "openmp" ) ||
+              0 == device.compare( "OpenMP" ) ||
+              0 == device.compare( "OPENMP" ) )
     {
 #ifdef KOKKOS_ENABLE_OPENMP
         return std::make_shared<
@@ -174,7 +177,8 @@ createSolver( const std::string& device, MPI_Comm comm,
         throw std::runtime_error( "OpenMP Backend Not Enabled" );
 #endif
     }
-    else if ( 0 == device.compare( "cuda" ) )
+    else if ( 0 == device.compare( "cuda" ) || 0 == device.compare( "Cuda" ) ||
+              0 == device.compare( "CUDA" ) )
     {
 #ifdef KOKKOS_ENABLE_CUDA
         return std::make_shared<
@@ -186,7 +190,8 @@ createSolver( const std::string& device, MPI_Comm comm,
         throw std::runtime_error( "CUDA Backend Not Enabled" );
 #endif
     }
-    else if ( 0 == device.compare( "hip" ) )
+    else if ( 0 == device.compare( "hip" ) || 0 == device.compare( "Hip" ) ||
+              0 == device.compare( "HIP" ) )
     {
 #ifdef KOKKOS_ENABLE_HIP
         return std::make_shared<ExaMPM::Solver<Kokkos::Experimental::HIPSpace,

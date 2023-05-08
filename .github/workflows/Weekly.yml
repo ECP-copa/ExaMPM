@@ -1,0 +1,60 @@
+name: Weekly
+on:
+  workflow_dispatch:
+  schedule:
+    - cron:  '30 5 * * 1'
+
+jobs:
+  CI:
+    strategy:
+      matrix:
+        backend: ["OPENMP", "SERIAL"]
+        kokkos_ver: ["develop"]
+    runs-on: ubuntu-20.04
+    container: ghcr.io/ecp-copa/ci-containers/ubuntu:latest
+    steps:
+      - name: Checkout kokkos
+        uses: actions/checkout@v2.2.0
+        with:
+          repository: kokkos/kokkos
+          ref: ${{ matrix.kokkos_ver }}
+          path: kokkos
+      - name: Build kokkos
+        working-directory: kokkos
+        run: |
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=$HOME/kokkos \
+            -DKokkos_ENABLE_${{ matrix.backend }}=ON \
+            -DKokkos_ENABLE_DEPRECATED_CODE_3=OFF
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Checkout Cabana
+        uses: actions/checkout@v2.2.0
+        with:
+          repository: ECP-CoPA/Cabana
+          ref: master
+          path: cabana
+      - name: Build Cabana
+        working-directory: cabana
+        run: |
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=$HOME/Cabana \
+            -DCMAKE_PREFIX_PATH="$HOME/kokkos"
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Checkout ExaMPM
+        uses: actions/checkout@v2.2.0
+      - name: Build ExaMPM
+        run: |
+          cmake -B build \
+            -D CMAKE_CXX_FLAGS="-Wall -Wextra -pedantic -Werror" \
+            -D CMAKE_INSTALL_PREFIX=$HOME/exampm \
+            -D CMAKE_PREFIX_PATH="$HOME/Cabana" \
+            -D MPIEXEC_MAX_NUMPROCS=2 \
+            -D MPIEXEC_PREFLAGS="--oversubscribe"
+          cmake --build build --parallel 2
+          cmake --install build
+      - name: Test ExaMPM
+        run: |
+           $HOME/exampm/bin/DamBreak 0.05 2 0 0.001 0.25 100 ${{ matrix.backend }}
+           $HOME/exampm/bin/FreeFall 0.05 2 0 0.001 0.25 100 ${{ matrix.backend }}
