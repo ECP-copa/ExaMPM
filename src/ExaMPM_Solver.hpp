@@ -119,6 +119,11 @@ class Solver : public SolverBase
             _pm->get( Location::Particle(), Field::Position() ),
             _pm->get( Location::Particle(), Field::Velocity() ),
             _pm->get( Location::Particle(), Field::J() ) );
+#else
+        if ( _rank == 0 )
+            std::cout << "No particle output enabled in Cabana. Add "
+                         "Cabana_REQUIRE_HDF5=ON or Cabana_REQUIRE_SILO=ON to "
+                         "the Cabana build if needed."
 #endif
 #endif
     }
