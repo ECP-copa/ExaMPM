@@ -25,6 +25,10 @@
 #include <string>
 
 #include <mpi.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 namespace ExaMPM
 {
@@ -106,12 +110,72 @@ class Solver : public SolverBase
         // Prefer HDF5 output over Silo. Only output if one is enabled.
 #ifdef Cabana_ENABLE_HDF5
         Cabana::Experimental::HDF5ParticleOutput::HDF5Config h5_config;
+        const char* env_val = std::getenv("H5FD_SUBFILING");
+        if(env_val != NULL)
+          h5_config.subfiling = true;
         Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
             h5_config, "particles", _mesh->localGrid()->globalGrid().comm(),
             _step, _time, _pm->numParticle(),
             _pm->get( Location::Particle(), Field::Position() ),
             _pm->get( Location::Particle(), Field::Velocity() ),
             _pm->get( Location::Particle(), Field::J() ) );
+
+        if(h5_config.subfiling) {
+
+          if ( _rank == 0) {
+            pid_t pid = 0;
+            pid_t tmppid;
+            int   status;
+
+            pid = fork();
+
+            if (pid == 0) {
+
+              // stub HDF5 filename
+              std::stringstream filename_hdf5;
+              filename_hdf5 << "particles" << "_" << _step << ".h5";
+
+              // Directory containing the subfiling configuration file
+              std::stringstream config_dir;
+              if(const char* env_value = std::getenv(H5FD_SUBFILING_CONFIG_FILE_PREFIX))
+                config_dir << env_value;
+              else
+                config_dir << ".";
+
+              // Find the name of the subfiling configuration file
+              struct stat file_info;
+              stat(filename_hdf5.str().c_str(), &file_info);
+
+              char config_filename[PATH_MAX];
+              snprintf(config_filename, PATH_MAX, "%s/" H5FD_SUBFILING_CONFIG_FILENAME_TEMPLATE, config_dir.str().c_str(),
+                   filename_hdf5.str().c_str(), (uint64_t)file_info.st_ino);
+
+              // Call the h5fuse utility
+              char* args[] = { strdup("./h5fuse.sh"), strdup("-r"), strdup("-v"), strdup("-f"), config_filename, NULL};
+
+              execvp(args[0], args);
+
+            }
+            else {
+              tmppid = waitpid(pid, &status, 0);
+
+              if (WIFEXITED(status)) {
+                int ret;
+
+                if ((ret = WEXITSTATUS(status)) != 0) {
+                  printf("h5fuse process exited with error code %d\n", ret);
+                  fflush(stdout);
+                  MPI_Abort( _mesh->localGrid()->globalGrid().comm(), -1);
+                }
+              }
+              else {
+                printf("h5fuse process terminated abnormally\n");
+                fflush(stdout);
+                MPI_Abort( _mesh->localGrid()->globalGrid().comm(), -1);
+              }
+            }
+          }
+        }
 #else
 #ifdef Cabana_ENABLE_SILO
         Cajita::Experimental::SiloParticleOutput::writeTimeStep(
