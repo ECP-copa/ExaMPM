@@ -141,7 +141,6 @@ class Solver : public SolverBase
               }
 #endif
             }
-            MPI_Barrier(MPI_COMM_WORLD);
             MPI_Comm_free(&shmcomm);
           }
        }
@@ -157,8 +156,8 @@ class Solver : public SolverBase
         if(env_val != NULL)
           h5_config.subfiling = true;
 
-        // Sets the HDF5 alignment equal to the SUBFILING STRIPE SIZE
-        env_val = std::getenv("SUBFILING STRIPE SIZE");
+        // Sets the HDF5 alignment equal subfiling's stripe size
+        env_val = std::getenv("H5FD_SUBFILING_STRIPE_SIZE");
         if(env_val != NULL) {
           h5_config.align = true;
           h5_config.threshold = 0;
