@@ -25,59 +25,14 @@
 #include <string>
 
 #include <mpi.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 namespace ExaMPM
 {
 int nfork;
-
-struct timer_statsinfo {
-  double min;
-  double max;
-  double mean;
-  double std;
-};
-
-    timer_statsinfo io_stats;
-
-    // Collect statistics of timers on all ranks
-    // timer    - elapsed time for rank
-    // comm     - communicator for collecting stats
-    // destrank - the rank to which to collect stats
-    // stats    - pointer to timer stats
-    //
-
-    void timer_stats(double timer, MPI_Comm comm, int destrank, timer_statsinfo *stats)
-    {
-    int rank, nprocs, i;
-    double *rtimers=NULL;    /* All timers from ranks */
-
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &nprocs);
-    if(rank == destrank)  {
-      rtimers = (double *) malloc(nprocs*sizeof(double));
-      stats->mean = 0.;
-      stats->min = timer;
-      stats->max = timer;
-      stats->std = 0.f;
-    }
-    MPI_Gather(&timer, 1, MPI_DOUBLE, rtimers, 1, MPI_DOUBLE, destrank, comm);
-    if(rank == destrank) {
-      for(i = 0; i < nprocs; i++) {
-        if(rtimers[i] > stats->max)  stats->max = rtimers[i];
-        if(rtimers[i] < stats->min)  stats->min = rtimers[i];
-        stats->mean += rtimers[i];
-      }
-      stats->mean /= nprocs;
-      for(i = 0; i < nprocs; i++)
-        stats->std += (rtimers[i]-stats->mean)*(rtimers[i]-stats->mean);
-      stats->std = sqrt(stats->std / nprocs);
-      free(rtimers);
-    }
-    }
 
 //---------------------------------------------------------------------------//
 class SolverBase
@@ -127,12 +82,14 @@ class Solver : public SolverBase
     {
         // Output initial state.
         outputParticles();
-        
 
         while ( _time < t_final )
         {
             if ( 0 == _rank && 0 == _step % write_freq )
-                printf( "Time %12.5e / %12.5e [iostats (s), mean min max: %12.5e %12.5e %12.5e] \n", _time, t_final, io_stats.mean, io_stats.min, io_stats.max );
+                printf( "Time %12.5e / %12.5e [iostats, mean min max (s): "
+                        "%12.5e %12.5e %12.5e] \n",
+                        _time, t_final, io_stats.mean, io_stats.min,
+                        io_stats.max );
 
             // Fixed timestep is guaranteed only when sufficently low dt
             // does not violate the CFL condition (otherwise user-set dt is
@@ -151,59 +108,33 @@ class Solver : public SolverBase
             if ( 0 == ( _step ) % write_freq )
                 outputParticles();
         }
-        
-        const char* env_val = std::getenv("H5FUSE");
-        if(env_val != NULL) {
-          
-            MPI_Comm shmcomm;
-            MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-                   MPI_INFO_NULL, &shmcomm);
 
-            int shmrank;
-            MPI_Comm_rank(shmcomm, &shmrank);
+        // Wait for all the h5fuse processes to complete
+        if ( shmrank == 0 )
+        {
             int status;
-            if ( shmrank == 0) {
-
-              for (int i = 0; i < nfork; i++) {
-                waitpid(-1, &status, 0);
-                if (WIFEXITED(status)) {
+            for ( int i = 0; i < nfork; i++ )
+            {
+                waitpid( -1, &status, 0 );
+                if ( WIFEXITED( status ) )
+                {
                     int ret;
-
-                    if ((ret = WEXITSTATUS(status)) != 0) {
-                        printf("h5fuse process exited with error code %d\n", ret);
-                        fflush(stdout);
-                        MPI_Abort(MPI_COMM_WORLD, -1);
+                    if ( ( ret = WEXITSTATUS( status ) ) != 0 )
+                    {
+                        printf( "h5fuse process exited with error code %d\n",
+                                ret );
+                        fflush( stdout );
+                        MPI_Abort( MPI_COMM_WORLD, -1 );
                     }
                 }
-                else {
-                    printf("h5fuse process terminated abnormally\n");
-                    fflush(stdout);
-                    MPI_Abort(MPI_COMM_WORLD, -1);
-                } 
-
-              }
-#if 0
-              while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-                if (WIFEXITED(status)) {
-                    int ret;
-
-                    if ((ret = WEXITSTATUS(status)) != 0) {
-                        printf("h5fuse process exited with error code %d\n", ret);
-                        fflush(stdout);
-                        MPI_Abort(MPI_COMM_WORLD, -1);
-                    }
+                else
+                {
+                    printf( "h5fuse process terminated abnormally\n" );
+                    fflush( stdout );
+                    MPI_Abort( MPI_COMM_WORLD, -1 );
                 }
-                else {
-                    printf("h5fuse process terminated abnormally\n");
-                    fflush(stdout);
-                    MPI_Abort(MPI_COMM_WORLD, -1);
-                } 
-              }
-#endif
             }
-            MPI_Comm_free(&shmcomm);
-       }
-
+        }
     }
 
     void outputParticles()
@@ -211,20 +142,21 @@ class Solver : public SolverBase
         // Prefer HDF5 output over Silo. Only output if one is enabled.
 #ifdef Cabana_ENABLE_HDF5
         Cabana::Experimental::HDF5ParticleOutput::HDF5Config h5_config;
-        const char* env_val = std::getenv("H5FD_SUBFILING");
-        if(env_val != NULL)
-          h5_config.subfiling = true;
+        const char* env_val = std::getenv( "H5FD_SUBFILING" );
+        if ( env_val != NULL )
+            h5_config.subfiling = true;
 
         // Sets the HDF5 alignment equal subfiling's stripe size
-        env_val = std::getenv("H5FD_SUBFILING_STRIPE_SIZE");
-        if(env_val != NULL) {
-          h5_config.align = true;
-          h5_config.threshold = 0;
-          h5_config.alignment = std::atoi(env_val);
-        } 
-        
-        double t1, t2; 
-        t1 = MPI_Wtime(); 
+        env_val = std::getenv( "H5FD_SUBFILING_STRIPE_SIZE" );
+        if ( env_val != NULL )
+        {
+            h5_config.align = true;
+            h5_config.threshold = 0;
+            h5_config.alignment = std::atoi( env_val );
+        }
+
+        double t1, t2;
+        t1 = MPI_Wtime();
         Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
             h5_config, "particles", _mesh->localGrid()->globalGrid().comm(),
             _step, _time, _pm->numParticle(),
@@ -232,153 +164,65 @@ class Solver : public SolverBase
             _pm->get( Location::Particle(), Field::Velocity() ),
             _pm->get( Location::Particle(), Field::J() ) );
         t2 = MPI_Wtime();
-        timer_stats(t2-t1, MPI_COMM_WORLD, 0, &io_stats);
-#if 1
-        env_val = std::getenv("H5FUSE");
-        if(env_val != NULL) {
-      
-        if(h5_config.subfiling) {
+        timer_stats( t2 - t1, MPI_COMM_WORLD, 0, &io_stats );
 
-          MPI_Comm shmcomm;
-          MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-                 MPI_INFO_NULL, &shmcomm);
+        env_val = std::getenv( "H5FUSE" );
+        if ( env_val != NULL )
+        {
+            if ( h5_config.subfiling )
+            {
 
-          int shmrank;
-          MPI_Comm_rank(shmcomm, &shmrank);
+                MPI_Comm shmcomm;
+                MPI_Comm_split_type( MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
+                                     MPI_INFO_NULL, &shmcomm );
 
-          if ( shmrank == 0) {
-             pid_t pid = 0;
-             //pid_t tmppid;
-             int   status;
-             //std::cout << "DOING OUTPUT " << _rank << std::endl;
-             //signal(SIGHUP, SIG_IGN);
-             //not interested in its childs, prevent zombies 
-             //signal(SIGCHLD, SIG_IGN);
-             //signal(SIGQUIT, SIG_IGN);
+                MPI_Comm_rank( shmcomm, &shmrank );
 
-             pid = fork();
-             nfork++;
-             if (pid == 0) {
-              std::stringstream filename_hdf5;
-              filename_hdf5 << "particles" << "_" << _step << ".h5";
+                // One rank from each node executes h5fuse.sh
 
-              // Directory containing the subfiling configuration file
-              std::stringstream config_dir;
-              if(const char* env_value = std::getenv(H5FD_SUBFILING_CONFIG_FILE_PREFIX))
-                config_dir << env_value;
-              else
-                config_dir << ".";
-              // Find the name of the subfiling configuration file
-              struct stat file_info;
-              stat(filename_hdf5.str().c_str(), &file_info);
+                if ( shmrank == 0 )
+                {
+                    pid_t pid = 0;
+                    int status;
 
-              char config_filename[PATH_MAX];
-              snprintf(config_filename, PATH_MAX, "%s/" H5FD_SUBFILING_CONFIG_FILENAME_TEMPLATE, config_dir.str().c_str(),
-                   filename_hdf5.str().c_str(), (uint64_t)file_info.st_ino);
+                    pid = fork();
+                    nfork++;
+                    if ( pid == 0 )
+                    {
+                        std::stringstream filename_hdf5;
+                        filename_hdf5 << "particles"
+                                      << "_" << _step << ".h5";
 
-              // Call the h5fuse utility
-              char* args[] = { strdup("./h5fuse.sh"), strdup("-r"), strdup("-f"), config_filename, NULL};
-              //char* args[] = { strdup("./h5fuse.sh"), strdup("-r"), strdup("-v"), strdup("-f"), config_filename, NULL};
+                        // Directory containing the subfiling configuration file
+                        std::stringstream config_dir;
+                        if ( const char* env_value = std::getenv(
+                                 H5FD_SUBFILING_CONFIG_FILE_PREFIX ) )
+                            config_dir << env_value;
+                        else
+                            config_dir << ".";
+                        // Find the name of the subfiling configuration file
+                        struct stat file_info;
+                        stat( filename_hdf5.str().c_str(), &file_info );
 
-              execvp(args[0], args);
-              //exit(0);
+                        char config_filename[PATH_MAX];
+                        snprintf( config_filename, PATH_MAX,
+                                  "%s/" H5FD_SUBFILING_CONFIG_FILENAME_TEMPLATE,
+                                  config_dir.str().c_str(),
+                                  filename_hdf5.str().c_str(),
+                                  (uint64_t)file_info.st_ino );
 
-#if 0
-             //  char *tmp_filename;
-               char *args[7];
+                        // Call the h5fuse utility
+                        // Removes the subfiles in the process
+                        char* args[] = { strdup( "./h5fuse.sh" ),
+                                         strdup( "-r" ), strdup( "-f" ),
+                                         config_filename, NULL };
 
-            //tmp_filename = (char *)malloc(PATH_MAX);
-
-            /* Generate name for configuration file */
-            //HDsnprintf(tmp_filename, PATH_MAX, "%s/" H5FD_SUBFILING_CONFIG_FILENAME_TEMPLATE, config_dir,
-            //           SUBF_FILENAME, file_inode);
-            args[0] = strdup("ls");
-            args[1] = strdup("-l");
-            args[2] = NULL;
-            execvp("ls", args);
-#endif
-        }
-#if 0
-        else {
-            //tmppid = waitpid(pid, &status, WNOHANG);
-            waitpid(pid, &status, 0);
-            if (WIFEXITED(status)) {
-                int ret;
-
-                if ((ret = WEXITSTATUS(status)) != 0) {
-                    printf("h5fuse process exited with error code %d\n", ret);
-                    fflush(stdout);
-                    MPI_Abort(MPI_COMM_WORLD, -1);
+                        execvp( args[0], args );
+                    }
                 }
-            }
-            else {
-                printf("h5fuse process terminated abnormally\n");
-                fflush(stdout);
-                MPI_Abort(MPI_COMM_WORLD, -1);
+                MPI_Comm_free( &shmcomm );
             }
         }
-#endif
-       }
-}
-}
-#endif  
-#if 0
-            pid_t tmppid;
-            int   status;
-
-            pid_t pid = fork();
-            if (pid == -1) {
-                perror("fork");
-                exit(EXIT_FAILURE);
-            }
-#endif
-#if 0
-            if (pid == 0) {
-              // stub HDF5 filename
-              std::stringstream filename_hdf5;
-              filename_hdf5 << "particles" << "_" << _step << ".h5";
-
-              // Directory containing the subfiling configuration file
-              std::stringstream config_dir;
-              if(const char* env_value = std::getenv(H5FD_SUBFILING_CONFIG_FILE_PREFIX))
-                config_dir << env_value;
-              else
-                config_dir << ".";
-              // Find the name of the subfiling configuration file
-              struct stat file_info;
-              stat(filename_hdf5.str().c_str(), &file_info);
-
-              char config_filename[PATH_MAX];
-              snprintf(config_filename, PATH_MAX, "%s/" H5FD_SUBFILING_CONFIG_FILENAME_TEMPLATE, config_dir.str().c_str(),
-                   filename_hdf5.str().c_str(), (uint64_t)file_info.st_ino);
-
-              // Call the h5fuse utility
-              char* args[] = { strdup("./h5fuse.sh"), strdup("-r"), strdup("-v"), strdup("-f"), config_filename, NULL};
-
-              execvp(args[0], args);
-            }
-            else {
-              tmppid = waitpid(pid, &status, 0);
-
-              if (WIFEXITED(status)) {
-                int ret;
-
-                if ((ret = WEXITSTATUS(status)) != 0) {
-                  printf("h5fuse process exited with error code %d\n", ret);
-                  fflush(stdout);
-                  MPI_Abort( _mesh->localGrid()->globalGrid().comm(), -1);
-                }
-              }
-              else {
-                printf("h5fuse process terminated abnormally\n");
-                fflush(stdout);
-                MPI_Abort( _mesh->localGrid()->globalGrid().comm(), -1);
-              }
-            }
-#endif
-//          }
-//        }
-//#endif
 #else
 #ifdef Cabana_ENABLE_SILO
         Cajita::Experimental::SiloParticleOutput::writeTimeStep(
@@ -405,7 +249,61 @@ class Solver : public SolverBase
     std::shared_ptr<Mesh<MemorySpace>> _mesh;
     std::shared_ptr<ProblemManager<MemorySpace>> _pm;
     int _rank;
+    int shmrank;
 
+    struct timer_statsinfo
+    {
+        double min;
+        double max;
+        double mean;
+        double std;
+    };
+
+    timer_statsinfo io_stats;
+
+    // Collect statistics of timers on all ranks
+    // timer    - elapsed time for rank
+    // comm     - communicator for collecting stats
+    // destrank - the rank to which to collect stats
+    // stats    - pointer to timer stats
+    //
+
+    void timer_stats( double timer, MPI_Comm comm, int destrank,
+                      timer_statsinfo* stats )
+    {
+        int rank, nprocs, i;
+        double* rtimers = NULL; /* All timers from ranks */
+
+        MPI_Comm_rank( comm, &rank );
+        MPI_Comm_size( comm, &nprocs );
+        if ( rank == destrank )
+        {
+            rtimers = (double*)malloc( nprocs * sizeof( double ) );
+            stats->mean = 0.;
+            stats->min = timer;
+            stats->max = timer;
+            stats->std = 0.f;
+        }
+        MPI_Gather( &timer, 1, MPI_DOUBLE, rtimers, 1, MPI_DOUBLE, destrank,
+                    comm );
+        if ( rank == destrank )
+        {
+            for ( i = 0; i < nprocs; i++ )
+            {
+                if ( rtimers[i] > stats->max )
+                    stats->max = rtimers[i];
+                if ( rtimers[i] < stats->min )
+                    stats->min = rtimers[i];
+                stats->mean += rtimers[i];
+            }
+            stats->mean /= nprocs;
+            for ( i = 0; i < nprocs; i++ )
+                stats->std +=
+                    ( rtimers[i] - stats->mean ) * ( rtimers[i] - stats->mean );
+            stats->std = sqrt( stats->std / nprocs );
+            free( rtimers );
+        }
+    }
 };
 
 //---------------------------------------------------------------------------//
