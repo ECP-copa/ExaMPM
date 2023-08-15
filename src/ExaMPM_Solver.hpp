@@ -33,6 +33,52 @@
 namespace ExaMPM
 {
 int nfork;
+
+struct timer_statsinfo {
+  double min;
+  double max;
+  double mean;
+  double std;
+};
+
+    timer_statsinfo io_stats;
+
+    // Collect statistics of timers on all ranks
+    // timer    - elapsed time for rank
+    // comm     - communicator for collecting stats
+    // destrank - the rank to which to collect stats
+    // stats    - pointer to timer stats
+    //
+
+    void timer_stats(double timer, MPI_Comm comm, int destrank, timer_statsinfo *stats)
+    {
+    int rank, nprocs, i;
+    double *rtimers=NULL;    /* All timers from ranks */
+
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &nprocs);
+    if(rank == destrank)  {
+      rtimers = (double *) malloc(nprocs*sizeof(double));
+      stats->mean = 0.;
+      stats->min = timer;
+      stats->max = timer;
+      stats->std = 0.f;
+    }
+    MPI_Gather(&timer, 1, MPI_DOUBLE, rtimers, 1, MPI_DOUBLE, destrank, comm);
+    if(rank == destrank) {
+      for(i = 0; i < nprocs; i++) {
+        if(rtimers[i] > stats->max)  stats->max = rtimers[i];
+        if(rtimers[i] < stats->min)  stats->min = rtimers[i];
+        stats->mean += rtimers[i];
+      }
+      stats->mean /= nprocs;
+      for(i = 0; i < nprocs; i++)
+        stats->std += (rtimers[i]-stats->mean)*(rtimers[i]-stats->mean);
+      stats->std = sqrt(stats->std / nprocs);
+      free(rtimers);
+    }
+    }
+
 //---------------------------------------------------------------------------//
 class SolverBase
 {
@@ -81,11 +127,12 @@ class Solver : public SolverBase
     {
         // Output initial state.
         outputParticles();
+        
 
         while ( _time < t_final )
         {
             if ( 0 == _rank && 0 == _step % write_freq )
-                printf( "Time %12.5e / %12.5e\n", _time, t_final );
+                printf( "Time %12.5e / %12.5e [iostats (s), mean min max: %12.5e %12.5e %12.5e] \n", _time, t_final, io_stats.mean, io_stats.min, io_stats.max );
 
             // Fixed timestep is guaranteed only when sufficently low dt
             // does not violate the CFL condition (otherwise user-set dt is
@@ -104,12 +151,10 @@ class Solver : public SolverBase
             if ( 0 == ( _step ) % write_freq )
                 outputParticles();
         }
-        Cabana::Experimental::HDF5ParticleOutput::HDF5Config h5_config;
+        
         const char* env_val = std::getenv("H5FUSE");
         if(env_val != NULL) {
-
-          if(h5_config.subfiling) {
-
+          
             MPI_Comm shmcomm;
             MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
                    MPI_INFO_NULL, &shmcomm);
@@ -118,9 +163,24 @@ class Solver : public SolverBase
             MPI_Comm_rank(shmcomm, &shmrank);
             int status;
             if ( shmrank == 0) {
-              //pid_t pid;
+
               for (int i = 0; i < nfork; i++) {
-                waitpid(-1, NULL, 0);
+                waitpid(-1, &status, 0);
+                if (WIFEXITED(status)) {
+                    int ret;
+
+                    if ((ret = WEXITSTATUS(status)) != 0) {
+                        printf("h5fuse process exited with error code %d\n", ret);
+                        fflush(stdout);
+                        MPI_Abort(MPI_COMM_WORLD, -1);
+                    }
+                }
+                else {
+                    printf("h5fuse process terminated abnormally\n");
+                    fflush(stdout);
+                    MPI_Abort(MPI_COMM_WORLD, -1);
+                } 
+
               }
 #if 0
               while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
@@ -142,7 +202,6 @@ class Solver : public SolverBase
 #endif
             }
             MPI_Comm_free(&shmcomm);
-          }
        }
 
     }
@@ -163,13 +222,17 @@ class Solver : public SolverBase
           h5_config.threshold = 0;
           h5_config.alignment = std::atoi(env_val);
         } 
-
+        
+        double t1, t2; 
+        t1 = MPI_Wtime(); 
         Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
             h5_config, "particles", _mesh->localGrid()->globalGrid().comm(),
             _step, _time, _pm->numParticle(),
             _pm->get( Location::Particle(), Field::Position() ),
             _pm->get( Location::Particle(), Field::Velocity() ),
             _pm->get( Location::Particle(), Field::J() ) );
+        t2 = MPI_Wtime();
+        timer_stats(t2-t1, MPI_COMM_WORLD, 0, &io_stats);
 #if 1
         env_val = std::getenv("H5FUSE");
         if(env_val != NULL) {
@@ -342,6 +405,7 @@ class Solver : public SolverBase
     std::shared_ptr<Mesh<MemorySpace>> _mesh;
     std::shared_ptr<ProblemManager<MemorySpace>> _pm;
     int _rank;
+
 };
 
 //---------------------------------------------------------------------------//
