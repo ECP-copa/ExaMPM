@@ -119,21 +119,25 @@ void damBreak( const double cell_size, const int ppc, const int halo_size,
 int main( int argc, char* argv[] )
 {
 
-  const char* env_val = std::getenv("H5FD_SUBFILING");
-  if(env_val != NULL) {
-    int mpi_thread_required = MPI_THREAD_MULTIPLE;
-    int mpi_thread_provided = 0;
+    // enable the use of subfiling by setting enviroment H5FD_SUBFILING
+    const char* env_val = std::getenv( "H5FD_SUBFILING" );
+    if ( env_val != NULL )
+    {
+        int mpi_thread_required = MPI_THREAD_MULTIPLE;
+        int mpi_thread_provided = 0;
 
-    // HDF5 Subfiling VFD requires MPI_Init_thread with MPI_THREAD_MULTIPLE
+        // HDF5 Subfiling VFD requires MPI_Init_thread with MPI_THREAD_MULTIPLE
 
-    MPI_Init_thread(&argc, &argv, mpi_thread_required, &mpi_thread_provided);
-    if (mpi_thread_provided < mpi_thread_required) {
-        printf("MPI_THREAD_MULTIPLE not supported\n");
-        MPI_Abort(MPI_COMM_WORLD, -1);
+        MPI_Init_thread( &argc, &argv, mpi_thread_required,
+                         &mpi_thread_provided );
+        if ( mpi_thread_provided < mpi_thread_required )
+        {
+            printf( "MPI_THREAD_MULTIPLE not supported\n" );
+            MPI_Abort( MPI_COMM_WORLD, -1 );
+        }
     }
-  }
-  else
-    MPI_Init( &argc, &argv );
+    else
+        MPI_Init( &argc, &argv );
 
     Kokkos::initialize( argc, argv );
 

@@ -166,6 +166,9 @@ class Solver : public SolverBase
         t2 = MPI_Wtime();
         timer_stats( t2 - t1, MPI_COMM_WORLD, 0, &io_stats );
 
+        // Setting enviroment H5FUSE enables fusing the subfiles into
+        // an HDF5 file. Assumes h5fuse.sh is in the same directory
+        // as the executable.
         env_val = std::getenv( "H5FUSE" );
         if ( env_val != NULL )
         {
