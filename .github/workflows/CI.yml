@@ -11,6 +11,9 @@ on:
 
 jobs:
   CI:
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
         distro: ['ubuntu:latest']
