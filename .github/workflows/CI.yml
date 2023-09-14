@@ -11,10 +11,33 @@ on:
 
 jobs:
   CI:
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
         distro: ['ubuntu:latest']
         backend: ["SERIAL", "OPENMP"]
+        output: ['HDF5']
+        include:
+          - distro: 'ubuntu:latest'
+            cxx: 'g++'
+            backend: 'SERIAL'
+            cmake_build_type: 'Debug'
+            kokkos_ver: '3.6.01'
+            output: 'SILO'
+          - distro: 'ubuntu:latest'
+            cxx: 'g++'
+            backend: 'SERIAL'
+            cmake_build_type: 'Debug'
+            kokkos_ver: '3.6.01'
+            output: 'NONE'
+          - distro: 'ubuntu:latest'
+            cxx: 'g++'
+            backend: 'SERIAL'
+            cmake_build_type: 'Debug'
+            kokkos_ver: '3.6.01'
+            output: 'BOTH'
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ecp-copa/ci-containers/${{ matrix.distro }}
@@ -37,12 +60,26 @@ jobs:
         uses: actions/checkout@v2.2.0
         with:
           repository: ECP-copa/Cabana
-          ref: master
+          # This version is post-release 0.5
+          ref: a592efaadadeae2475c7e72efe3f62bf4f1fd3bd
           path: Cabana
       - name: Build Cabana
         working-directory: Cabana
         run: |
-          cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/Cabana -DCMAKE_PREFIX_PATH="$HOME/kokkos" -DCabana_REQUIRE_${{ matrix.backend }}=ON
+          if [[ ${{ matrix.output }} == 'HDF5' ]]; then
+            cabana_cmake_opts+=( -DCabana_REQUIRE_HDF5=ON -DCMAKE_DISABLE_FIND_PACKAGE_SILO=ON )
+          elif [[ ${{ matrix.output }} == 'SILO' ]]; then
+            cabana_cmake_opts+=( -DCabana_REQUIRE_SILO=ON -DCMAKE_DISABLE_FIND_PACKAGE_HDF5=ON )
+          elif [[ ${{ matrix.output }} == 'BOTH' ]]; then
+            cabana_cmake_opts+=( -DCabana_REQUIRE_SILO=ON -DCabana_REQUIRE_HDF5=ON )
+          else
+            cabana_cmake_opts+=( -DCMAKE_DISABLE_FIND_PACKAGE_SILO=ON -DCMAKE_DISABLE_FIND_PACKAGE_HDF5=ON )
+          fi
+          cmake -B build \
+            -DCMAKE_INSTALL_PREFIX=$HOME/Cabana \
+            -DCMAKE_PREFIX_PATH="$HOME/kokkos" \
+            -DCabana_REQUIRE_${{ matrix.backend }}=ON \
+            ${cabana_cmake_opts[@]}
           cmake --build build --parallel 2
           cmake --install build
       - name: Checkout code
