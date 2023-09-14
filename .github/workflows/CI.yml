@@ -60,7 +60,8 @@ jobs:
         uses: actions/checkout@v2.2.0
         with:
           repository: ECP-copa/Cabana
-          ref: master
+          # This version is post-release 0.5
+          ref: a592efaadadeae2475c7e72efe3f62bf4f1fd3bd
           path: Cabana
       - name: Build Cabana
         working-directory: Cabana
