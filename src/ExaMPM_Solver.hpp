@@ -123,7 +123,7 @@ class Solver : public SolverBase
         if ( _rank == 0 )
             std::cout << "No particle output enabled in Cabana. Add "
                          "Cabana_REQUIRE_HDF5=ON or Cabana_REQUIRE_SILO=ON to "
-                         "the Cabana build if needed."
+                         "the Cabana build if needed.";
 #endif
 #endif
     }
