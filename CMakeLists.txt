@@ -12,9 +12,6 @@ find_package(Cabana REQUIRED COMPONENTS Cabana::Cajita Cabana::cabanacore)
 if( NOT Cabana_ENABLE_MPI )
   message( FATAL_ERROR "Cabana must be compiled with MPI" )
 endif()
-if( NOT Cabana_ENABLE_CAJITA )
-  message( FATAL_ERROR "Cabana must be compiled with Cajita" )
-endif()
 
 # find Clang Format
 find_package( CLANG_FORMAT 14 )
