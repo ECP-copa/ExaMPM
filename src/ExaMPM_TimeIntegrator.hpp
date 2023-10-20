@@ -16,7 +16,7 @@
 #include <ExaMPM_ProblemManager.hpp>
 #include <ExaMPM_VelocityInterpolation.hpp>
 
-#include <Cajita.hpp>
+#include <Cabana_Grid.hpp>
 
 #include <Kokkos_Core.hpp>
 
@@ -59,8 +59,8 @@ void p2g( const ExecutionSpace& exec_space, const ProblemManagerType& pm )
     double gamma = pm.gamma();
 
     // Build the local mesh.
-    auto local_mesh =
-        Cajita::createLocalMesh<ExecutionSpace>( *( pm.mesh()->localGrid() ) );
+    auto local_mesh = Cabana::Grid::createLocalMesh<ExecutionSpace>(
+        *( pm.mesh()->localGrid() ) );
 
     // Loop over particles.
     Kokkos::parallel_for(
@@ -71,16 +71,16 @@ void p2g( const ExecutionSpace& exec_space, const ProblemManagerType& pm )
             double x[3] = { x_p( p, 0 ), x_p( p, 1 ), x_p( p, 2 ) };
 
             // Setup interpolation to the nodes.
-            Cajita::SplineData<double, 2, 3, Cajita::Node> sd;
-            Cajita::evaluateSpline( local_mesh, x, sd );
+            Cabana::Grid::SplineData<double, 2, 3, Cabana::Grid::Node> sd;
+            Cabana::Grid::evaluateSpline( local_mesh, x, sd );
 
             // Compute the pressure on the particle with an equation of
             // state.
             double pressure = -bulk_mod * ( pow( j_p( p ), -gamma ) - 1.0 );
 
             // Project the pressure gradient to the grid.
-            Cajita::P2G::gradient( -v_p( p ) * j_p( p ) * pressure, sd,
-                                   f_i_sv );
+            Cabana::Grid::P2G::gradient( -v_p( p ) * j_p( p ) * pressure, sd,
+                                         f_i_sv );
 
             // Extract the particle velocity
             double vel_p[3] = { u_p( p, 0 ), u_p( p, 1 ), u_p( p, 2 ) };
@@ -95,7 +95,7 @@ void p2g( const ExecutionSpace& exec_space, const ProblemManagerType& pm )
             APIC::p2g( m_p( p ), vel_p, aff_p, sd, mu_i_sv );
 
             // Project mass to the grid.
-            Cajita::P2G::value( m_p( p ), sd, m_i_sv );
+            Cabana::Grid::P2G::value( m_p( p ), sd, m_i_sv );
         } );
 
     // Complete local scatter.
@@ -127,12 +127,12 @@ void fieldSolve( const ExecutionSpace& exec_space, const ProblemManagerType& pm,
     double mass_epsilon = 1.0e-12;
 
     // Compute the velocity.
-    auto l2g = Cajita::IndexConversion::createL2G( *( pm.mesh()->localGrid() ),
-                                                   Cajita::Node() );
+    auto l2g = Cabana::Grid::IndexConversion::createL2G(
+        *( pm.mesh()->localGrid() ), Cabana::Grid::Node() );
     auto local_nodes = pm.mesh()->localGrid()->indexSpace(
-        Cajita::Ghost(), Cajita::Node(), Cajita::Local() );
+        Cabana::Grid::Ghost(), Cabana::Grid::Node(), Cabana::Grid::Local() );
     Kokkos::parallel_for(
-        Cajita::createExecutionPolicy( local_nodes, exec_space ),
+        Cabana::Grid::createExecutionPolicy( local_nodes, exec_space ),
         KOKKOS_LAMBDA( const int li, const int lj, const int lk ) {
             int gi, gj, gk;
             l2g( li, lj, lk, gi, gj, gk );
@@ -188,8 +188,8 @@ void g2p( const ExecutionSpace& exec_space, const ProblemManagerType& pm,
     auto k_c_sv = Kokkos::Experimental::create_scatter_view( k_c );
 
     // Build the local mesh.
-    auto local_mesh =
-        Cajita::createLocalMesh<ExecutionSpace>( *( pm.mesh()->localGrid() ) );
+    auto local_mesh = Cabana::Grid::createLocalMesh<ExecutionSpace>(
+        *( pm.mesh()->localGrid() ) );
     auto cell_size =
         pm.mesh()->localGrid()->globalGrid().globalMesh().cellSize( 0 );
     auto cell_volume = cell_size * cell_size * cell_size;
@@ -206,8 +206,8 @@ void g2p( const ExecutionSpace& exec_space, const ProblemManagerType& pm,
             double x[3] = { x_p( p, 0 ), x_p( p, 1 ), x_p( p, 2 ) };
 
             // Setup interpolation from the nodes.
-            Cajita::SplineData<double, 2, 3, Cajita::Node> sd_i;
-            Cajita::evaluateSpline( local_mesh, x, sd_i );
+            Cabana::Grid::SplineData<double, 2, 3, Cabana::Grid::Node> sd_i;
+            Cabana::Grid::evaluateSpline( local_mesh, x, sd_i );
 
             // Update particle velocity.
             double vel_p[3];
@@ -222,7 +222,7 @@ void g2p( const ExecutionSpace& exec_space, const ProblemManagerType& pm,
             // Compute the velocity divergence (this is the trace of the
             // velocity gradient).
             double div_u;
-            Cajita::G2P::divergence( u_i, sd_i, div_u );
+            Cabana::Grid::G2P::divergence( u_i, sd_i, div_u );
 
             // Update the deformation gradient determinant.
             j_p( p ) *= exp( delta_t * div_u );
@@ -235,14 +235,14 @@ void g2p( const ExecutionSpace& exec_space, const ProblemManagerType& pm,
             }
 
             // Project density to cell.
-            Cajita::SplineData<double, 1, 3, Cajita::Cell> sd_c1;
-            Cajita::evaluateSpline( local_mesh, x, sd_c1 );
-            Cajita::P2G::value( m_p( p ) / cell_volume, sd_c1, r_c_sv );
+            Cabana::Grid::SplineData<double, 1, 3, Cabana::Grid::Cell> sd_c1;
+            Cabana::Grid::evaluateSpline( local_mesh, x, sd_c1 );
+            Cabana::Grid::P2G::value( m_p( p ) / cell_volume, sd_c1, r_c_sv );
 
             // Mark cells. Indicates whether or not cells have particles.
-            Cajita::SplineData<double, 0, 3, Cajita::Cell> sd_c0;
-            Cajita::evaluateSpline( local_mesh, x, sd_c0 );
-            Cajita::P2G::value( 1.0, sd_c0, k_c_sv );
+            Cabana::Grid::SplineData<double, 0, 3, Cabana::Grid::Cell> sd_c0;
+            Cabana::Grid::evaluateSpline( local_mesh, x, sd_c0 );
+            Cabana::Grid::P2G::value( 1.0, sd_c0, k_c_sv );
         } );
 
     // Complete local scatter.
@@ -280,24 +280,24 @@ void correctParticlePositions( const ExecutionSpace& exec_space,
     double density = pm.density();
 
     // Build the local mesh.
-    auto local_mesh =
-        Cajita::createLocalMesh<ExecutionSpace>( *( pm.mesh()->localGrid() ) );
+    auto local_mesh = Cabana::Grid::createLocalMesh<ExecutionSpace>(
+        *( pm.mesh()->localGrid() ) );
 
     // Compute nodal correction.
     auto local_cells = pm.mesh()->localGrid()->indexSpace(
-        Cajita::Own(), Cajita::Cell(), Cajita::Local() );
+        Cabana::Grid::Own(), Cabana::Grid::Cell(), Cabana::Grid::Local() );
     Kokkos::parallel_for(
         "compute_position_correction",
-        Cajita::createExecutionPolicy( local_cells, exec_space ),
+        Cabana::Grid::createExecutionPolicy( local_cells, exec_space ),
         KOKKOS_LAMBDA( const int i, const int j, const int k ) {
             // Get the cell center.
             int idx[3] = { i, j, k };
             double x[3];
-            local_mesh.coordinates( Cajita::Cell(), idx, x );
+            local_mesh.coordinates( Cabana::Grid::Cell(), idx, x );
 
             // Setup interpolation from cell center to nodes.
-            Cajita::SplineData<double, 1, 3, Cajita::Node> sd_i;
-            Cajita::evaluateSpline( local_mesh, x, sd_i );
+            Cabana::Grid::SplineData<double, 1, 3, Cabana::Grid::Node> sd_i;
+            Cabana::Grid::evaluateSpline( local_mesh, x, sd_i );
 
             // Clamp the density outside the fluid.
             double rho = ( k_c( i, j, k, 0 ) > 0.0 )
@@ -307,7 +307,7 @@ void correctParticlePositions( const ExecutionSpace& exec_space,
             // Compute correction.
             double correction =
                 -delta_t * delta_t * kappa * ( 1 - rho / density ) / density;
-            Cajita::P2G::gradient( correction, sd_i, x_i_sv );
+            Cabana::Grid::P2G::gradient( correction, sd_i, x_i_sv );
         } );
 
     // Complete local scatter.
@@ -321,12 +321,12 @@ void correctParticlePositions( const ExecutionSpace& exec_space,
 
     // Apply boundary condition to position correction.
     // Compute the velocity.
-    auto l2g = Cajita::IndexConversion::createL2G( *( pm.mesh()->localGrid() ),
-                                                   Cajita::Node() );
+    auto l2g = Cabana::Grid::IndexConversion::createL2G(
+        *( pm.mesh()->localGrid() ), Cabana::Grid::Node() );
     auto local_nodes = pm.mesh()->localGrid()->indexSpace(
-        Cajita::Ghost(), Cajita::Node(), Cajita::Local() );
+        Cabana::Grid::Ghost(), Cabana::Grid::Node(), Cabana::Grid::Local() );
     Kokkos::parallel_for(
-        Cajita::createExecutionPolicy( local_nodes, exec_space ),
+        Cabana::Grid::createExecutionPolicy( local_nodes, exec_space ),
         KOKKOS_LAMBDA( const int li, const int lj, const int lk ) {
             int gi, gj, gk;
             l2g( li, lj, lk, gi, gj, gk );
@@ -343,12 +343,12 @@ void correctParticlePositions( const ExecutionSpace& exec_space,
             double x[3] = { x_p( p, 0 ), x_p( p, 1 ), x_p( p, 2 ) };
 
             // Setup interpolation from the nodes.
-            Cajita::SplineData<double, 2, 3, Cajita::Node> sd_i;
-            Cajita::evaluateSpline( local_mesh, x, sd_i );
+            Cabana::Grid::SplineData<double, 2, 3, Cabana::Grid::Node> sd_i;
+            Cabana::Grid::evaluateSpline( local_mesh, x, sd_i );
 
             // Correct the particle position.
             double delta_x[3];
-            Cajita::G2P::value( x_i, sd_i, delta_x );
+            Cabana::Grid::G2P::value( x_i, sd_i, delta_x );
             for ( int d = 0; d < 3; ++d )
                 x_p( p, d ) += delta_x[d];
         } );

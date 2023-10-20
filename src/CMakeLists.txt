@@ -20,8 +20,8 @@ install(FILES ${HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 add_library(exampm ${SOURCES})
 
 target_link_libraries(exampm
-  Cabana::cabanacore
-  Cabana::Cajita
+  Cabana::Core
+  Cabana::Grid
 )
 
 target_include_directories(exampm

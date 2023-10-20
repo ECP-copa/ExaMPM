@@ -8,7 +8,7 @@ include(GNUInstallDirs)
 
 # find dependencies
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
-find_package(Cabana REQUIRED COMPONENTS Cabana::Cajita Cabana::cabanacore)
+find_package(Cabana REQUIRED COMPONENTS Cabana::Grid Cabana::Core)
 if( NOT Cabana_ENABLE_MPI )
   message( FATAL_ERROR "Cabana must be compiled with MPI" )
 endif()

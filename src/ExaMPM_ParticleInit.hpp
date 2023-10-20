@@ -15,7 +15,7 @@
 #include <ExaMPM_Types.hpp>
 
 #include <Cabana_Core.hpp>
-#include <Cajita.hpp>
+#include <Cabana_Grid.hpp>
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
@@ -114,11 +114,11 @@ void initializeParticles( const ExecSpace& exec_space,
     using particle_type = typename ParticleList::tuple_type;
 
     // Create a local mesh.
-    auto local_mesh = Cajita::createLocalMesh<device_type>( local_grid );
+    auto local_mesh = Cabana::Grid::createLocalMesh<device_type>( local_grid );
 
     // Get the local set of owned cell indices.
-    auto owned_cells =
-        local_grid.indexSpace( Cajita::Own(), Cajita::Cell(), Cajita::Local() );
+    auto owned_cells = local_grid.indexSpace(
+        Cabana::Grid::Own(), Cabana::Grid::Cell(), Cabana::Grid::Local() );
 
     // Allocate enough space for the case the particles consume the entire
     // local grid.
@@ -136,7 +136,7 @@ void initializeParticles( const ExecSpace& exec_space,
     int local_num_create = 0;
     Kokkos::parallel_reduce(
         "init_particles_uniform",
-        Cajita::createExecutionPolicy( owned_cells, exec_space ),
+        Cabana::Grid::createExecutionPolicy( owned_cells, exec_space ),
         KOKKOS_LAMBDA( const int i, const int j, const int k,
                        int& create_count ) {
             // Compute the owned local cell id.
@@ -150,12 +150,14 @@ void initializeParticles( const ExecSpace& exec_space,
             // Get the coordinates of the low cell node.
             int low_node[3] = { i, j, k };
             double low_coords[3];
-            local_mesh.coordinates( Cajita::Node(), low_node, low_coords );
+            local_mesh.coordinates( Cabana::Grid::Node(), low_node,
+                                    low_coords );
 
             // Get the coordinates of the high cell node.
             int high_node[3] = { i + 1, j + 1, k + 1 };
             double high_coords[3];
-            local_mesh.coordinates( Cajita::Node(), high_node, high_coords );
+            local_mesh.coordinates( Cabana::Grid::Node(), high_node,
+                                    high_coords );
 
             // Compute the particle spacing in each dimension.
             double spacing[3] = { ( high_coords[Dim::I] - low_coords[Dim::I] ) /

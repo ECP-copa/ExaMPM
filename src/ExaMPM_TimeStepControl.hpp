@@ -14,7 +14,7 @@
 
 #include <ExaMPM_ProblemManager.hpp>
 
-#include <Cajita.hpp>
+#include <Cabana_Grid.hpp>
 
 #include <Kokkos_Core.hpp>
 

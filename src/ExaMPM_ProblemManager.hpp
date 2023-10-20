@@ -17,7 +17,7 @@
 
 #include <Cabana_Core.hpp>
 
-#include <Cajita.hpp>
+#include <Cabana_Grid.hpp>
 
 #include <memory>
 
@@ -91,13 +91,15 @@ class ProblemManager
     using particle_list = Cabana::AoSoA<particle_members, MemorySpace>;
     using particle_type = typename particle_list::tuple_type;
 
-    using node_array = Cajita::Array<double, Cajita::Node,
-                                     Cajita::UniformMesh<double>, MemorySpace>;
+    using node_array =
+        Cabana::Grid::Array<double, Cabana::Grid::Node,
+                            Cabana::Grid::UniformMesh<double>, MemorySpace>;
 
-    using cell_array = Cajita::Array<double, Cajita::Cell,
-                                     Cajita::UniformMesh<double>, MemorySpace>;
+    using cell_array =
+        Cabana::Grid::Array<double, Cabana::Grid::Cell,
+                            Cabana::Grid::UniformMesh<double>, MemorySpace>;
 
-    using halo = Cajita::Halo<MemorySpace>;
+    using halo = Cabana::Grid::Halo<MemorySpace>;
 
     using mesh_type = Mesh<MemorySpace>;
 
@@ -117,37 +119,38 @@ class ProblemManager
         initializeParticles( exec_space, *( _mesh->localGrid() ),
                              particles_per_cell, create_functor, _particles );
 
-        auto node_vector_layout =
-            Cajita::createArrayLayout( _mesh->localGrid(), 3, Cajita::Node() );
-        auto node_scalar_layout =
-            Cajita::createArrayLayout( _mesh->localGrid(), 1, Cajita::Node() );
-        auto cell_scalar_layout =
-            Cajita::createArrayLayout( _mesh->localGrid(), 1, Cajita::Cell() );
+        auto node_vector_layout = Cabana::Grid::createArrayLayout(
+            _mesh->localGrid(), 3, Cabana::Grid::Node() );
+        auto node_scalar_layout = Cabana::Grid::createArrayLayout(
+            _mesh->localGrid(), 1, Cabana::Grid::Node() );
+        auto cell_scalar_layout = Cabana::Grid::createArrayLayout(
+            _mesh->localGrid(), 1, Cabana::Grid::Cell() );
 
-        _momentum = Cajita::createArray<double, MemorySpace>(
+        _momentum = Cabana::Grid::createArray<double, MemorySpace>(
             "momentum", node_vector_layout );
-        _mass = Cajita::createArray<double, MemorySpace>( "mass",
-                                                          node_scalar_layout );
-        _force = Cajita::createArray<double, MemorySpace>( "force",
-                                                           node_vector_layout );
-        _velocity = Cajita::createArray<double, MemorySpace>(
+        _mass = Cabana::Grid::createArray<double, MemorySpace>(
+            "mass", node_scalar_layout );
+        _force = Cabana::Grid::createArray<double, MemorySpace>(
+            "force", node_vector_layout );
+        _velocity = Cabana::Grid::createArray<double, MemorySpace>(
             "velocity", node_vector_layout );
-        _position_correction = Cajita::createArray<double, MemorySpace>(
+        _position_correction = Cabana::Grid::createArray<double, MemorySpace>(
             "position_correction", node_vector_layout );
-        _density = Cajita::createArray<double, MemorySpace>(
+        _density = Cabana::Grid::createArray<double, MemorySpace>(
             "density", cell_scalar_layout );
 
-        _mark = Cajita::createArray<double, MemorySpace>( "mark",
-                                                          cell_scalar_layout );
+        _mark = Cabana::Grid::createArray<double, MemorySpace>(
+            "mark", cell_scalar_layout );
 
-        _node_scatter_halo = Cajita::createHalo(
-            Cajita::NodeHaloPattern<3>(), -1, *_momentum, *_mass, *_force );
-        _node_gather_halo =
-            Cajita::createHalo( Cajita::NodeHaloPattern<3>(), -1, *_velocity );
-        _node_correction_halo = Cajita::createHalo(
-            Cajita::NodeHaloPattern<3>(), -1, *_position_correction );
-        _cell_halo = Cajita::createHalo( Cajita::NodeHaloPattern<3>(), -1,
-                                         *_density, *_mark );
+        _node_scatter_halo =
+            Cabana::Grid::createHalo( Cabana::Grid::NodeHaloPattern<3>(), -1,
+                                      *_momentum, *_mass, *_force );
+        _node_gather_halo = Cabana::Grid::createHalo(
+            Cabana::Grid::NodeHaloPattern<3>(), -1, *_velocity );
+        _node_correction_halo = Cabana::Grid::createHalo(
+            Cabana::Grid::NodeHaloPattern<3>(), -1, *_position_correction );
+        _cell_halo = Cabana::Grid::createHalo(
+            Cabana::Grid::NodeHaloPattern<3>(), -1, *_density, *_mark );
     }
 
     std::size_t numParticle() const { return _particles.size(); }
@@ -237,21 +240,22 @@ class ProblemManager
     void scatter( Location::Node ) const
     {
         _node_scatter_halo->scatter( execution_space(),
-                                     Cajita::ScatterReduce::Sum(), *_momentum,
-                                     *_mass, *_force );
+                                     Cabana::Grid::ScatterReduce::Sum(),
+                                     *_momentum, *_mass, *_force );
     }
 
     void scatter( Location::Node, Field::PositionCorrection ) const
     {
         _node_correction_halo->scatter( execution_space(),
-                                        Cajita::ScatterReduce::Sum(),
+                                        Cabana::Grid::ScatterReduce::Sum(),
                                         *_position_correction );
     }
 
     void scatter( Location::Cell ) const
     {
-        _cell_halo->scatter( execution_space(), Cajita::ScatterReduce::Sum(),
-                             *_density, *_mark );
+        _cell_halo->scatter( execution_space(),
+                             Cabana::Grid::ScatterReduce::Sum(), *_density,
+                             *_mark );
     }
 
     void gather( Location::Node ) const
@@ -268,8 +272,8 @@ class ProblemManager
     void communicateParticles( const int minimum_halo_width )
     {
         auto positions = get( Location::Particle(), Field::Position() );
-        Cajita::particleGridMigrate( *( _mesh->localGrid() ), positions,
-                                     _particles, minimum_halo_width );
+        Cabana::Grid::particleGridMigrate( *( _mesh->localGrid() ), positions,
+                                           _particles, minimum_halo_width );
     }
 
   private:

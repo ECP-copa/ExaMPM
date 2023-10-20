@@ -12,7 +12,7 @@
 #ifndef EXAMPM_MESH_HPP
 #define EXAMPM_MESH_HPP
 
-#include <Cajita.hpp>
+#include <Cabana_Grid.hpp>
 
 #include <Kokkos_Core.hpp>
 
@@ -39,7 +39,7 @@ class Mesh
     Mesh( const Kokkos::Array<double, 6>& global_bounding_box,
           const std::array<int, 3>& global_num_cell,
           const std::array<bool, 3>& periodic,
-          const Cajita::BlockPartitioner<3>& partitioner,
+          const Cabana::Grid::BlockPartitioner<3>& partitioner,
           const int halo_cell_width, const int minimum_halo_cell_width,
           MPI_Comm comm )
     {
@@ -91,20 +91,21 @@ class Mesh
         }
 
         // Create the global mesh.
-        auto global_mesh = Cajita::createUniformGlobalMesh(
+        auto global_mesh = Cabana::Grid::createUniformGlobalMesh(
             global_low_corner, global_high_corner, num_cell );
 
         // Build the global grid.
-        auto global_grid = Cajita::createGlobalGrid( comm, global_mesh,
-                                                     periodic, partitioner );
+        auto global_grid = Cabana::Grid::createGlobalGrid(
+            comm, global_mesh, periodic, partitioner );
 
         // Build the local grid.
         int halo_width = std::max( minimum_halo_cell_width, halo_cell_width );
-        _local_grid = Cajita::createLocalGrid( global_grid, halo_width );
+        _local_grid = Cabana::Grid::createLocalGrid( global_grid, halo_width );
     }
 
     // Get the local grid.
-    const std::shared_ptr<Cajita::LocalGrid<Cajita::UniformMesh<double>>>&
+    const std::shared_ptr<
+        Cabana::Grid::LocalGrid<Cabana::Grid::UniformMesh<double>>>&
     localGrid() const
     {
         return _local_grid;
@@ -129,7 +130,8 @@ class Mesh
     }
 
   public:
-    std::shared_ptr<Cajita::LocalGrid<Cajita::UniformMesh<double>>> _local_grid;
+    std::shared_ptr<Cabana::Grid::LocalGrid<Cabana::Grid::UniformMesh<double>>>
+        _local_grid;
 
     Kokkos::Array<int, 3> _min_domain_global_node_index;
     Kokkos::Array<int, 3> _max_domain_global_node_index;
