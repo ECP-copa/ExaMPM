@@ -14,8 +14,6 @@
 
 #include <ExaMPM_ProblemManager.hpp>
 
-#include <Cabana_Grid.hpp>
-
 #include <Kokkos_Core.hpp>
 
 #include <cmath>
@@ -44,14 +42,8 @@ template <class ExecutionSpace, class ProblemManagerType>
 double momentumCFL( MPI_Comm comm, ExecutionSpace, const ProblemManagerType& pm,
                     const double current_dt, const double cfl )
 {
-
-#if KOKKOS_VERSION >= 30700
     using Kokkos::abs;
     using Kokkos::sqrt;
-#else
-    using Kokkos::Experimental::abs;
-    using Kokkos::Experimental::sqrt;
-#endif
 
     // Get the particle data we need.
     auto m_p = pm.get( Location::Particle(), Field::Mass() );
@@ -98,12 +90,7 @@ template <class ExecutionSpace, class ProblemManagerType>
 double maxVelocity( MPI_Comm comm, ExecutionSpace, const ProblemManagerType& pm,
                     const double current_dt, const double cfl )
 {
-
-#if KOKKOS_VERSION >= 30700
     using Kokkos::sqrt;
-#else
-    using Kokkos::Experimental::sqrt;
-#endif
 
     // Get the particle data we need.
     auto u_p = pm.get( Location::Particle(), Field::Velocity() );
