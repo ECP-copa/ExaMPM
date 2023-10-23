@@ -45,7 +45,7 @@ class Solver : public SolverBase
     Solver( MPI_Comm comm, const Kokkos::Array<double, 6>& global_bounding_box,
             const std::array<int, 3>& global_num_cell,
             const std::array<bool, 3>& periodic,
-            const Cajita::BlockPartitioner<3>& partitioner,
+            const Cabana::Grid::BlockPartitioner<3>& partitioner,
             const int halo_cell_width, const InitFunc& create_functor,
             const int particles_per_cell, const double bulk_modulus,
             const double density, const double gamma, const double kappa,
@@ -114,7 +114,7 @@ class Solver : public SolverBase
             _pm->get( Location::Particle(), Field::J() ) );
 #else
 #ifdef Cabana_ENABLE_SILO
-        Cajita::Experimental::SiloParticleOutput::writeTimeStep(
+        Cabana::Grid::Experimental::SiloParticleOutput::writeTimeStep(
             "particles", _mesh->localGrid()->globalGrid(), _step, _time,
             _pm->get( Location::Particle(), Field::Position() ),
             _pm->get( Location::Particle(), Field::Velocity() ),
@@ -148,7 +148,7 @@ createSolver( const std::string& device, MPI_Comm comm,
               const Kokkos::Array<double, 6>& global_bounding_box,
               const std::array<int, 3>& global_num_cell,
               const std::array<bool, 3>& periodic,
-              const Cajita::BlockPartitioner<3>& partitioner,
+              const Cabana::Grid::BlockPartitioner<3>& partitioner,
               const int halo_cell_width, const InitFunc& create_functor,
               const int particles_per_cell, const double bulk_modulus,
               const double density, const double gamma, const double kappa,

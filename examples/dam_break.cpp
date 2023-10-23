@@ -3,7 +3,7 @@
 
 #include <Cabana_Core.hpp>
 
-#include <Cajita.hpp>
+#include <Cabana_Grid.hpp>
 
 #include <Kokkos_Core.hpp>
 
@@ -87,7 +87,7 @@ void damBreak( const double cell_size, const int ppc, const int halo_size,
     int comm_size;
     MPI_Comm_size( MPI_COMM_WORLD, &comm_size );
     std::array<int, 3> ranks_per_dim = { 1, comm_size, 1 };
-    Cajita::ManualBlockPartitioner<3> partitioner( ranks_per_dim );
+    Cabana::Grid::ManualBlockPartitioner<3> partitioner( ranks_per_dim );
 
     // Material properties.
     double bulk_modulus = 1.0e5;

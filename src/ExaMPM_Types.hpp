@@ -12,13 +12,13 @@
 #ifndef EXAMPM_TYPES_HPP
 #define EXAMPM_TYPES_HPP
 
-#include <Cajita.hpp>
+#include <Cabana_Grid.hpp>
 
 namespace ExaMPM
 {
 //---------------------------------------------------------------------------//
 // Logical dimension index.
-using Dim = Cajita::Dim;
+using Dim = Cabana::Grid::Dim;
 
 //---------------------------------------------------------------------------//
 

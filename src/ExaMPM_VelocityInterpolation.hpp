@@ -15,7 +15,7 @@
 #include <ExaMPM_DenseLinearAlgebra.hpp>
 #include <ExaMPM_Types.hpp>
 
-#include <Cajita.hpp>
+#include <Cabana_Grid.hpp>
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ScatterView.hpp>
@@ -55,11 +55,11 @@ p2g( const typename MomentumView::original_value_type m_p,
      const typename MomentumView::original_value_type B_p[3][3],
      const SplineDataType& sd, const MomentumView& node_momentum,
      typename std::enable_if<
-         ( Cajita::isNode<typename SplineDataType::entity_type>::value &&
+         ( Cabana::Grid::isNode<typename SplineDataType::entity_type>::value &&
            ( SplineDataType::order == 2 || SplineDataType::order == 3 ) ),
          void*>::type = 0 )
 {
-    static_assert( Cajita::P2G::is_scatter_view<MomentumView>::value,
+    static_assert( Cabana::Grid::P2G::is_scatter_view<MomentumView>::value,
                    "P2G requires a Kokkos::ScatterView" );
     auto momentum_access = node_momentum.access();
 
@@ -106,11 +106,11 @@ p2g( const typename MomentumView::original_value_type m_p,
      const typename MomentumView::original_value_type B_p[3][3],
      const SplineDataType& sd, const MomentumView& node_momentum,
      typename std::enable_if<
-         ( Cajita::isNode<typename SplineDataType::entity_type>::value &&
+         ( Cabana::Grid::isNode<typename SplineDataType::entity_type>::value &&
            ( SplineDataType::order == 1 ) ),
          void*>::type = 0 )
 {
-    static_assert( Cajita::P2G::is_scatter_view<MomentumView>::value,
+    static_assert( Cabana::Grid::P2G::is_scatter_view<MomentumView>::value,
                    "P2G requires a Kokkos::ScatterView" );
     auto momentum_access = node_momentum.access();
 
@@ -155,7 +155,7 @@ g2p( const VelocityView& node_velocity, const SplineDataType& sd,
      typename VelocityView::value_type u_p[3],
      typename VelocityView::value_type B_p[3][3],
      typename std::enable_if<
-         Cajita::isNode<typename SplineDataType::entity_type>::value,
+         Cabana::Grid::isNode<typename SplineDataType::entity_type>::value,
          void*>::type = 0 )
 {
     using value_type = typename VelocityView::value_type;
