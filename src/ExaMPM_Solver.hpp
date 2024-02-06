@@ -155,6 +155,14 @@ class Solver : public SolverBase
             h5_config.alignment = std::atoi( env_val );
         }
 
+        env_val = std::getenv( "H5FUSE" );
+        if ( env_val != NULL ) {
+          h5_config.h5fuse_info = true;
+          env_val = std::getenv( "LOC" );
+          if ( env_val != NULL )
+            h5_config.h5fuse_local = true;
+        }
+
         double t1, t2;
         t1 = MPI_Wtime();
         Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
@@ -167,7 +175,7 @@ class Solver : public SolverBase
         timer_stats( t2 - t1, MPI_COMM_WORLD, 0, &io_stats );
 
         // Setting enviroment H5FUSE enables fusing the subfiles into
-        // an HDF5 file. Assumes h5fuse.sh is in the same directory
+        // an HDF5 file. Assumes h5fuse is in the same directory
         // as the executable.
         env_val = std::getenv( "H5FUSE" );
         if ( env_val != NULL )
@@ -175,13 +183,67 @@ class Solver : public SolverBase
             if ( h5_config.subfiling )
             {
 
+              // if (h5_config.h5fuse_info)
+              //  std::cout << "LEN " << h5_config.subfilenames_len << std::endl;
+
+              //if(!h5_config.subfilenames.empty()) {
+              //  int l_mpi_rank;
+              //  MPI_Comm_rank(MPI_COMM_WORLD, &l_mpi_rank);
+              //  std::cout << "ExaMPM " << h5_config.subfilenames << std::endl;
+              //}
+
+              if (!h5_config.h5fuse_local) {
+
+                if(!h5_config.subfilenames.empty()) {
+                  {
+                    pid_t pid = 0;
+                    int status;
+
+                    pid = fork();
+                    nfork++;
+                    if ( pid == 0 )
+                      {
+                        std::stringstream filename_hdf5;
+                        filename_hdf5 << "particles"
+                                      << "_" << _step << ".h5";
+
+                        // Directory containing the subfiling configuration file
+                        std::stringstream config_dir;
+                        if ( const char* env_value = std::getenv(
+                                                                 H5FD_SUBFILING_CONFIG_FILE_PREFIX ) )
+                          config_dir << env_value;
+                        else
+                          config_dir << ".";
+                        // Find the name of the subfiling configuration file
+                        struct stat file_info;
+                        stat( filename_hdf5.str().c_str(), &file_info );
+
+                        char config_filename[PATH_MAX];
+                        snprintf( config_filename, PATH_MAX,
+                                  "%s/" H5FD_SUBFILING_CONFIG_FILENAME_TEMPLATE,
+                                  config_dir.str().c_str(),
+                                  filename_hdf5.str().c_str(),
+                                  (uint64_t)file_info.st_ino );
+
+                        // Call the h5fuse utility
+                        // Removes the subfiles in the process
+                        char* args[] = { strdup( "./h5fuse" ),
+                                         strdup( "-l" ), strdup( h5_config.subfilenames.c_str() ),
+                                         //strdup( "-v" ),
+                                         strdup( "-f" ), config_filename, NULL };
+                        execvp( args[0], args );
+                      }
+                  }
+                }
+              } else {
+
                 MPI_Comm shmcomm;
                 MPI_Comm_split_type( MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
                                      MPI_INFO_NULL, &shmcomm );
 
                 MPI_Comm_rank( shmcomm, &shmrank );
 
-                // One rank from each node executes h5fuse.sh
+                // One rank from each node executes h5fuse
 
                 if ( shmrank == 0 )
                 {
@@ -216,14 +278,15 @@ class Solver : public SolverBase
 
                         // Call the h5fuse utility
                         // Removes the subfiles in the process
-                        char* args[] = { strdup( "./h5fuse.sh" ),
-                                         strdup( "-r" ), strdup( "-f" ),
-                                         config_filename, NULL };
+                        char* args[] = { strdup( "./h5fuse" ),
+                                         strdup( "-r" ),
+                                         strdup( "-f" ), config_filename, NULL };
 
                         execvp( args[0], args );
                     }
                 }
                 MPI_Comm_free( &shmcomm );
+              }
             }
         }
 #else
