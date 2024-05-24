@@ -65,7 +65,7 @@ struct ParticleInitFunc
 //---------------------------------------------------------------------------//
 void freeFall( const double cell_size, const int ppc, const int halo_size,
                const double delta_t, const double t_final, const int write_freq,
-               const std::string& device )
+               const std::string& exec_space )
 {
     // The free fall domain is in a box on [-0.5,0.5] in each dimension.
     Kokkos::Array<double, 6> global_box = { -0.5, -0.5, -0.5, 0.5, 0.5, 0.5 };
@@ -106,7 +106,7 @@ void freeFall( const double cell_size, const int ppc, const int halo_size,
 
     // Solve the problem.
     auto solver = ExaMPM::createSolver(
-        device, MPI_COMM_WORLD, global_box, global_num_cell, periodic,
+        exec_space, MPI_COMM_WORLD, global_box, global_num_cell, periodic,
         partitioner, halo_size, ParticleInitFunc( cell_size, ppc, density ),
         ppc, bulk_modulus, density, gamma, kappa, delta_t, gravity, bc );
     solver->solve( t_final, write_freq );
@@ -123,7 +123,7 @@ int main( int argc, char* argv[] )
     if ( argc < 8 )
     {
         std::cerr << "Usage: ./FreeFall cell_size parts_per_cell_size "
-                     "halo_cells dt t_end write_freq device\n";
+                     "halo_cells dt t_end write_freq exec_space\n";
         std::cerr << "\nwhere cell_size       edge length of a computational "
                      "cell (domain is unit cube)\n";
         std::cerr
@@ -133,7 +133,7 @@ int main( int argc, char* argv[] )
         std::cerr << "      t_end           simulation end time\n";
         std::cerr
             << "      write_freq      number of steps between output files\n";
-        std::cerr << "      device          compute device: serial, openmp, "
+        std::cerr << "      exec_space      execute with: serial, openmp, "
                      "cuda, hip\n";
         std::cerr << "\nfor example: ./FreeFall 0.05 2 0 0.001 1.0 10 serial\n";
         Kokkos::finalize();
@@ -159,11 +159,12 @@ int main( int argc, char* argv[] )
     // write frequency
     int write_freq = std::atoi( argv[6] );
 
-    // device type
-    std::string device( argv[7] );
+    // execution space
+    std::string exec_space( argv[7] );
 
     // run the problem.
-    freeFall( cell_size, ppc, halo_size, delta_t, t_final, write_freq, device );
+    freeFall( cell_size, ppc, halo_size, delta_t, t_final, write_freq,
+              exec_space );
 
     Kokkos::finalize();
 

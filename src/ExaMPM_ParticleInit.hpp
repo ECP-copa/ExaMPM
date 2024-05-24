@@ -107,14 +107,14 @@ void initializeParticles( const ExecSpace& exec_space,
                           const InitFunctor& create_functor,
                           ParticleList& particles )
 {
-    // Device type.
-    using device_type = typename ParticleList::device_type;
+    // Kokkos memory space.
+    using memory_space = typename ParticleList::memory_space;
 
     // Particle type.
     using particle_type = typename ParticleList::tuple_type;
 
     // Create a local mesh.
-    auto local_mesh = Cabana::Grid::createLocalMesh<device_type>( local_grid );
+    auto local_mesh = Cabana::Grid::createLocalMesh<memory_space>( local_grid );
 
     // Get the local set of owned cell indices.
     auto owned_cells = local_grid.indexSpace(
@@ -128,7 +128,7 @@ void initializeParticles( const ExecSpace& exec_space,
     particles.resize( num_particles );
 
     // Creation status.
-    auto particle_created = Kokkos::View<bool*, device_type>(
+    auto particle_created = Kokkos::View<bool*, memory_space>(
         Kokkos::ViewAllocateWithoutInitializing( "particle_created" ),
         num_particles );
 
