@@ -272,8 +272,8 @@ class ProblemManager
     void communicateParticles( const int minimum_halo_width )
     {
         auto positions = get( Location::Particle(), Field::Position() );
-        Cabana::Grid::particleGridMigrate( *( _mesh->localGrid() ), positions,
-                                           _particles, minimum_halo_width );
+        Cabana::Grid::particleMigrate( *( _mesh->localGrid() ), positions,
+                                       _particles, minimum_halo_width );
     }
 
   private:
