@@ -35,7 +35,7 @@ jobs:
             backend: 'SERIAL'
             cmake_build_type: 'Debug'
             output: 'BOTH'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/ecp-copa/ci-containers/${{ matrix.distro }}
     steps:
